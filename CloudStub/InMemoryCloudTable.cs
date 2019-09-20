@@ -36,11 +36,11 @@ namespace CloudStub
         public override Task CreateAsync()
         {
             if (_reservedTableNames.Contains(Name))
-                throw InvalidInputException();
+                return Task.FromException(InvalidInputException());
             if (!Regex.IsMatch(Name, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
-                throw InvalidResourceNameException();
+                return Task.FromException(InvalidResourceNameException());
             if (Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableExistsState)
-                throw TableAlreadyExistsException();
+                return Task.FromException(TableAlreadyExistsException());
 
             return Task.CompletedTask;
         }
@@ -63,7 +63,7 @@ namespace CloudStub
         public override Task DeleteAsync()
         {
             if (Interlocked.CompareExchange(ref _tableState, _tableDoesNotExistState, _tableExistsState) == _tableDoesNotExistState)
-                throw ResourceNotFoundException();
+                return Task.FromException(ResourceNotFoundException());
 
             return Task.CompletedTask;
         }
@@ -75,10 +75,7 @@ namespace CloudStub
             => throw new NotImplementedException();
 
         public override Task<bool> DeleteIfExistsAsync()
-        {
-            var result = Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableDoesNotExistState, _tableExistsState) == _tableExistsState);
-            return result;
-        }
+            => Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableDoesNotExistState, _tableExistsState) == _tableExistsState);
 
         public override Task<bool> DeleteIfExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => DeleteIfExistsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -87,10 +84,7 @@ namespace CloudStub
             => throw new NotImplementedException();
 
         public override Task<bool> CreateIfNotExistsAsync()
-        {
-            var result = Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableDoesNotExistState);
-            return result;
-        }
+            => Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableDoesNotExistState);
 
         public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => CreateIfNotExistsAsync(requestOptions, operationContext, CancellationToken.None);
