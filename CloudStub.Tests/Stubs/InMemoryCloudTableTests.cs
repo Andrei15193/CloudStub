@@ -134,6 +134,41 @@ namespace CloudStub.Tests
         }
 
         [Fact]
+        public async Task DeleteAsync_WhenTableDoesNotExist_ThrowsException()
+        {
+            var exception = await Assert.ThrowsAsync<StorageException>(() => _cloudTable.DeleteAsync());
+
+            Assert.Equal("Not Found", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Not Found", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WhenTableExists_DeletesTable()
+        {
+            await _cloudTable.CreateAsync();
+
+            await _cloudTable.DeleteAsync();
+
+            Assert.False(await _cloudTable.ExistsAsync());
+        }
+
+        [Fact]
         public async Task DeleteIfExistsAsync_WhenTableDoesNotExist_ReturnsFalse()
         {
             Assert.False(await _cloudTable.DeleteIfExistsAsync());

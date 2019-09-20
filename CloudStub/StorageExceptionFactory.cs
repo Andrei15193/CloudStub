@@ -8,7 +8,7 @@ namespace CloudStub
 {
     internal static class StorageExceptionFactory
     {
-        public static StorageException TableAlreadyExists()
+        public static StorageException TableAlreadyExistsException()
             => FromXml(
                 "Conflict",
                 null,
@@ -36,7 +36,7 @@ Time:{1}</Message>
                 DateTime.UtcNow
             );
 
-        public static StorageException InvalidInput()
+        public static StorageException InvalidInputException()
             => FromXml(
                 "Bad Request",
                 null,
@@ -64,7 +64,7 @@ Time:{1}</Message>
                 DateTime.UtcNow
             );
 
-        public static StorageException InvalidResourceName()
+        public static StorageException InvalidResourceNameException()
             => FromXml(
                 "Bad Request",
                 null,
@@ -84,6 +84,34 @@ Time:{1}</Message>
 <Error>
     <Code>InvalidResourceName</Code>
     <Message>The specifed resource name contains invalid characters.
+RequestId:{0}
+Time:{1}</Message>
+</Error>
+</RequestResult>",
+                Guid.NewGuid(),
+                DateTime.UtcNow
+            );
+
+        public static StorageException ResourceNotFoundException()
+            => FromXml(
+                "Not Found",
+                null,
+                @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<!--An exception has occurred. For more information please deserialize this message via RequestResult.TranslateFromExceptionMessage.-->
+<RequestResult>
+<HTTPStatusCode>404</HTTPStatusCode>
+<HttpStatusMessage>Not Found</HttpStatusMessage>
+<TargetLocation>Primary</TargetLocation>
+<ServiceRequestID>{0}</ServiceRequestID>
+<ContentMd5 />
+<Etag />
+<RequestDate>{1}</RequestDate>
+<ErrorCode></ErrorCode>
+<StartTime>{1}</StartTime>
+<EndTime>{1}</EndTime>
+<Error>
+    <Code>ResourceNotFound</Code>
+    <Message>The specified resource does not exist.
 RequestId:{0}
 Time:{1}</Message>
 </Error>
