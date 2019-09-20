@@ -19,6 +19,7 @@ namespace CloudStub
         private const int _tableDoesNotExistState = 0;
         private const int _tableExistsState = 1;
         private int _tableState;
+        private readonly IReadOnlyDictionary<TableOperationType, Func<Task<TableResult>>> _operationHandlers;
         private readonly IDictionary<string, IDictionary<string, ITableEntity>> _items;
 
         public InMemoryCloudTable(string tableName)
@@ -30,6 +31,7 @@ namespace CloudStub
                 throw new ArgumentException("The argument must not be empty string.", nameof(tableName));
 
             _tableState = _tableDoesNotExistState;
+            _operationHandlers = new Dictionary<TableOperationType, Func<Task<TableResult>>>();
             _items = new SortedList<string, IDictionary<string, ITableEntity>>(StringComparer.Ordinal);
         }
 
@@ -49,6 +51,15 @@ namespace CloudStub
             => CreateAsync(requestOptions, operationContext, CancellationToken.None);
 
         public override Task CreateAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
+
+        public override Task<bool> CreateIfNotExistsAsync()
+            => Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableDoesNotExistState);
+
+        public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
+            => CreateIfNotExistsAsync(requestOptions, operationContext, CancellationToken.None);
+
+        public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => throw new NotImplementedException();
 
         public override Task<bool> ExistsAsync()
@@ -83,13 +94,45 @@ namespace CloudStub
         public override Task<bool> DeleteIfExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => throw new NotImplementedException();
 
-        public override Task<bool> CreateIfNotExistsAsync()
-            => Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableDoesNotExistState);
+        public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch)
+            => throw new NotImplementedException();
 
-        public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
-            => CreateIfNotExistsAsync(requestOptions, operationContext, CancellationToken.None);
+        public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteBatchAsync(batch, requestOptions, operationContext, CancellationToken.None);
 
-        public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
+
+        public override Task<TableResult> ExecuteAsync(TableOperation operation)
+            => ExecuteAsync(operation, new TableRequestOptions(), new OperationContext(), CancellationToken.None);
+
+        public override Task<TableResult> ExecuteAsync(TableOperation operation, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteAsync(operation, requestOptions, operationContext, CancellationToken.None);
+
+        public override Task<TableResult> ExecuteAsync(TableOperation operation, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            if (_operationHandlers.TryGetValue(operation.OperationType, out var handler))
+                return handler();
+
+            return Task.FromException<TableResult>(new NotImplementedException());
+        }
+
+        public override Task<TablePermissions> GetPermissionsAsync()
+            => throw new NotImplementedException();
+
+        public override Task<TablePermissions> GetPermissionsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
+            => GetPermissionsAsync(requestOptions, operationContext, CancellationToken.None);
+
+        public override Task<TablePermissions> GetPermissionsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
+
+        public override Task SetPermissionsAsync(TablePermissions permissions)
+            => throw new NotImplementedException();
+
+        public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext)
+            => SetPermissionsAsync(permissions, requestOptions, operationContext, CancellationToken.None);
+
+        public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => throw new NotImplementedException();
     }
 }
