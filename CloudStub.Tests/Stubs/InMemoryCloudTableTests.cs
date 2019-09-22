@@ -191,7 +191,7 @@ namespace CloudStub.Tests
         public async Task ExecuteAsync_InsertOperation_InsertsEntity()
         {
             await _cloudTable.CreateAsync();
-            var startTime = DateTimeOffset.UtcNow.AddSeconds(-1);
+            var startTime = DateTimeOffset.UtcNow.AddSeconds(-10);
 
             var tableResult = await _cloudTable.ExecuteAsync(
                 TableOperation.Insert(
@@ -218,9 +218,43 @@ namespace CloudStub.Tests
             Assert.Equal(entity.Timestamp, resultEntity.Timestamp);
         }
 
+        [Fact]
+        public async Task ExecuteAsync_InsertOperationWhenTableDoesNotExist_ThrowsException()
+        {
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => _cloudTable.ExecuteAsync(
+                    TableOperation.Insert(
+                        _GetTableEntity(
+                            "partition-key",
+                            "row-key"
+                        )
+                    )
+                )
+            );
+
+            Assert.Equal("Not Found", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Not Found", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
         [Theory]
         [ClassData(typeof(TableKeyTestData))]
-        public async Task ExecuteAsync_InsertOperation_ThrowsExceptionForInvalidPartitionKey(string partitionKey)
+        public async Task ExecuteAsync_InsertOperationWhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             await _cloudTable.CreateAsync();
 
@@ -257,7 +291,7 @@ namespace CloudStub.Tests
 
         [Theory]
         [ClassData(typeof(TableKeyTestData))]
-        public async Task ExecuteAsync_InsertOperation_ThrowsExceptionForInvalidRowKey(string rowKey)
+        public async Task ExecuteAsync_InsertOperationWhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             await _cloudTable.CreateAsync();
 
@@ -293,26 +327,26 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public void TableOperation_Insert_ThrowsExceptionWithNullEntity()
+        public void TableOperation_InsertOperationWhenEntityIsNull_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.Insert(null));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_Throws_NotImplementedException()
+        public async Task ExecuteBatchAsync_WhenNotImplemented_ThrowsException()
         {
             await Assert.ThrowsAsync<NotImplementedException>(() => _cloudTable.ExecuteBatchAsync(null, null, null));
         }
 
         [Fact]
-        public async Task GetPermissionsAsync_Throws_NotImplementedException()
+        public async Task GetPermissionsAsync_WhenNotImplemented_ThrowsException()
         {
             await Assert.ThrowsAsync<NotImplementedException>(() => _cloudTable.GetPermissionsAsync(null, null));
         }
 
         [Fact]
-        public async Task SetPermissionsAsync_Throws_NotImplementedException()
+        public async Task SetPermissionsAsync_WhenNotImplemented_ThrowsException()
         {
             await Assert.ThrowsAsync<NotImplementedException>(() => _cloudTable.SetPermissionsAsync(null, null, null));
         }

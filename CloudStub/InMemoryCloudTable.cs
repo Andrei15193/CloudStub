@@ -152,6 +152,9 @@ namespace CloudStub
 
         private Task<TableResult> _InsertEntityAsync(ITableEntity entity, OperationContext operationContext)
         {
+            if (_tableState == _tableDoesNotExistState)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
             if (entity.PartitionKey == null)
                 return Task.FromException<TableResult>(PropertiesWithoutValueException());
             if (entity.PartitionKey.Length > 1024)

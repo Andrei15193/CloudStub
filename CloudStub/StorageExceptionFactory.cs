@@ -20,6 +20,17 @@ namespace CloudStub
                 }
             );
 
+        public static StorageException TableDoesNotExistException()
+            => _FromTemplate(
+                new Template
+                {
+                    HttpStatusCode = 404,
+                    HttpStatusName = "Not Found",
+                    ErrorCode = "TableNotFound",
+                    ErrorMessage = "The table specified does not exist."
+                }
+            );
+
         public static StorageException TableAlreadyExistsException()
             => _FromTemplate(
                 new Template
