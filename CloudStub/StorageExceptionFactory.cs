@@ -119,6 +119,17 @@ namespace CloudStub
                 }
             );
 
+        public static StorageException EntityAlreadyExists()
+            => _FromTemplate(
+                new Template
+                {
+                    HttpStatusCode = 409,
+                    HttpStatusName = "Conflict",
+                    ErrorCode = "EntityAlreadyExists",
+                    ErrorMessage = "The specified entity already exists."
+                }
+            );
+
         private static StorageException _FromTemplate(Template template)
             => _FromTemplate(template, null);
 

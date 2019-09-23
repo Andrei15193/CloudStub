@@ -194,12 +194,7 @@ namespace CloudStub.Tests
             var startTime = DateTimeOffset.UtcNow.AddSeconds(-10);
 
             var tableResult = await _cloudTable.ExecuteAsync(
-                TableOperation.Insert(
-                    _GetTableEntity(
-                        "partition-key",
-                        "row-key"
-                    )
-                )
+                TableOperation.Insert(_GetTableEntity("partition-key","row-key"))
             );
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
@@ -222,14 +217,7 @@ namespace CloudStub.Tests
         public async Task ExecuteAsync_InsertOperationWhenTableDoesNotExist_ThrowsException()
         {
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => _cloudTable.ExecuteAsync(
-                    TableOperation.Insert(
-                        _GetTableEntity(
-                            "partition-key",
-                            "row-key"
-                        )
-                    )
-                )
+                () => _cloudTable.ExecuteAsync(TableOperation.Insert(_GetTableEntity("partition-key", "row-key")))
             );
 
             Assert.Equal("Not Found", exception.Message);
@@ -259,14 +247,7 @@ namespace CloudStub.Tests
             await _cloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => _cloudTable.ExecuteAsync(
-                    TableOperation.Insert(
-                        _GetTableEntity(
-                            partitionKey,
-                            "row-key"
-                        )
-                    )
-                )
+                () => _cloudTable.ExecuteAsync(TableOperation.Insert(_GetTableEntity(partitionKey, "row-key")))
             );
 
             Assert.Equal("Bad Request", exception.Message);
@@ -296,14 +277,7 @@ namespace CloudStub.Tests
             await _cloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => _cloudTable.ExecuteAsync(
-                    TableOperation.Insert(
-                        _GetTableEntity(
-                            "partition-key",
-                            rowKey
-                        )
-                    )
-                )
+                () => _cloudTable.ExecuteAsync(TableOperation.Insert(_GetTableEntity("partition-key", rowKey)))
             );
 
             Assert.Equal("Bad Request", exception.Message);
@@ -327,10 +301,56 @@ namespace CloudStub.Tests
         }
 
         [Fact]
+        public async Task ExecuteAsync_InsertOperationWhenEntityAlreadyExists_ThrowsException()
+        {
+            await _cloudTable.CreateAsync();
+            await _cloudTable.ExecuteAsync(TableOperation.Insert(_GetTableEntity("partition-key", "row-key")));
+
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => _cloudTable.ExecuteAsync(TableOperation.Insert(_GetTableEntity("partition-key", "row-key")))
+            );
+
+            Assert.Equal("Conflict", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(409, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Conflict", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Fact]
         public void TableOperation_InsertOperationWhenEntityIsNull_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.Insert(null));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+        }
+
+        [Fact]
+        public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()
+        {
+            await _cloudTable.CreateAsync();
+            await _cloudTable.ExecuteAsync(TableOperation.Insert(_GetTableEntity("partition-key", "row-key")));
+            await _cloudTable.DeleteAsync();
+
+            if (!_useInMemory)
+                await Task.Delay(TimeSpan.FromMinutes(1));
+
+            await _cloudTable.CreateAsync();
+
+            var entities = await _GetAllEntitiesAsync();
+            Assert.Empty(entities);
         }
 
         [Fact]

@@ -17,11 +17,11 @@ namespace CloudStub
         {
             "tables"
         };
-        private const int _tableDoesNotExistState = 0;
-        private const int _tableExistsState = 1;
-        private int _tableState;
-        private readonly IReadOnlyDictionary<TableOperationType, Func<ITableEntity, OperationContext, Task<TableResult>>> _operationHandlers;
+
+        private bool _tableExists;
+        private readonly IReadOnlyDictionary<TableOperationType, Func<ITableEntity, IDictionary<string, DynamicTableEntity>, OperationContext, TableResult>> _operationHandlers;
         private readonly IDictionary<string, IDictionary<string, DynamicTableEntity>> _entitiesByPartitionKey;
+        private readonly object _locker;
 
         public InMemoryCloudTable(string tableName)
             : base(new Uri($"https://unit.test/{tableName}"))
@@ -31,12 +31,13 @@ namespace CloudStub
             else if (tableName.Length == 0)
                 throw new ArgumentException("The argument must not be empty string.", nameof(tableName));
 
-            _tableState = _tableDoesNotExistState;
-            _operationHandlers = new Dictionary<TableOperationType, Func<ITableEntity, OperationContext, Task<TableResult>>>
+            _tableExists = false;
+            _operationHandlers = new Dictionary<TableOperationType, Func<ITableEntity, IDictionary<string, DynamicTableEntity>, OperationContext, TableResult>>
             {
-                { TableOperationType.Insert, _InsertEntityAsync }
+                { TableOperationType.Insert, _InsertEntity }
             };
             _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
+            _locker = new object();
         }
 
         public override Task CreateAsync()
@@ -47,8 +48,11 @@ namespace CloudStub
                 return Task.FromException(InvalidInputException());
             if (!Regex.IsMatch(Name, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
                 return Task.FromException(InvalidResourceNameException());
-            if (Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableExistsState)
-                return Task.FromException(TableAlreadyExistsException());
+            lock (_locker)
+                if (_tableExists)
+                    return Task.FromException(TableAlreadyExistsException());
+                else
+                    _tableExists = true;
 
             return Task.CompletedTask;
         }
@@ -60,7 +64,14 @@ namespace CloudStub
             => CreateAsync();
 
         public override Task<bool> CreateIfNotExistsAsync()
-            => Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableExistsState, _tableDoesNotExistState) == _tableDoesNotExistState);
+        {
+            lock (_locker)
+            {
+                var result = Task.FromResult(!_tableExists);
+                _tableExists = true;
+                return result;
+            }
+        }
 
         public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => CreateIfNotExistsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -69,7 +80,7 @@ namespace CloudStub
             => CreateIfNotExistsAsync();
 
         public override Task<bool> ExistsAsync()
-            => Task.FromResult(_tableState == _tableExistsState);
+            => Task.FromResult(_tableExists);
 
         public override Task<bool> ExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => ExistsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -79,10 +90,15 @@ namespace CloudStub
 
         public override Task DeleteAsync()
         {
-            if (Interlocked.CompareExchange(ref _tableState, _tableDoesNotExistState, _tableExistsState) == _tableDoesNotExistState)
-                return Task.FromException(ResourceNotFoundException());
+            lock (_locker)
+            {
+                if (!_tableExists)
+                    return Task.FromException(ResourceNotFoundException());
 
-            return Task.CompletedTask;
+                _tableExists = false;
+                _entitiesByPartitionKey.Clear();
+                return Task.CompletedTask;
+            }
         }
 
         public override Task DeleteAsync(TableRequestOptions requestOptions, OperationContext operationContext)
@@ -92,7 +108,14 @@ namespace CloudStub
             => DeleteAsync();
 
         public override Task<bool> DeleteIfExistsAsync()
-            => Task.FromResult(Interlocked.CompareExchange(ref _tableState, _tableDoesNotExistState, _tableExistsState) == _tableExistsState);
+        {
+            lock (_locker)
+            {
+                var result = Task.FromResult(_tableExists);
+                _tableExists = false;
+                return result;
+            }
+        }
 
         public override Task<bool> DeleteIfExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => DeleteIfExistsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -118,7 +141,32 @@ namespace CloudStub
         public override Task<TableResult> ExecuteAsync(TableOperation operation, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
         {
             if (_operationHandlers.TryGetValue(operation.OperationType, out var operationHandler))
-                return operationHandler(operation.Entity, operationContext);
+                lock (_locker)
+                {
+                    if (!_tableExists)
+                        return Task.FromException<TableResult>(TableDoesNotExistException());
+
+                    var entity = operation.Entity;
+                    if (entity.PartitionKey == null)
+                        return Task.FromException<TableResult>(PropertiesWithoutValueException());
+                    if (entity.PartitionKey.Length > 1024)
+                        return Task.FromException<TableResult>(PropertyValueTooLarge());
+                    if (!entity.PartitionKey.All(_IsValidKeyCharacter))
+                        return Task.FromException<TableResult>(InvalidPartitionKeyException(entity.PartitionKey));
+
+                    if (entity.RowKey == null)
+                        return Task.FromException<TableResult>(PropertiesWithoutValueException());
+                    if (entity.RowKey.Length > 1024)
+                        return Task.FromException<TableResult>(PropertyValueTooLarge());
+                    if (!entity.RowKey.All(_IsValidKeyCharacter))
+                        return Task.FromException<TableResult>(InvalidRowKeyException(entity.RowKey));
+                    var partition = _GetPartition(entity);
+
+                    if (partition.ContainsKey(entity.RowKey))
+                        return Task.FromException<TableResult>(EntityAlreadyExists());
+
+                    return Task.FromResult(operationHandler(entity, partition, operationContext));
+                }
 
             return Task.FromException<TableResult>(new NotImplementedException());
         }
@@ -150,58 +198,34 @@ namespace CloudStub
         public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => SetPermissionsAsync(permissions);
 
-        private Task<TableResult> _InsertEntityAsync(ITableEntity entity, OperationContext operationContext)
+        private TableResult _InsertEntity(ITableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
         {
-            if (_tableState == _tableDoesNotExistState)
-                return Task.FromException<TableResult>(TableDoesNotExistException());
+            var timestamp = DateTimeOffset.UtcNow;
+            var etag = $"{timestamp:o}-{Guid.NewGuid()}";
+            partition.Add(
+                entity.RowKey,
+                new DynamicTableEntity
+                {
+                    PartitionKey = entity.PartitionKey,
+                    RowKey = entity.RowKey,
+                    ETag = etag,
+                    Timestamp = timestamp,
+                    Properties = TableEntity.Flatten(entity, operationContext)
+                }
+            );
 
-            if (entity.PartitionKey == null)
-                return Task.FromException<TableResult>(PropertiesWithoutValueException());
-            if (entity.PartitionKey.Length > 1024)
-                return Task.FromException<TableResult>(PropertyValueTooLarge());
-            if (!entity.PartitionKey.All(_IsValidKeyCharacter))
-                return Task.FromException<TableResult>(InvalidPartitionKeyException(entity.PartitionKey));
-
-            if (entity.RowKey == null)
-                return Task.FromException<TableResult>(PropertiesWithoutValueException());
-            if (entity.RowKey.Length > 1024)
-                return Task.FromException<TableResult>(PropertyValueTooLarge());
-            if (!entity.RowKey.All(_IsValidKeyCharacter))
-                return Task.FromException<TableResult>(InvalidRowKeyException(entity.RowKey));
-
-            lock (_entitiesByPartitionKey)
+            return new TableResult
             {
-                var partition = _GetPartition(entity);
-
-                var timestamp = DateTimeOffset.UtcNow;
-                var etag = $"{timestamp:o}-{Guid.NewGuid()}";
-                partition.Add(
-                    entity.RowKey,
-                    new DynamicTableEntity
-                    {
-                        PartitionKey = entity.PartitionKey,
-                        RowKey = entity.RowKey,
-                        ETag = etag,
-                        Timestamp = timestamp,
-                        Properties = TableEntity.Flatten(entity, operationContext)
-                    }
-                );
-
-                return Task.FromResult(
-                    new TableResult
-                    {
-                        Etag = etag,
-                        HttpStatusCode = 204,
-                        Result = new TableEntity
-                        {
-                            PartitionKey = entity.PartitionKey,
-                            RowKey = entity.RowKey,
-                            ETag = etag,
-                            Timestamp = timestamp
-                        }
-                    }
-                );
-            }
+                Etag = etag,
+                HttpStatusCode = 204,
+                Result = new TableEntity
+                {
+                    PartitionKey = entity.PartitionKey,
+                    RowKey = entity.RowKey,
+                    ETag = etag,
+                    Timestamp = timestamp
+                }
+            };
         }
 
         private IDictionary<string, DynamicTableEntity> _GetPartition(ITableEntity entity)
