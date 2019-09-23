@@ -119,6 +119,17 @@ namespace CloudStub
                 }
             );
 
+        public static StorageException InvalidDateTimePropertyException(string propertyName, DateTime value)
+            => _FromTemplate(
+                new Template
+                {
+                    HttpStatusCode = 400,
+                    HttpStatusName = "Bad Request",
+                    ErrorCode = "OutOfRangeInput",
+                    ErrorMessage = $"The '{propertyName}' parameter of value '{value:MM/dd/yyyy HH:mm:ss}' is out of range."
+                }
+            );
+
         public static StorageException EntityAlreadyExists()
             => _FromTemplate(
                 new Template

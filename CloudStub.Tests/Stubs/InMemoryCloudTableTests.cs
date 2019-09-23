@@ -194,7 +194,7 @@ namespace CloudStub.Tests
             var startTime = DateTimeOffset.UtcNow.AddSeconds(-10);
 
             var tableResult = await _cloudTable.ExecuteAsync(
-                TableOperation.Insert(_GetTableEntity("partition-key","row-key"))
+                TableOperation.Insert(_GetTableEntity("partition-key", "row-key"))
             );
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
@@ -241,7 +241,7 @@ namespace CloudStub.Tests
         }
 
         [Theory]
-        [ClassData(typeof(TableKeyTestData))]
+        [ClassData(typeof(TableInvalidKeyTestData))]
         public async Task ExecuteAsync_InsertOperationWhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             await _cloudTable.CreateAsync();
@@ -271,7 +271,7 @@ namespace CloudStub.Tests
         }
 
         [Theory]
-        [ClassData(typeof(TableKeyTestData))]
+        [ClassData(typeof(TableInvalidKeyTestData))]
         public async Task ExecuteAsync_InsertOperationWhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             await _cloudTable.CreateAsync();
@@ -324,6 +324,147 @@ namespace CloudStub.Tests
 
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             Assert.Equal("Conflict", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_InserOperationWhenEntityHasOtherProperties_InsertsEntity()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                BinaryProp = new byte[1 << 16],
+                BooleanProp = true,
+                StringProp = new string('t', 1 << 15),
+                Int32Prop = 4,
+                Int64Prop = 4,
+                DoubleProp = 4,
+                DateTimeProp = DateTime.MaxValue.ToUniversalTime(),
+                GuidProp = Guid.NewGuid(),
+                DecimalProp = 4
+            };
+            await _cloudTable.CreateAsync();
+
+            await _cloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
+
+            var entities = await _GetAllEntitiesAsync();
+            var entity = Assert.Single(entities);
+            var actualProps = entity.WriteEntity(null);
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.PartitionKey)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.RowKey)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.Timestamp)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.ETag)));
+            Assert.Equal(new EntityProperty(testEntity.BinaryProp), actualProps[nameof(TestEntity.BinaryProp)]);
+            Assert.Equal(new EntityProperty(testEntity.BooleanProp), actualProps[nameof(TestEntity.BooleanProp)]);
+            Assert.Equal(new EntityProperty(testEntity.StringProp), actualProps[nameof(TestEntity.StringProp)]);
+            Assert.Equal(new EntityProperty(testEntity.Int32Prop), actualProps[nameof(TestEntity.Int32Prop)]);
+            Assert.Equal(new EntityProperty(testEntity.Int64Prop), actualProps[nameof(TestEntity.Int64Prop)]);
+            Assert.Equal(new EntityProperty(testEntity.DoubleProp), actualProps[nameof(TestEntity.DoubleProp)]);
+            Assert.Equal(new EntityProperty(testEntity.DateTimeProp), actualProps[nameof(TestEntity.DateTimeProp)]);
+            Assert.Equal(new EntityProperty(testEntity.GuidProp), actualProps[nameof(TestEntity.GuidProp)]);
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.DecimalProp)));
+        }
+
+        [Theory]
+        [ClassData(typeof(TableInvalidStringPropertyTestData))]
+        public async Task ExecuteAsync_InsertOperationWhenEntityHasInvalidStringProperty_ThrowsException(string stringPropValue)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = stringPropValue
+            };
+            await _cloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => _cloudTable.ExecuteAsync(TableOperation.Insert(testEntity)));
+
+            Assert.Equal("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Theory]
+        [ClassData(typeof(TableInvalidBinaryPropertyTestData))]
+        public async Task ExecuteAsync_InsertOperationWhenEntityHasInvalidBinaryProperty_ThrowsException(byte[] binaryPropValue)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                BinaryProp = binaryPropValue
+            };
+            await _cloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => _cloudTable.ExecuteAsync(TableOperation.Insert(testEntity)));
+
+            Assert.Equal("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Theory]
+        [ClassData(typeof(TableInvalidDateTimePropertyTestData))]
+        public async Task ExecuteAsync_InsertOperationWhenEntityHasInvalidDateTimeProperty_ThrowsException(DateTime dateTimePropValue)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                DateTimeProp = dateTimePropValue
+            };
+            await _cloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => _cloudTable.ExecuteAsync(TableOperation.Insert(testEntity)));
+
+            Assert.Equal("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
@@ -388,9 +529,6 @@ namespace CloudStub.Tests
 
         private static ITableEntity _GetTableEntity(string partitionKey, string rowKey)
             => new TableEntity(partitionKey, rowKey);
-
-        private static ITableEntity _GetTableEntity<TEntity>(string partitionKey, string rowKey, TEntity entity)
-            => new TableEntityAdapter<TEntity>(entity, partitionKey, rowKey);
 
         private Task<IReadOnlyCollection<ITableEntity>> _GetAllEntitiesAsync()
             => _GetAllEntitiesAsync(_cloudTable);

@@ -19,7 +19,7 @@ namespace CloudStub
         };
 
         private bool _tableExists;
-        private readonly IReadOnlyDictionary<TableOperationType, Func<ITableEntity, IDictionary<string, DynamicTableEntity>, OperationContext, TableResult>> _operationHandlers;
+        private readonly IReadOnlyDictionary<TableOperationType, Func<DynamicTableEntity, IDictionary<string, DynamicTableEntity>, OperationContext, TableResult>> _operationHandlers;
         private readonly IDictionary<string, IDictionary<string, DynamicTableEntity>> _entitiesByPartitionKey;
         private readonly object _locker;
 
@@ -32,7 +32,7 @@ namespace CloudStub
                 throw new ArgumentException("The argument must not be empty string.", nameof(tableName));
 
             _tableExists = false;
-            _operationHandlers = new Dictionary<TableOperationType, Func<ITableEntity, IDictionary<string, DynamicTableEntity>, OperationContext, TableResult>>
+            _operationHandlers = new Dictionary<TableOperationType, Func<DynamicTableEntity, IDictionary<string, DynamicTableEntity>, OperationContext, TableResult>>
             {
                 { TableOperationType.Insert, _InsertEntity }
             };
@@ -147,25 +147,23 @@ namespace CloudStub
                         return Task.FromException<TableResult>(TableDoesNotExistException());
 
                     var entity = operation.Entity;
-                    if (entity.PartitionKey == null)
-                        return Task.FromException<TableResult>(PropertiesWithoutValueException());
-                    if (entity.PartitionKey.Length > 1024)
-                        return Task.FromException<TableResult>(PropertyValueTooLarge());
-                    if (!entity.PartitionKey.All(_IsValidKeyCharacter))
-                        return Task.FromException<TableResult>(InvalidPartitionKeyException(entity.PartitionKey));
+                    var entityException = _ValidateEntity(entity);
+                    if (entityException != null)
+                        return Task.FromException<TableResult>(entityException);
 
-                    if (entity.RowKey == null)
-                        return Task.FromException<TableResult>(PropertiesWithoutValueException());
-                    if (entity.RowKey.Length > 1024)
-                        return Task.FromException<TableResult>(PropertyValueTooLarge());
-                    if (!entity.RowKey.All(_IsValidKeyCharacter))
-                        return Task.FromException<TableResult>(InvalidRowKeyException(entity.RowKey));
                     var partition = _GetPartition(entity);
-
                     if (partition.ContainsKey(entity.RowKey))
                         return Task.FromException<TableResult>(EntityAlreadyExists());
 
-                    return Task.FromResult(operationHandler(entity, partition, operationContext));
+                    var dynamicEntity = _GetDynamicEntity(entity, operationContext);
+                    var dynamicEntityException = dynamicEntity
+                        .Properties
+                        .Select(property => _ValidateEntityProperty(property.Key, property.Value))
+                        .FirstOrDefault(exception => exception != null);
+                    if (dynamicEntityException != null)
+                        return Task.FromException<TableResult>(dynamicEntityException);
+
+                    return Task.FromResult(operationHandler(dynamicEntity, partition, operationContext));
                 }
 
             return Task.FromException<TableResult>(new NotImplementedException());
@@ -198,36 +196,6 @@ namespace CloudStub
         public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => SetPermissionsAsync(permissions);
 
-        private TableResult _InsertEntity(ITableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
-        {
-            var timestamp = DateTimeOffset.UtcNow;
-            var etag = $"{timestamp:o}-{Guid.NewGuid()}";
-            partition.Add(
-                entity.RowKey,
-                new DynamicTableEntity
-                {
-                    PartitionKey = entity.PartitionKey,
-                    RowKey = entity.RowKey,
-                    ETag = etag,
-                    Timestamp = timestamp,
-                    Properties = TableEntity.Flatten(entity, operationContext)
-                }
-            );
-
-            return new TableResult
-            {
-                Etag = etag,
-                HttpStatusCode = 204,
-                Result = new TableEntity
-                {
-                    PartitionKey = entity.PartitionKey,
-                    RowKey = entity.RowKey,
-                    ETag = etag,
-                    Timestamp = timestamp
-                }
-            };
-        }
-
         private IDictionary<string, DynamicTableEntity> _GetPartition(ITableEntity entity)
         {
             if (!_entitiesByPartitionKey.TryGetValue(entity.PartitionKey, out var entitiesByRowKey))
@@ -248,6 +216,78 @@ namespace CloudStub
                 && @char != '\t'
                 && @char != '\n'
                 && @char != '\r';
+
+        private TableResult _InsertEntity(DynamicTableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
+        {
+            partition.Add(entity.RowKey, entity);
+
+            return new TableResult
+            {
+                Etag = entity.ETag,
+                HttpStatusCode = 204,
+                Result = new TableEntity
+                {
+                    PartitionKey = entity.PartitionKey,
+                    RowKey = entity.RowKey,
+                    ETag = entity.ETag,
+                    Timestamp = entity.Timestamp
+                }
+            };
+        }
+
+        private static StorageException _ValidateEntity(ITableEntity entity)
+        {
+            if (entity.PartitionKey == null)
+                return PropertiesWithoutValueException();
+            if (entity.PartitionKey.Length > (1 << 10))
+                return PropertyValueTooLarge();
+            if (!entity.PartitionKey.All(_IsValidKeyCharacter))
+                return InvalidPartitionKeyException(entity.PartitionKey);
+
+            if (entity.RowKey == null)
+                return PropertiesWithoutValueException();
+            if (entity.RowKey.Length > (1 << 10))
+                return PropertyValueTooLarge();
+            if (!entity.RowKey.All(_IsValidKeyCharacter))
+                return InvalidRowKeyException(entity.RowKey);
+
+            return null;
+        }
+
+        private static StorageException _ValidateEntityProperty(string name, EntityProperty property)
+        {
+            switch (property.PropertyType)
+            {
+                case EdmType.String when property.StringValue.Length > (1 << 15):
+                case EdmType.Binary when property.BinaryValue.Length > (1 << 16):
+                    return PropertyValueTooLarge();
+
+                case EdmType.DateTime when property.DateTime  != null && property.DateTime < new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc):
+                    return InvalidDateTimePropertyException(name, property.DateTime.Value);
+
+                default:
+                    return null;
+            }
+        }
+
+        private static DynamicTableEntity _GetDynamicEntity(ITableEntity entity, OperationContext operationContext)
+        {
+            var timestamp = DateTimeOffset.UtcNow;
+            var properties = TableEntity.Flatten(entity, operationContext);
+            properties.Remove(nameof(TableEntity.PartitionKey));
+            properties.Remove(nameof(TableEntity.RowKey));
+            properties.Remove(nameof(TableEntity.Timestamp));
+            properties.Remove(nameof(TableEntity.ETag));
+
+            return new DynamicTableEntity
+            {
+                PartitionKey = entity.PartitionKey,
+                RowKey = entity.RowKey,
+                ETag = $"{timestamp:o}-{Guid.NewGuid()}",
+                Timestamp = timestamp,
+                Properties = properties
+            };
+        }
 
         private static TableQuerySegment _CreateTableQuerySegment(IEnumerable<DynamicTableEntity> entities)
         {
