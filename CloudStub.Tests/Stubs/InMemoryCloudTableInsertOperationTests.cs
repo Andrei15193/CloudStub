@@ -13,7 +13,7 @@ namespace CloudStub.Tests
         public async Task ExecuteAsync_InsertOperation_InsertsEntity()
         {
             await CloudTable.CreateAsync();
-            var startTime = DateTimeOffset.UtcNow.AddSeconds(-10);
+            var startTime = DateTimeOffset.UtcNow;
 
             var tableResult = await CloudTable.ExecuteAsync(
                 TableOperation.Insert(new TableEntity("partition-key", "row-key"))
@@ -27,7 +27,7 @@ namespace CloudStub.Tests
             var entity = Assert.Single(entities);
             Assert.Equal("partition-key", entity.PartitionKey);
             Assert.Equal("row-key", entity.RowKey);
-            Assert.True(startTime <= entity.Timestamp.ToUniversalTime());
+            Assert.True(startTime.AddSeconds(-10) <= entity.Timestamp.ToUniversalTime());
 
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
@@ -305,12 +305,66 @@ namespace CloudStub.Tests
 
     public class InMemoryCloudTableInsertTests : InMemoryCloudTableInsertOperationTests
     {
+        [Fact]
+        public async Task TableOperation_InsertOperationWhenEchoContentIsFalse_HasNoEffect()
+        {
+            var startTime = DateTimeOffset.UtcNow;
+            await CloudTable.CreateAsync();
+
+            var result = await CloudTable.ExecuteAsync(TableOperation.Insert(new TableEntity("partition-key", "row-key"), echoContent: false));
+
+            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(result.Result);
+            Assert.Equal("partition-key", resultEntity.PartitionKey);
+            Assert.Equal("row-key", resultEntity.RowKey);
+            Assert.NotNull(resultEntity.ETag);
+            Assert.True(startTime.AddSeconds(-10) <= resultEntity.Timestamp.ToUniversalTime());
+        }
+
         protected override TableOperation GetOperation(ITableEntity entity)
             => TableOperation.Insert(entity);
     }
 
     public class InMemoryCloudTableInsertOrMergeTests : InMemoryCloudTableInsertOperationTests
     {
+        [Fact]
+        public async Task TableOperation_InsertOrMergeOperation_MergesEntities()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string value",
+                Int32Prop = 4
+            };
+            var updatedTestEntity = new TestEntity
+            {
+                PartitionKey = testEntity.PartitionKey,
+                RowKey = testEntity.RowKey,
+                ETag = "this is not a vaild e-tag, it's ignored",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+            await CloudTable.CreateAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
+
+            var tableResult = await CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(updatedTestEntity));
+            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
+            Assert.Equal(204, tableResult.HttpStatusCode);
+            Assert.Equal(resultEntity.ETag, tableResult.Etag);
+
+            var entities = await GetAllEntitiesAsync();
+            var entity = Assert.Single(entities);
+            var entityProps = entity.WriteEntity(null);
+            Assert.Equal(new EntityProperty(testEntity.StringProp), entityProps[nameof(TestEntity.StringProp)]);
+            Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), entityProps[nameof(TestEntity.Int32Prop)]);
+            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), entityProps[nameof(TestEntity.Int64Prop)]);
+
+            Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
+            Assert.Equal(entity.RowKey, resultEntity.RowKey);
+            Assert.Equal(entity.ETag, resultEntity.ETag);
+            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+        }
+
         protected override TableOperation GetOperation(ITableEntity entity)
             => TableOperation.InsertOrMerge(entity);
     }
