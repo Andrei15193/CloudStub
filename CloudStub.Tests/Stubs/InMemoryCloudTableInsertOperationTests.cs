@@ -324,6 +324,51 @@ namespace CloudStub.Tests
             => TableOperation.Insert(entity);
     }
 
+    public class InMemoryCloudTableInsertOrReplaceTests : InMemoryCloudTableInsertOperationTests
+    {
+        [Fact]
+        public async Task TableOperation_InsertOrReplaceOperation_RepleacesEntity()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string value",
+                Int32Prop = 4
+            };
+            var updatedTestEntity = new TestEntity
+            {
+                PartitionKey = testEntity.PartitionKey,
+                RowKey = testEntity.RowKey,
+                ETag = "this is not a vaild e-tag, it's ignored",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+            await CloudTable.CreateAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
+
+            var tableResult = await CloudTable.ExecuteAsync(TableOperation.InsertOrReplace(updatedTestEntity));
+            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
+            Assert.Equal(204, tableResult.HttpStatusCode);
+            Assert.Equal(resultEntity.ETag, tableResult.Etag);
+
+            var entities = await GetAllEntitiesAsync();
+            var entity = Assert.Single(entities);
+            var entityProps = entity.WriteEntity(null);
+            Assert.False(entityProps.ContainsKey(nameof(TestEntity.StringProp)));
+            Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), entityProps[nameof(TestEntity.Int32Prop)]);
+            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), entityProps[nameof(TestEntity.Int64Prop)]);
+
+            Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
+            Assert.Equal(entity.RowKey, resultEntity.RowKey);
+            Assert.Equal(entity.ETag, resultEntity.ETag);
+            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+        }
+
+        protected override TableOperation GetOperation(ITableEntity entity)
+            => TableOperation.InsertOrReplace(entity);
+    }
+
     public class InMemoryCloudTableInsertOrMergeTests : InMemoryCloudTableInsertOperationTests
     {
         [Fact]

@@ -37,6 +37,7 @@ namespace CloudStub
             _operationHandlers = new Dictionary<TableOperationType, OperationHandler>
             {
                 { TableOperationType.Insert, _InsertEntity },
+                { TableOperationType.InsertOrReplace, _InsertOrReplaceEntity },
                 { TableOperationType.InsertOrMerge, _InsertOrMergeEntity }
             };
             _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
@@ -235,6 +236,26 @@ namespace CloudStub
                         RowKey = entity.RowKey,
                         ETag = entity.ETag,
                         Timestamp = entity.Timestamp
+                    }
+                }
+            );
+        }
+
+        private Task<TableResult> _InsertOrReplaceEntity(DynamicTableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
+        {
+            partition[entity.RowKey] = entity;
+
+            return Task.FromResult(
+                new TableResult
+                {
+                    Etag = entity.ETag,
+                    HttpStatusCode = 204,
+                    Result = new TableEntity
+                    {
+                        PartitionKey = entity.PartitionKey,
+                        RowKey = entity.RowKey,
+                        ETag = entity.ETag,
+                        Timestamp = default(DateTimeOffset)
                     }
                 }
             );
