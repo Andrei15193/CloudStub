@@ -44,5 +44,12 @@ namespace CloudStub.Tests
                     .Parse(AzureStorageConnectionString)
                     .CreateCloudTableClient()
                     .GetTableReference(tableName);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                Task.Run(CloudTable.DeleteIfExistsAsync).Wait();
+            base.Dispose(disposing);
+        }
     }
 }

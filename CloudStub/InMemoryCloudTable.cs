@@ -15,15 +15,10 @@ namespace CloudStub
     {
         private delegate Task<TableResult> OperationHandler(ITableEntity entity, OperationContext operationContext);
 
-        private static IReadOnlyCollection<string> _reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "tables"
-        };
-
+        private readonly object _locker;
         private bool _tableExists;
         private readonly IReadOnlyDictionary<TableOperationType, OperationHandler> _operationHandlers;
         private readonly IDictionary<string, IDictionary<string, DynamicTableEntity>> _entitiesByPartitionKey;
-        private readonly object _locker;
 
         public InMemoryCloudTable(string tableName)
             : base(new Uri($"https://unit.test/{tableName}"))
@@ -33,6 +28,7 @@ namespace CloudStub
             else if (tableName.Length == 0)
                 throw new ArgumentException("The argument must not be empty string.", nameof(tableName));
 
+            _locker = new object();
             _tableExists = false;
             _operationHandlers = new Dictionary<TableOperationType, OperationHandler>
             {
@@ -41,17 +37,20 @@ namespace CloudStub
                 { TableOperationType.InsertOrMerge, _InsertOrMergeEntity }
             };
             _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
-            _locker = new object();
         }
 
         public override Task CreateAsync()
         {
             if (Name.Length < 3 || Name.Length > 63)
                 return Task.FromException(InvalidTableNameLengthException());
-            if (_reservedTableNames.Contains(Name))
+
+            var reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "tables" };
+            if (reservedTableNames.Contains(Name))
                 return Task.FromException(InvalidInputException());
+
             if (!Regex.IsMatch(Name, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
                 return Task.FromException(InvalidResourceNameException());
+
             lock (_locker)
                 if (_tableExists)
                     return Task.FromException(TableAlreadyExistsException());
