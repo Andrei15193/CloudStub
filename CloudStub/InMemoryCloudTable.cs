@@ -13,7 +13,7 @@ namespace CloudStub
 {
     public class InMemoryCloudTable : CloudTable
     {
-        private delegate Task<TableResult> OperationHandler(DynamicTableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext);
+        private delegate Task<TableResult> OperationHandler(ITableEntity entity, OperationContext operationContext);
 
         private static IReadOnlyCollection<string> _reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -150,21 +150,7 @@ namespace CloudStub
                     if (!_tableExists)
                         return Task.FromException<TableResult>(TableDoesNotExistException());
 
-                    var entity = operation.Entity;
-                    var entityException = _ValidateEntity(entity);
-                    if (entityException != null)
-                        return Task.FromException<TableResult>(entityException);
-
-                    var dynamicEntity = _GetDynamicEntity(entity, operationContext);
-                    var dynamicEntityException = dynamicEntity
-                        .Properties
-                        .Select(property => _ValidateEntityProperty(property.Key, property.Value))
-                        .FirstOrDefault(exception => exception != null);
-                    if (dynamicEntityException != null)
-                        return Task.FromException<TableResult>(dynamicEntityException);
-
-                    var partition = _GetPartition(entity);
-                    return operationHandler(dynamicEntity, partition, operationContext);
+                    return operationHandler(operation.Entity, operationContext);
                 }
 
             return Task.FromException<TableResult>(new NotImplementedException());
@@ -218,67 +204,119 @@ namespace CloudStub
                 && @char != '\n'
                 && @char != '\r';
 
-        private Task<TableResult> _InsertEntity(DynamicTableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
+        private Task<TableResult> _InsertEntity(ITableEntity entity, OperationContext operationContext)
         {
-            if (partition.ContainsKey(entity.RowKey))
+            var entityException = _ValidateEntity(entity);
+            if (entityException != null)
+                return Task.FromException<TableResult>(entityException);
+
+            var dynamicEntity = _GetDynamicEntity(entity, operationContext);
+            var dynamicEntityException = dynamicEntity
+                .Properties
+                .Select(property => _ValidateEntityProperty(property.Key, property.Value))
+                .FirstOrDefault(exception => exception != null);
+            if (dynamicEntityException != null)
+                return Task.FromException<TableResult>(dynamicEntityException);
+
+            var partition = _GetPartition(dynamicEntity);
+
+            if (partition.ContainsKey(dynamicEntity.RowKey))
                 return Task.FromException<TableResult>(EntityAlreadyExists());
 
-            partition.Add(entity.RowKey, entity);
+            partition.Add(dynamicEntity.RowKey, dynamicEntity);
 
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = entity.ETag,
+                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
                     Result = new TableEntity
                     {
-                        PartitionKey = entity.PartitionKey,
-                        RowKey = entity.RowKey,
-                        ETag = entity.ETag,
-                        Timestamp = entity.Timestamp
+                        PartitionKey = dynamicEntity.PartitionKey,
+                        RowKey = dynamicEntity.RowKey,
+                        ETag = dynamicEntity.ETag,
+                        Timestamp = dynamicEntity.Timestamp
                     }
                 }
             );
         }
 
-        private Task<TableResult> _InsertOrReplaceEntity(DynamicTableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
+        private Task<TableResult> _InsertOrReplaceEntity(ITableEntity entity, OperationContext operationContext)
         {
-            partition[entity.RowKey] = entity;
+            if (entity.PartitionKey == null)
+                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid PartitionKey"));
+            if (entity.RowKey == null)
+                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid RowKey"));
+
+            var entityException = _ValidateEntity(entity);
+            if (entityException != null)
+                return Task.FromException<TableResult>(entityException);
+
+            var dynamicEntity = _GetDynamicEntity(entity, operationContext);
+            var dynamicEntityException = dynamicEntity
+                .Properties
+                .Select(property => _ValidateEntityProperty(property.Key, property.Value))
+                .FirstOrDefault(exception => exception != null);
+            if (dynamicEntityException != null)
+                return Task.FromException<TableResult>(dynamicEntityException);
+
+            var partition = _GetPartition(dynamicEntity);
+
+            partition[entity.RowKey] = dynamicEntity;
 
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = entity.ETag,
+                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
                     Result = new TableEntity
                     {
-                        PartitionKey = entity.PartitionKey,
-                        RowKey = entity.RowKey,
-                        ETag = entity.ETag,
+                        PartitionKey = dynamicEntity.PartitionKey,
+                        RowKey = dynamicEntity.RowKey,
+                        ETag = dynamicEntity.ETag,
                         Timestamp = default(DateTimeOffset)
                     }
                 }
             );
         }
 
-        private Task<TableResult> _InsertOrMergeEntity(DynamicTableEntity entity, IDictionary<string, DynamicTableEntity> partition, OperationContext operationContext)
+        private Task<TableResult> _InsertOrMergeEntity(ITableEntity entity, OperationContext operationContext)
         {
+            if (entity.PartitionKey == null)
+                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid PartitionKey"));
+            if (entity.RowKey == null)
+                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid RowKey"));
+
+            var entityException = _ValidateEntity(entity);
+            if (entityException != null)
+                return Task.FromException<TableResult>(entityException);
+
+            var dynamicEntity = _GetDynamicEntity(entity, operationContext);
+            var dynamicEntityException = dynamicEntity
+                .Properties
+                .Select(property => _ValidateEntityProperty(property.Key, property.Value))
+                .FirstOrDefault(exception => exception != null);
+            if (dynamicEntityException != null)
+                return Task.FromException<TableResult>(dynamicEntityException);
+
+            var partition = _GetPartition(dynamicEntity);
+
             if (partition.TryGetValue(entity.RowKey, out var existingEntity))
                 foreach (var property in existingEntity.Properties)
-                    if (!entity.Properties.ContainsKey(property.Key))
-                        entity.Properties.Add(property);
-            partition[entity.RowKey] = entity;
+                    if (!dynamicEntity.Properties.ContainsKey(property.Key))
+                        dynamicEntity.Properties.Add(property);
+            partition[entity.RowKey] = dynamicEntity;
 
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = entity.ETag,
+                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
                     Result = new TableEntity
                     {
-                        PartitionKey = entity.PartitionKey,
-                        RowKey = entity.RowKey,
-                        ETag = entity.ETag,
+                        PartitionKey = dynamicEntity.PartitionKey,
+                        RowKey = dynamicEntity.RowKey,
+                        ETag = dynamicEntity.ETag,
                         Timestamp = default(DateTimeOffset)
                     }
                 }

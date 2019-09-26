@@ -7,7 +7,6 @@ namespace CloudStub.Tests
     {
         public IEnumerator<object[]> GetEnumerator()
         {
-            yield return new object[] { null };
             yield return new object[] { "/" };
             yield return new object[] { "\\" };
             yield return new object[] { "#" };
@@ -18,9 +17,9 @@ namespace CloudStub.Tests
             yield return new object[] { new string('t', 1 << 10 + 1) };
 
             for (var controlChar = (char)0x0000; controlChar < 0x001F; controlChar++)
-                yield return new object[] { controlChar };
+                yield return new object[] { new string(controlChar, 1) };
             for (var controlChar = (char)0x007F; controlChar < 0x009F; controlChar++)
-                yield return new object[] { controlChar };
+                yield return new object[] { new string(controlChar, 1) };
         }
 
         IEnumerator IEnumerable.GetEnumerator()
