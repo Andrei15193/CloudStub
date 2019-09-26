@@ -86,7 +86,7 @@ namespace CloudStub
                 }
             );
 
-        public static StorageException PropertyValueTooLarge()
+        public static StorageException PropertyValueTooLargeException()
             => _FromTemplate(
                 new Template
                 {
@@ -130,7 +130,7 @@ namespace CloudStub
                 }
             );
 
-        public static StorageException EntityAlreadyExists()
+        public static StorageException EntityAlreadyExistsException()
             => _FromTemplate(
                 new Template
                 {
@@ -138,6 +138,17 @@ namespace CloudStub
                     HttpStatusName = "Conflict",
                     ErrorCode = "EntityAlreadyExists",
                     ErrorMessage = "The specified entity already exists."
+                }
+            );
+
+        public static StorageException PreconditionFailedException()
+            => _FromTemplate(
+                new Template
+                {
+                    HttpStatusCode = 412,
+                    HttpStatusName = "Precondition Failed",
+                    ErrorCode = "UpdateConditionNotSatisfied",
+                    ErrorMessage = "The update condition specified in the request was not satisfied."
                 }
             );
 

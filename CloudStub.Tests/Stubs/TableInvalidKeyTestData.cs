@@ -14,7 +14,6 @@ namespace CloudStub.Tests
             yield return new object[] { "\t" };
             yield return new object[] { "\n" };
             yield return new object[] { "\r" };
-            yield return new object[] { new string('t', 1 << 10 + 1) };
 
             for (var controlChar = (char)0x0000; controlChar < 0x001F; controlChar++)
                 yield return new object[] { new string(controlChar, 1) };

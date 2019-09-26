@@ -34,7 +34,8 @@ namespace CloudStub
             {
                 { TableOperationType.Insert, _InsertEntity },
                 { TableOperationType.InsertOrReplace, _InsertOrReplaceEntity },
-                { TableOperationType.InsertOrMerge, _InsertOrMergeEntity }
+                { TableOperationType.InsertOrMerge, _InsertOrMergeEntity },
+                { TableOperationType.Replace, _ReplaceEntity }
             };
             _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
         }
@@ -205,7 +206,7 @@ namespace CloudStub
 
         private Task<TableResult> _InsertEntity(ITableEntity entity, OperationContext operationContext)
         {
-            var entityException = _ValidateEntity(entity);
+            var entityException = _ValidateEntityForInsert(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
 
@@ -220,7 +221,7 @@ namespace CloudStub
             var partition = _GetPartition(dynamicEntity);
 
             if (partition.ContainsKey(dynamicEntity.RowKey))
-                return Task.FromException<TableResult>(EntityAlreadyExists());
+                return Task.FromException<TableResult>(EntityAlreadyExistsException());
 
             partition.Add(dynamicEntity.RowKey, dynamicEntity);
 
@@ -242,12 +243,7 @@ namespace CloudStub
 
         private Task<TableResult> _InsertOrReplaceEntity(ITableEntity entity, OperationContext operationContext)
         {
-            if (entity.PartitionKey == null)
-                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid PartitionKey"));
-            if (entity.RowKey == null)
-                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid RowKey"));
-
-            var entityException = _ValidateEntity(entity);
+            var entityException = _ValidateEntityForUpsert(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
 
@@ -281,12 +277,7 @@ namespace CloudStub
 
         private Task<TableResult> _InsertOrMergeEntity(ITableEntity entity, OperationContext operationContext)
         {
-            if (entity.PartitionKey == null)
-                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid PartitionKey"));
-            if (entity.RowKey == null)
-                return Task.FromException<TableResult>(new ArgumentNullException("Upserts require a valid RowKey"));
-
-            var entityException = _ValidateEntity(entity);
+            var entityException = _ValidateEntityForUpsert(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
 
@@ -322,19 +313,93 @@ namespace CloudStub
             );
         }
 
-        private static StorageException _ValidateEntity(ITableEntity entity)
+        private Task<TableResult> _ReplaceEntity(ITableEntity entity, OperationContext operationContext)
+        {
+            var entityException = _ValidateEntityForReplace(entity);
+            if (entityException != null)
+                return Task.FromException<TableResult>(entityException);
+
+            if (!_entitiesByPartitionKey.TryGetValue(entity.PartitionKey, out var partition)
+                || !partition.TryGetValue(entity.RowKey, out var existingEntity))
+                return Task.FromException<TableResult>(ResourceNotFoundException());
+
+            var dynamicEntity = _GetDynamicEntity(entity, operationContext);
+            var dynamicEntityException = dynamicEntity
+                .Properties
+                .Select(property => _ValidateEntityProperty(property.Key, property.Value))
+                .FirstOrDefault(exception => exception != null);
+            if (dynamicEntityException != null)
+                return Task.FromException<TableResult>(dynamicEntityException);
+
+            if (entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(entity.ETag, existingEntity.ETag))
+                return Task.FromException<TableResult>(PreconditionFailedException());
+
+            partition = _GetPartition(dynamicEntity);
+            partition[entity.RowKey] = dynamicEntity;
+
+            return Task.FromResult(
+                new TableResult
+                {
+                    Etag = dynamicEntity.ETag,
+                    HttpStatusCode = 204,
+                    Result = new TableEntity
+                    {
+                        PartitionKey = dynamicEntity.PartitionKey,
+                        RowKey = dynamicEntity.RowKey,
+                        ETag = dynamicEntity.ETag,
+                        Timestamp = default(DateTimeOffset)
+                    }
+                }
+            );
+        }
+
+        private static Exception _ValidateEntityForInsert(ITableEntity entity)
         {
             if (entity.PartitionKey == null)
                 return PropertiesWithoutValueException();
             if (entity.PartitionKey.Length > (1 << 10))
-                return PropertyValueTooLarge();
+                return PropertyValueTooLargeException();
             if (!entity.PartitionKey.All(_IsValidKeyCharacter))
                 return InvalidPartitionKeyException(entity.PartitionKey);
 
             if (entity.RowKey == null)
                 return PropertiesWithoutValueException();
             if (entity.RowKey.Length > (1 << 10))
-                return PropertyValueTooLarge();
+                return PropertyValueTooLargeException();
+            if (!entity.RowKey.All(_IsValidKeyCharacter))
+                return InvalidRowKeyException(entity.RowKey);
+
+            return null;
+        }
+
+        private static Exception _ValidateEntityForUpsert(ITableEntity entity)
+        {
+            if (entity.PartitionKey == null)
+                return new ArgumentNullException("Upserts require a valid PartitionKey");
+            if (entity.PartitionKey.Length > (1 << 10))
+                return PropertyValueTooLargeException();
+            if (!entity.PartitionKey.All(_IsValidKeyCharacter))
+                return InvalidPartitionKeyException(entity.PartitionKey);
+
+            if (entity.RowKey == null)
+                return new ArgumentNullException("Upserts require a valid RowKey");
+            if (entity.RowKey.Length > (1 << 10))
+                return PropertyValueTooLargeException();
+            if (!entity.RowKey.All(_IsValidKeyCharacter))
+                return InvalidRowKeyException(entity.RowKey);
+
+            return null;
+        }
+
+        private static Exception _ValidateEntityForReplace(ITableEntity entity)
+        {
+            if (entity.PartitionKey == null)
+                return new ArgumentNullException("Replace requires a valid PartitionKey");
+            if (!entity.PartitionKey.All(_IsValidKeyCharacter))
+                return InvalidPartitionKeyException(entity.PartitionKey);
+
+            if (entity.RowKey == null)
+                return new ArgumentNullException("Replace requires a valid RowKey");
             if (!entity.RowKey.All(_IsValidKeyCharacter))
                 return InvalidRowKeyException(entity.RowKey);
 
@@ -347,7 +412,7 @@ namespace CloudStub
             {
                 case EdmType.String when property.StringValue.Length > (1 << 15):
                 case EdmType.Binary when property.BinaryValue.Length > (1 << 16):
-                    return PropertyValueTooLarge();
+                    return PropertyValueTooLargeException();
 
                 case EdmType.DateTime when property.DateTime != null && property.DateTime < new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc):
                     return InvalidDateTimePropertyException(name, property.DateTime.Value);
