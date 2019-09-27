@@ -7,7 +7,7 @@ using Xunit;
 
 namespace CloudStub.Tests
 {
-    public abstract class InMemoryCloudTableEntityInsertOperationTests : InMemoryCloudTableEntityOperationTests
+    public abstract class InMemoryCloudTableEntityInsertOperationsTests : InMemoryCloudTableEntityOperationTests
     {
         [Fact]
         public async Task ExecuteAsync_InsertOperation_InsertsEntity()
@@ -191,7 +191,7 @@ namespace CloudStub.Tests
         }
     }
 
-    public class InMemoryCloudTableInsertTests : InMemoryCloudTableEntityInsertOperationTests
+    public class InMemoryCloudTableInsertTests : InMemoryCloudTableEntityInsertOperationsTests
     {
         [Fact]
         public async Task ExecuteAsync_InsertOperationWhenPartitionKeyIsNull_ThrowsException()
@@ -300,7 +300,7 @@ namespace CloudStub.Tests
             => TableOperation.Insert(entity);
     }
 
-    public class InMemoryCloudTableInsertOrReplaceTests : InMemoryCloudTableEntityInsertOperationTests
+    public class InMemoryCloudTableInsertOrReplaceTests : InMemoryCloudTableEntityInsertOperationsTests
     {
         [Fact]
         public async Task ExecuteAsync_InsertOrReplaceOperationWhenPartitionKeyIsNull_ThrowsException()
@@ -371,7 +371,7 @@ namespace CloudStub.Tests
             => TableOperation.InsertOrReplace(entity);
     }
 
-    public class InMemoryCloudTableInsertOrMergeTests : InMemoryCloudTableEntityInsertOperationTests
+    public class InMemoryCloudTableInsertOrMergeTests : InMemoryCloudTableEntityInsertOperationsTests
     {
         [Fact]
         public async Task ExecuteAsync_InsertOrMergeOperationWhenPartitionKeyIsNull_ThrowsException()

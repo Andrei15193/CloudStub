@@ -7,7 +7,7 @@ using Xunit;
 
 namespace CloudStub.Tests
 {
-    public abstract class InMemoryCloudTableEntityUpdateAndDeleteOperationTests : InMemoryCloudTableEntityOperationTests
+    public abstract class InMemoryCloudTableEntityUpdateOperationsTests : InMemoryCloudTableEntityOperationTests
     {
         [Theory]
         [ClassData(typeof(TableInvalidStringPropertyTestData))]
@@ -209,7 +209,7 @@ namespace CloudStub.Tests
         }
     }
 
-    public class InMemoryCloudTableEntityReplaceOperationTests : InMemoryCloudTableEntityUpdateAndDeleteOperationTests
+    public class InMemoryCloudTableEntityReplaceOperationTests : InMemoryCloudTableEntityUpdateOperationsTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
@@ -343,7 +343,7 @@ namespace CloudStub.Tests
             => TableOperation.Replace(entity);
     }
 
-    public class InMemoryCloudTableEntityMergeOperationTests : InMemoryCloudTableEntityUpdateAndDeleteOperationTests
+    public class InMemoryCloudTableEntityMergeOperationTests : InMemoryCloudTableEntityUpdateOperationsTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
