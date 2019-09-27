@@ -223,7 +223,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_InsertOperationWhenRowKeyIsNull_ThrowsException()
+        public async Task ExecuteAsync_WhenRowKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -316,7 +316,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_InsertOrReplaceOperationWhenRowKeyIsNull_ThrowsException()
+        public async Task ExecuteAsync_WhenRowKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -387,7 +387,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_InsertOrMergeOperationWhenRowKeyIsNull_ThrowsException()
+        public async Task ExecuteAsync_WhenRowKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 

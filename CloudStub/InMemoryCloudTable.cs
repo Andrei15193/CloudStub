@@ -35,7 +35,8 @@ namespace CloudStub
                 { TableOperationType.Insert, _InsertEntity },
                 { TableOperationType.InsertOrReplace, _InsertOrReplaceEntity },
                 { TableOperationType.InsertOrMerge, _InsertOrMergeEntity },
-                { TableOperationType.Replace, _ReplaceEntity }
+                { TableOperationType.Replace, _ReplaceEntity },
+                { TableOperationType.Merge, _MergeEntity }
             };
             _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
         }
@@ -353,6 +354,49 @@ namespace CloudStub
             );
         }
 
+        private Task<TableResult> _MergeEntity(ITableEntity entity, OperationContext operationContext)
+        {
+            var entityException = _ValidateEntityForMerge(entity);
+            if (entityException != null)
+                return Task.FromException<TableResult>(entityException);
+
+            if (!_entitiesByPartitionKey.TryGetValue(entity.PartitionKey, out var partition)
+                || !partition.TryGetValue(entity.RowKey, out var existingEntity))
+                return Task.FromException<TableResult>(ResourceNotFoundException());
+
+            var dynamicEntity = _GetDynamicEntity(entity, operationContext);
+            var dynamicEntityException = dynamicEntity
+                .Properties
+                .Select(property => _ValidateEntityProperty(property.Key, property.Value))
+                .FirstOrDefault(exception => exception != null);
+            if (dynamicEntityException != null)
+                return Task.FromException<TableResult>(dynamicEntityException);
+
+            if (entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(entity.ETag, existingEntity.ETag))
+                return Task.FromException<TableResult>(PreconditionFailedException());
+
+            partition = _GetPartition(dynamicEntity);
+            foreach (var property in existingEntity.Properties)
+                if (!dynamicEntity.Properties.ContainsKey(property.Key))
+                    dynamicEntity.Properties.Add(property);
+            partition[entity.RowKey] = dynamicEntity;
+
+            return Task.FromResult(
+                new TableResult
+                {
+                    Etag = dynamicEntity.ETag,
+                    HttpStatusCode = 204,
+                    Result = new TableEntity
+                    {
+                        PartitionKey = dynamicEntity.PartitionKey,
+                        RowKey = dynamicEntity.RowKey,
+                        ETag = dynamicEntity.ETag,
+                        Timestamp = default(DateTimeOffset)
+                    }
+                }
+            );
+        }
+
         private static Exception _ValidateEntityForInsert(ITableEntity entity)
         {
             if (entity.PartitionKey == null)
@@ -400,6 +444,21 @@ namespace CloudStub
 
             if (entity.RowKey == null)
                 return new ArgumentNullException("Replace requires a valid RowKey");
+            if (!entity.RowKey.All(_IsValidKeyCharacter))
+                return InvalidRowKeyException(entity.RowKey);
+
+            return null;
+        }
+
+        private static Exception _ValidateEntityForMerge(ITableEntity entity)
+        {
+            if (entity.PartitionKey == null)
+                return new ArgumentNullException("Merge requires a valid PartitionKey");
+            if (!entity.PartitionKey.All(_IsValidKeyCharacter))
+                return InvalidPartitionKeyException(entity.PartitionKey);
+
+            if (entity.RowKey == null)
+                return new ArgumentNullException("Merge requires a valid RowKey");
             if (!entity.RowKey.All(_IsValidKeyCharacter))
                 return InvalidRowKeyException(entity.RowKey);
 
