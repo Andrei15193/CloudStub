@@ -186,6 +186,7 @@ namespace CloudStub.Tests
 
             Assert.Equal(new ArgumentNullException("Delete requires a valid RowKey").Message, exception.Message);
         }
+
         [Theory]
         [ClassData(typeof(TableInvalidStringPropertyTestData))]
         public async Task ExecuteAsync_WhenStringPropertyIsInvalid_DeletesEntity(string stringPropValue)

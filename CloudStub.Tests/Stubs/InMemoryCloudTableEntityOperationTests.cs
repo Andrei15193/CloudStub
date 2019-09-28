@@ -18,6 +18,7 @@ namespace CloudStub.Tests
                 RowKey = "row-key",
                 ETag = "*"
             };
+
             var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(GetOperation(testEntity)));
 
             Assert.Equal("Not Found", exception.Message);

@@ -13,7 +13,7 @@ namespace CloudStub
 {
     public class InMemoryCloudTable : CloudTable
     {
-        private delegate Task<TableResult> OperationHandler(ITableEntity entity, OperationContext operationContext);
+        private delegate Task<TableResult> OperationHandler(TableOperation tableOperation, OperationContext operationContext);
 
         private readonly object _locker;
         private bool _tableExists;
@@ -37,7 +37,8 @@ namespace CloudStub
                 { TableOperationType.InsertOrMerge, _InsertOrMergeEntity },
                 { TableOperationType.Replace, _ReplaceEntity },
                 { TableOperationType.Merge, _MergeEntity },
-                { TableOperationType.Delete, _DeleteEntity }
+                { TableOperationType.Delete, _DeleteEntity },
+                { TableOperationType.Retrieve, _RetrieveEntity }
             };
             _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
         }
@@ -148,12 +149,7 @@ namespace CloudStub
         {
             if (_operationHandlers.TryGetValue(operation.OperationType, out var operationHandler))
                 lock (_locker)
-                {
-                    if (!_tableExists)
-                        return Task.FromException<TableResult>(TableDoesNotExistException());
-
-                    return operationHandler(operation.Entity, operationContext);
-                }
+                    return operationHandler(operation, operationContext);
 
             return Task.FromException<TableResult>(new NotImplementedException());
         }
@@ -206,8 +202,12 @@ namespace CloudStub
                 && @char != '\n'
                 && @char != '\r';
 
-        private Task<TableResult> _InsertEntity(ITableEntity entity, OperationContext operationContext)
+        private Task<TableResult> _InsertEntity(TableOperation tableOperation, OperationContext operationContext)
         {
+            if (!_tableExists)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
+            var entity = tableOperation.Entity;
             var entityException = _ValidateEntityForInsert(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
@@ -230,8 +230,8 @@ namespace CloudStub
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
+                    Etag = dynamicEntity.ETag,
                     Result = new TableEntity
                     {
                         PartitionKey = dynamicEntity.PartitionKey,
@@ -243,8 +243,12 @@ namespace CloudStub
             );
         }
 
-        private Task<TableResult> _InsertOrReplaceEntity(ITableEntity entity, OperationContext operationContext)
+        private Task<TableResult> _InsertOrReplaceEntity(TableOperation tableOperation, OperationContext operationContext)
         {
+            if (!_tableExists)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
+            var entity = tableOperation.Entity;
             var entityException = _ValidateEntityForUpsert(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
@@ -264,8 +268,8 @@ namespace CloudStub
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
+                    Etag = dynamicEntity.ETag,
                     Result = new TableEntity
                     {
                         PartitionKey = dynamicEntity.PartitionKey,
@@ -277,8 +281,12 @@ namespace CloudStub
             );
         }
 
-        private Task<TableResult> _InsertOrMergeEntity(ITableEntity entity, OperationContext operationContext)
+        private Task<TableResult> _InsertOrMergeEntity(TableOperation tableOperation, OperationContext operationContext)
         {
+            if (!_tableExists)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
+            var entity = tableOperation.Entity;
             var entityException = _ValidateEntityForUpsert(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
@@ -302,8 +310,8 @@ namespace CloudStub
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
+                    Etag = dynamicEntity.ETag,
                     Result = new TableEntity
                     {
                         PartitionKey = dynamicEntity.PartitionKey,
@@ -315,8 +323,12 @@ namespace CloudStub
             );
         }
 
-        private Task<TableResult> _ReplaceEntity(ITableEntity entity, OperationContext operationContext)
+        private Task<TableResult> _ReplaceEntity(TableOperation tableOperation, OperationContext operationContext)
         {
+            if (!_tableExists)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
+            var entity = tableOperation.Entity;
             var entityException = _ValidateEntityForReplace(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
@@ -342,8 +354,8 @@ namespace CloudStub
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
+                    Etag = dynamicEntity.ETag,
                     Result = new TableEntity
                     {
                         PartitionKey = dynamicEntity.PartitionKey,
@@ -355,8 +367,12 @@ namespace CloudStub
             );
         }
 
-        private Task<TableResult> _MergeEntity(ITableEntity entity, OperationContext operationContext)
+        private Task<TableResult> _MergeEntity(TableOperation tableOperation, OperationContext operationContext)
         {
+            if (!_tableExists)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
+            var entity = tableOperation.Entity;
             var entityException = _ValidateEntityForMerge(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
@@ -385,8 +401,8 @@ namespace CloudStub
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = dynamicEntity.ETag,
                     HttpStatusCode = 204,
+                    Etag = dynamicEntity.ETag,
                     Result = new TableEntity
                     {
                         PartitionKey = dynamicEntity.PartitionKey,
@@ -398,8 +414,12 @@ namespace CloudStub
             );
         }
 
-        private Task<TableResult> _DeleteEntity(ITableEntity entity, OperationContext operationContext)
+        private Task<TableResult> _DeleteEntity(TableOperation tableOperation, OperationContext operationContext)
         {
+            if (!_tableExists)
+                return Task.FromException<TableResult>(TableDoesNotExistException());
+
+            var entity = tableOperation.Entity;
             var entityException = _ValidateEntityForDelete(entity);
             if (entityException != null)
                 return Task.FromException<TableResult>(entityException);
@@ -416,8 +436,8 @@ namespace CloudStub
             return Task.FromResult(
                 new TableResult
                 {
-                    Etag = null,
                     HttpStatusCode = 204,
+                    Etag = null,
                     Result = new TableEntity
                     {
                         PartitionKey = existingEntity.PartitionKey,
@@ -427,6 +447,52 @@ namespace CloudStub
                     }
                 }
             );
+        }
+
+        private Task<TableResult> _RetrieveEntity(TableOperation tableOperation, OperationContext operationContext)
+        {
+            var entity = _GetEntityForRetrieve(tableOperation);
+            var entityException = _ValidateEntityForRetrieve(entity);
+            if (entityException != null)
+                return Task.FromException<TableResult>(entityException);
+
+            if (_entitiesByPartitionKey.TryGetValue(entity.PartitionKey, out var partition)
+                && partition.TryGetValue(entity.RowKey, out var existingEntity))
+                return Task.FromResult(
+                    new TableResult
+                    {
+                        HttpStatusCode = 200,
+                        Etag = existingEntity.ETag,
+                        Result = _GetEntityRetrieveResult(existingEntity, tableOperation)
+                    }
+                );
+
+            return Task.FromResult(
+                new TableResult
+                {
+                    HttpStatusCode = 404,
+                    Etag = null,
+                    Result = null
+                }
+            );
+        }
+
+        private static object _GetEntityRetrieveResult(DynamicTableEntity existingEntity, TableOperation tableOperation)
+        {
+            var selectColumns = _GetSelectColumns(tableOperation);
+            var entityProperties = selectColumns == null ?
+                existingEntity.Properties :
+                existingEntity.Properties.Where(property => selectColumns.Contains(property.Key, StringComparer.Ordinal));
+
+            var entityResolver = _GetEntityResolver(tableOperation);
+            var entityResult = entityResolver(
+                existingEntity.PartitionKey,
+                existingEntity.RowKey,
+                existingEntity.Timestamp,
+                entityProperties.ToDictionary(entityProperty => entityProperty.Key, entityProperty => entityProperty.Value, StringComparer.Ordinal),
+                existingEntity.ETag
+            );
+            return entityResult;
         }
 
         private static Exception _ValidateEntityForInsert(ITableEntity entity)
@@ -512,6 +578,17 @@ namespace CloudStub
             return null;
         }
 
+        private static Exception _ValidateEntityForRetrieve(ITableEntity entity)
+        {
+            if (entity.PartitionKey == null)
+                return new ArgumentNullException("partitionKey");
+
+            if (entity.RowKey == null)
+                return new ArgumentNullException("rowkey");
+
+            return null;
+        }
+
         private static StorageException _ValidateEntityProperty(string name, EntityProperty property)
         {
             switch (property.PropertyType)
@@ -547,6 +624,37 @@ namespace CloudStub
             };
         }
 
+        private static ITableEntity _GetEntityForRetrieve(TableOperation tableOperation)
+        {
+            var partitionKeyPropertyInfo = typeof(TableOperation)
+                .GetTypeInfo()
+                .GetProperty("PartitionKey", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
+            var rowKeyPropertyInfo = typeof(TableOperation)
+                .GetTypeInfo()
+                .GetProperty("RowKey", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
+            return new TableEntity
+            {
+                PartitionKey = (string)partitionKeyPropertyInfo.GetValue(tableOperation),
+                RowKey = (string)rowKeyPropertyInfo.GetValue(tableOperation)
+            };
+        }
+
+        private static IEnumerable<string> _GetSelectColumns(TableOperation tableOperation)
+        {
+            var selectColumnsPropertyInfo = typeof(TableOperation)
+                .GetTypeInfo()
+                .GetProperty("SelectColumns", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
+            return (IEnumerable<string>)selectColumnsPropertyInfo.GetValue(tableOperation);
+        }
+
+        private static Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object> _GetEntityResolver(TableOperation tableOperation)
+        {
+            var retrieveResolverPropertyInfo = typeof(TableOperation)
+                .GetTypeInfo()
+                .GetProperty("RetrieveResolver", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
+            return (Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object>)retrieveResolverPropertyInfo.GetValue(tableOperation);
+        }
+
         private static TableQuerySegment _CreateTableQuerySegment(IEnumerable<DynamicTableEntity> entities)
         {
             return (TableQuerySegment)typeof(TableQuerySegment)
@@ -554,16 +662,16 @@ namespace CloudStub
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
                 .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<DynamicTableEntity>) }))
                 .Invoke(new[] { entities.Select(_Clone).ToList() });
-
-            DynamicTableEntity _Clone(DynamicTableEntity entity)
-                => new DynamicTableEntity
-                {
-                    PartitionKey = entity.PartitionKey,
-                    RowKey = entity.RowKey,
-                    ETag = entity.ETag,
-                    Timestamp = entity.Timestamp,
-                    Properties = new Dictionary<string, EntityProperty>(entity.Properties)
-                };
         }
+
+        private static DynamicTableEntity _Clone(DynamicTableEntity entity)
+            => new DynamicTableEntity
+            {
+                PartitionKey = entity.PartitionKey,
+                RowKey = entity.RowKey,
+                ETag = entity.ETag,
+                Timestamp = entity.Timestamp,
+                Properties = new Dictionary<string, EntityProperty>(entity.Properties, StringComparer.Ordinal)
+            };
     }
 }
