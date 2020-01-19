@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using CloudStub.FilterParser;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using static CloudStub.StorageExceptionFactory;
@@ -161,7 +162,42 @@ namespace CloudStub
             => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
 
         public override Task<TableQuerySegment> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
-            => Task.FromResult(_CreateTableQuerySegment(_entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values)));
+        {
+            lock (_locker)
+            {
+                var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
+                var filteredEntities = _ApplyFilter(allEntities, query.FilterString);
+
+                return Task.FromResult(_CreateTableQuerySegment(filteredEntities.Select(_Clone)));
+            }
+        }
+
+        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token)
+            => ExecuteQuerySegmentedAsync(query, token, null, null);
+
+        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
+
+        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            var entityResolver = _GetEntityResolver(TableOperation.Retrieve<T>(string.Empty, string.Empty));
+            T GetConcreteEntity(DynamicTableEntity existingEntity) =>
+                (T)entityResolver(
+                    existingEntity.PartitionKey,
+                    existingEntity.RowKey,
+                    existingEntity.Timestamp,
+                    existingEntity.Properties,
+                    existingEntity.ETag
+                );
+
+            lock (_locker)
+            {
+                var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
+                var filteredEntities = _ApplyFilter(allEntities, query.FilterString);
+
+                return Task.FromResult(_CreateTableQuerySegment(filteredEntities.Select(GetConcreteEntity)));
+            }
+        }
 
         public override Task<TablePermissions> GetPermissionsAsync()
             => throw new NotImplementedException();
@@ -190,6 +226,16 @@ namespace CloudStub
             }
 
             return entitiesByRowKey;
+        }
+
+        private IEnumerable<DynamicTableEntity> _ApplyFilter(IEnumerable<DynamicTableEntity> entities, string filterString)
+        {
+            var scanner = new FilterTokenScanner();
+            var tokens = scanner.Scan(filterString ?? string.Empty);
+            var parser = new FilterTokenParser();
+            var predicate = parser.Parse(tokens);
+            var result = entities.Where(predicate).ToList();
+            return result;
         }
 
         private static bool _IsValidKeyCharacter(char @char)
@@ -608,7 +654,9 @@ namespace CloudStub
         private static DynamicTableEntity _GetDynamicEntity(ITableEntity entity, OperationContext operationContext)
         {
             var timestamp = DateTimeOffset.UtcNow;
-            var properties = TableEntity.Flatten(entity, operationContext);
+            var properties = entity is DynamicTableEntity dynamicTableEntity
+                ? new Dictionary<string, EntityProperty>(dynamicTableEntity.Properties, StringComparer.Ordinal)
+                : TableEntity.Flatten(entity, operationContext);
             properties.Remove(nameof(TableEntity.PartitionKey));
             properties.Remove(nameof(TableEntity.RowKey));
             properties.Remove(nameof(TableEntity.Timestamp));
@@ -656,13 +704,18 @@ namespace CloudStub
         }
 
         private static TableQuerySegment _CreateTableQuerySegment(IEnumerable<DynamicTableEntity> entities)
-        {
-            return (TableQuerySegment)typeof(TableQuerySegment)
+            => (TableQuerySegment)typeof(TableQuerySegment)
                 .GetTypeInfo()
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
                 .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<DynamicTableEntity>) }))
-                .Invoke(new[] { entities.Select(_Clone).ToList() });
-        }
+                .Invoke(new[] { entities.ToList() });
+
+        private static TableQuerySegment<TElement> _CreateTableQuerySegment<TElement>(IEnumerable<TElement> entities)
+            => (TableQuerySegment<TElement>)typeof(TableQuerySegment<TElement>)
+                .GetTypeInfo()
+                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
+                .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<TElement>) }))
+                .Invoke(new[] { entities.ToList() });
 
         private static DynamicTableEntity _Clone(DynamicTableEntity entity)
             => new DynamicTableEntity
