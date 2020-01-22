@@ -172,6 +172,123 @@ namespace CloudStub.Tests
             );
         }
 
+        [Theory]
+        [InlineData(nameof(TestQueryEntity.Int32Prop), QueryComparisons.Equal, 3)]
+        [InlineData(nameof(TestQueryEntity.Int32Prop), QueryComparisons.NotEqual, 3)]
+        [InlineData(nameof(TestQueryEntity.Int32Prop), QueryComparisons.LessThan, 3)]
+        [InlineData(nameof(TestQueryEntity.Int32Prop), QueryComparisons.LessThanOrEqual, 3)]
+        [InlineData(nameof(TestQueryEntity.Int32Prop), QueryComparisons.GreaterThan, 3)]
+        [InlineData(nameof(TestQueryEntity.Int32Prop), QueryComparisons.GreaterThanOrEqual, 3)]
+
+        [InlineData(nameof(TestQueryEntity.Int64Prop), QueryComparisons.Equal, 3L)]
+        [InlineData(nameof(TestQueryEntity.Int64Prop), QueryComparisons.NotEqual, 3L)]
+        [InlineData(nameof(TestQueryEntity.Int64Prop), QueryComparisons.LessThan, 3L)]
+        [InlineData(nameof(TestQueryEntity.Int64Prop), QueryComparisons.LessThanOrEqual, 3L)]
+        [InlineData(nameof(TestQueryEntity.Int64Prop), QueryComparisons.GreaterThan, 3L)]
+        [InlineData(nameof(TestQueryEntity.Int64Prop), QueryComparisons.GreaterThanOrEqual, 3L)]
+
+        [InlineData(nameof(TestQueryEntity.DoubleProp), QueryComparisons.Equal, 3D)]
+        [InlineData(nameof(TestQueryEntity.DoubleProp), QueryComparisons.NotEqual, 3D)]
+        [InlineData(nameof(TestQueryEntity.DoubleProp), QueryComparisons.LessThan, 3D)]
+        [InlineData(nameof(TestQueryEntity.DoubleProp), QueryComparisons.LessThanOrEqual, 3D)]
+        [InlineData(nameof(TestQueryEntity.DoubleProp), QueryComparisons.GreaterThan, 3D)]
+        [InlineData(nameof(TestQueryEntity.DoubleProp), QueryComparisons.GreaterThanOrEqual, 3D)]
+
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.Equal, true)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.NotEqual, true)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.LessThan, true)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.LessThanOrEqual, true)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.GreaterThan, true)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.GreaterThanOrEqual, true)]
+
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.Equal, false)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.NotEqual, false)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.LessThan, false)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.LessThanOrEqual, false)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.GreaterThan, false)]
+        [InlineData(nameof(TestQueryEntity.BoolProp), QueryComparisons.GreaterThanOrEqual, false)]
+
+        [InlineData(nameof(TestQueryEntity.DateTimeProp), QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp), QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp), QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp), QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp), QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp), QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z")]
+
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp), QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp), QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp), QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp), QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp), QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z")]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp), QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z")]
+
+        [InlineData(nameof(TestQueryEntity.GuidProp), QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724")]
+        [InlineData(nameof(TestQueryEntity.GuidProp), QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724")]
+        [InlineData(nameof(TestQueryEntity.GuidProp), QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724")]
+        [InlineData(nameof(TestQueryEntity.GuidProp), QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724")]
+        [InlineData(nameof(TestQueryEntity.GuidProp), QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724")]
+        [InlineData(nameof(TestQueryEntity.GuidProp), QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724")]
+
+        [InlineData(nameof(TestQueryEntity.BinaryProp), QueryComparisons.Equal, "binary-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=")]
+        [InlineData(nameof(TestQueryEntity.BinaryProp), QueryComparisons.NotEqual, "binary-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=")]
+        [InlineData(nameof(TestQueryEntity.BinaryProp), QueryComparisons.LessThan, "binary-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=")]
+        [InlineData(nameof(TestQueryEntity.BinaryProp), QueryComparisons.LessThanOrEqual, "binary-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=")]
+        [InlineData(nameof(TestQueryEntity.BinaryProp), QueryComparisons.GreaterThan, "binary-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=")]
+        [InlineData(nameof(TestQueryEntity.BinaryProp), QueryComparisons.GreaterThanOrEqual, "binary-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=")]
+
+        [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.Equal, "3")]
+        [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.NotEqual, "3")]
+        [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThan, "3")]
+        [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThanOrEqual, "3")]
+        [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThan, "3")]
+        [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThanOrEqual, "3")]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingFiltersOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        {
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
+            {
+                PartitionKey = "partition",
+                RowKey = "row"
+            }));
+
+
+            var query = new TableQuery().Where(GetFilter());
+
+            var entities = await _GetAllAsync(query);
+
+            Assert.Empty(entities);
+
+            string GetFilter()
+            {
+                switch (filterValue)
+                {
+                    case int intFilterValue:
+                        return TableQuery.GenerateFilterConditionForInt(propertyName, filterOperator, intFilterValue);
+
+                    case long longFilterValue:
+                        return TableQuery.GenerateFilterConditionForLong(propertyName, filterOperator, longFilterValue);
+
+                    case double doubleFilterValue:
+                        return TableQuery.GenerateFilterConditionForDouble(propertyName, filterOperator, doubleFilterValue);
+
+                    case bool boolFilterValue:
+                        return TableQuery.GenerateFilterConditionForBool(propertyName, filterOperator, boolFilterValue);
+
+                    case string stringFilterValue when stringFilterValue.StartsWith("guid-", StringComparison.OrdinalIgnoreCase):
+                        return TableQuery.GenerateFilterConditionForGuid(propertyName, filterOperator, Guid.Parse(stringFilterValue.Substring("guid-".Length)));
+
+                    case string stringFilterValue when stringFilterValue.StartsWith("datetime-", StringComparison.OrdinalIgnoreCase):
+                        return TableQuery.GenerateFilterConditionForDate(propertyName, filterOperator, DateTimeOffset.Parse(stringFilterValue.Substring("datetime-".Length)));
+
+                    case string stringFilterValue when stringFilterValue.StartsWith("binary-", StringComparison.OrdinalIgnoreCase):
+                        return TableQuery.GenerateFilterConditionForBinary(propertyName, filterOperator, Convert.FromBase64String(stringFilterValue.Substring("binary-".Length)));
+
+                    default:
+                        return TableQuery.GenerateFilterCondition(propertyName, filterOperator, Convert.ToString(filterValue));
+                }
+            }
+        }
+
         private void _AssertResult(IEnumerable<ITableEntity> entities, params (string, string)[] expectedItems)
             => Assert.Equal(expectedItems, entities.Select(entity => (entity.PartitionKey, entity.RowKey)));
 

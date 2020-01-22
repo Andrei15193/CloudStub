@@ -11,8 +11,13 @@ namespace CloudStub.FilterParser.FilterNodes
 
         public override bool Apply(DynamicTableEntity entity)
         {
-            var compareResult = Compare(FilterValue, GetValueFromEntity(entity));
-            var result = compareResult > 0;
+            var result = false;
+            var entityProperty = GetValueFromEntity(entity);
+            if (entityProperty != null)
+            {
+                var compareResult = Compare(FilterValue, entityProperty);
+                result = compareResult > 0;
+            }
             return result;
         }
     }
