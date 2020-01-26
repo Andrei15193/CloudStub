@@ -15,7 +15,7 @@ namespace CloudStub.FilterParser.FilterNodes
             var entityProperty = GetValueFromEntity(entity);
             if (entityProperty != null)
             {
-                var compareResult = Compare(FilterValue, entityProperty);
+                var compareResult = Compare(entityProperty, FilterValue);
                 result = compareResult < 0;
             }
             return result;

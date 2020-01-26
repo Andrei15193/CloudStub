@@ -33,7 +33,29 @@ namespace CloudStub.FilterParser.FilterNodes
             return entityProperty;
         }
 
-        protected static int Compare(EntityProperty filterValue, EntityProperty propertyValue)
-            => (filterValue.PropertyAsObject as IComparable).CompareTo(propertyValue.PropertyAsObject);
+        protected static int Compare(EntityProperty propertyValue, EntityProperty filterValue)
+        {
+            if (propertyValue.PropertyAsObject is byte[] binaryPropertyValue && filterValue.PropertyAsObject is byte[] binaryFilterValue)
+            {
+                var index = 0;
+                var comparisonResult = 0;
+                while (comparisonResult == 0 && index < binaryPropertyValue.Length && index < binaryFilterValue.Length)
+                {
+                    comparisonResult = binaryPropertyValue[index].CompareTo(binaryFilterValue[index]);
+                    index++;
+                }
+
+                if (index < binaryPropertyValue.Length)
+                    return 1;
+                else if (index < binaryFilterValue.Length)
+                    return -1;
+                else
+                    return comparisonResult;
+            }
+            else if (propertyValue.PropertyAsObject is string stringPropertyValue && filterValue.PropertyAsObject is string stringFilterValue)
+                return StringComparer.Ordinal.Compare(stringPropertyValue, stringFilterValue);
+            else
+                return (propertyValue.PropertyAsObject as IComparable).CompareTo(filterValue.PropertyAsObject);
+        }
     }
 }
