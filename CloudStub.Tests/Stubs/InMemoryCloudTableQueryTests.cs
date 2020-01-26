@@ -242,7 +242,7 @@ namespace CloudStub.Tests
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThanOrEqual, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThan, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThanOrEqual, "3")]
-        public async Task ExecuteQuerySegmentedAsync_WhenUsingFiltersOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
         {
             await CloudTable.CreateIfNotExistsAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
@@ -287,6 +287,69 @@ namespace CloudStub.Tests
                         return TableQuery.GenerateFilterCondition(propertyName, filterOperator, Convert.ToString(filterValue));
                 }
             }
+        }
+
+        [Theory]
+        [InlineData(nameof(TestQueryEntity.Int32Prop))]
+        [InlineData(nameof(TestQueryEntity.Int64Prop))]
+        [InlineData(nameof(TestQueryEntity.DoubleProp))]
+        [InlineData(nameof(TestQueryEntity.BoolProp))]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp))]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp))]
+        [InlineData(nameof(TestQueryEntity.GuidProp))]
+        [InlineData(nameof(TestQueryEntity.BinaryProp))]
+        [InlineData(nameof(TestQueryEntity.StringProp))]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingPropertyNameFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName)
+        {
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
+            {
+                PartitionKey = "partition",
+                RowKey = "row"
+            }));
+
+
+            var query = new TableQuery().Where(propertyName);
+
+            var entities = await _GetAllAsync(query);
+
+            Assert.Empty(entities);
+        }
+
+        [Theory]
+        [InlineData(nameof(TestQueryEntity.Int32Prop))]
+        [InlineData(nameof(TestQueryEntity.Int64Prop))]
+        [InlineData(nameof(TestQueryEntity.DoubleProp))]
+        [InlineData(nameof(TestQueryEntity.BoolProp))]
+        [InlineData(nameof(TestQueryEntity.DateTimeProp))]
+        [InlineData(nameof(TestQueryEntity.DateTimeOffsetProp))]
+        [InlineData(nameof(TestQueryEntity.GuidProp))]
+        [InlineData(nameof(TestQueryEntity.BinaryProp))]
+        [InlineData(nameof(TestQueryEntity.StringProp))]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingPropertyNameFilterOnExistantProperty_ReturnsNotEntities(string propertyName)
+        {
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
+            {
+                PartitionKey = "partition",
+                RowKey = "row",
+                Int32Prop = 3,
+                Int64Prop = 3,
+                DoubleProp = 3,
+                BoolProp = false,
+                DateTimeProp = DateTime.Now,
+                DateTimeOffsetProp = DateTimeOffset.Now,
+                GuidProp = Guid.NewGuid(),
+                BinaryProp = new byte[] { 1, 2, 3 },
+                StringProp = "3"
+            }));
+
+
+            var query = new TableQuery().Where(propertyName);
+
+            var entities = await _GetAllAsync(query);
+
+            Assert.Empty(entities);
         }
 
         private void _AssertResult(IEnumerable<ITableEntity> entities, params (string, string)[] expectedItems)
