@@ -35,25 +35,25 @@ namespace CloudStub.FilterParser.FilterNodes
 
         protected static int Compare(EntityProperty propertyValue, EntityProperty filterValue)
         {
-            if (propertyValue.PropertyAsObject is byte[] binaryPropertyValue && filterValue.PropertyAsObject is byte[] binaryFilterValue)
+            if (propertyValue.PropertyType == EdmType.Binary && filterValue.PropertyType == EdmType.Binary)
             {
                 var index = 0;
                 var comparisonResult = 0;
-                while (comparisonResult == 0 && index < binaryPropertyValue.Length && index < binaryFilterValue.Length)
+                while (comparisonResult == 0 && index < propertyValue.BinaryValue.Length && index < filterValue.BinaryValue.Length)
                 {
-                    comparisonResult = binaryPropertyValue[index].CompareTo(binaryFilterValue[index]);
+                    comparisonResult = propertyValue.BinaryValue[index].CompareTo(filterValue.BinaryValue[index]);
                     index++;
                 }
 
-                if (index < binaryPropertyValue.Length)
+                if (index < propertyValue.BinaryValue.Length)
                     return 1;
-                else if (index < binaryFilterValue.Length)
+                else if (index < filterValue.BinaryValue.Length)
                     return -1;
                 else
                     return comparisonResult;
             }
-            else if (propertyValue.PropertyAsObject is string stringPropertyValue && filterValue.PropertyAsObject is string stringFilterValue)
-                return StringComparer.Ordinal.Compare(stringPropertyValue, stringFilterValue);
+            else if (propertyValue.PropertyType == EdmType.String && filterValue.PropertyType == EdmType.String)
+                return StringComparer.Ordinal.Compare(propertyValue.StringValue, filterValue.StringValue);
             else
                 return (propertyValue.PropertyAsObject as IComparable).CompareTo(filterValue.PropertyAsObject);
         }
