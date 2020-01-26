@@ -312,8 +312,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.Int32Prop), 3, QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -327,8 +372,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.Int64Prop), 3L, QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -342,8 +432,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.DoubleProp), 3D, QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -357,8 +492,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.BoolProp), true, QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -372,8 +552,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.Equal, true, false);
                 yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", true);
                 yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeProp), "datetime-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -387,8 +612,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.Equal, true, false);
                 yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", true);
                 yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.DateTimeOffsetProp), "datetimeoffset-2020-01-22T00:00:00Z", QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -402,8 +672,53 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.Equal, true, false);
                 yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
-                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
                 yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
+                yield return new TestData(nameof(TestQueryEntity.GuidProp), "guid-68260b3f-beab-45e2-b900-33e2b442e724", QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -411,14 +726,59 @@ namespace CloudStub.Tests
         {
             get
             {
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, 3, false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, 3L, false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, 3D, false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, true, false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.BinaryProp), "binary-Aw==", QueryComparisons.Equal, "3", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, true, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.Equal, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.NotEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThan, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.LessThanOrEqual, "3", true);
+
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThan, "3", false);
+
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.BinaryProp), $"binary-{ToBase64(3)}", QueryComparisons.GreaterThanOrEqual, "3", false);
             }
         }
 
@@ -433,7 +793,52 @@ namespace CloudStub.Tests
                 yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.Equal, "datetime-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.Equal, "datetimeoffset-2020-01-22T00:00:00Z", false);
                 yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.Equal, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
-                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.Equal, "binary-Aw==", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.Equal, $"binary-{ToBase64(3)}", false);
+
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.NotEqual, $"binary-{ToBase64(3)}", true);
+
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, true, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThan, $"binary-{ToBase64(3)}", true);
+
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, 3, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, 3L, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, 3D, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, true, true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, "datetime-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", true);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.LessThanOrEqual, $"binary-{ToBase64(3)}", true);
+
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, true, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThan, $"binary-{ToBase64(3)}", false);
+
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, 3, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, 3L, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, 3D, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, true, false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, "datetime-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, "datetimeoffset-2020-01-22T00:00:00Z", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, "guid-68260b3f-beab-45e2-b900-33e2b442e724", false);
+                yield return new TestData(nameof(TestQueryEntity.StringProp), "3", QueryComparisons.GreaterThanOrEqual, $"binary-{ToBase64(3)}", false);
             }
         }
 
