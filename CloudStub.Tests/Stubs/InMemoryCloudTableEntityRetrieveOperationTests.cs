@@ -207,7 +207,7 @@ namespace CloudStub.Tests
                         PartitionKey = partitonKey,
                         RowKey = rowKey,
                         Timestamp = timestamp,
-                        Properties  = properties,
+                        Properties = properties,
                         ETag = etag
                     }
                 )

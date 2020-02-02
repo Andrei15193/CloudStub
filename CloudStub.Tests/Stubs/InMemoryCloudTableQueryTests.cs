@@ -358,6 +358,134 @@ namespace CloudStub.Tests
             );
         }
 
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingSelectColumns_ReturnsEntitiesWithSpecifiedColumns()
+        {
+            await _AddTestData();
+            var query = new TableQuery()
+                .Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-1"),
+                        TableOperators.Or,
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-2")
+                    )
+                )
+                .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
+
+            var entities = await _GetAllAsync(query);
+
+            _AssertResult(entities, ("partition-1", "row-1"), ("partition-2", "row-2"));
+            {
+                var firstEntity = entities.Cast<DynamicTableEntity>().ElementAt(0);
+                Assert.Equal(EdmType.String, firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Null(firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), firstEntity.Properties);
+            }
+            {
+                var secondEntity = entities.Cast<DynamicTableEntity>().ElementAt(1);
+                Assert.Equal(EdmType.Int32, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Equal(3, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), secondEntity.Properties);
+            }
+        }
+
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingStronglyTypedEntities_ReturnsAllEntities()
+        {
+            await _AddTestData();
+            var query = new TableQuery<TestQueryEntity>();
+
+            var entities = await _GetAllAsync(query);
+
+            _AssertResult(
+                entities,
+                ("partition-1", "row-1"),
+                ("partition-10", "row-10"),
+                ("partition-2", "row-2"),
+                ("partition-3", "row-3"),
+                ("partition-4", "row-4"),
+                ("partition-5", "row-5"),
+                ("partition-6", "row-6"),
+                ("partition-7", "row-7"),
+                ("partition-8", "row-8"),
+                ("partition-9", "row-9")
+            );
+        }
+
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingEntityResolverWithProjection_ReturnsEntitiesWithSelectedProperties()
+        {
+            await _AddTestData();
+            var query = new TableQuery()
+                .Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-1"),
+                        TableOperators.Or,
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-2")
+                    )
+                )
+                .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
+
+            var entities = await _GetAllAsync(
+                query,
+                (partitionKey, rowKey, timestamp, properties, etag) => new DynamicTableEntity(partitionKey, rowKey, etag, properties)
+                {
+                    Timestamp = timestamp
+                }
+            );
+
+            _AssertResult(entities, ("partition-1", "row-1"), ("partition-2", "row-2"));
+            {
+                var firstEntity = entities.Cast<DynamicTableEntity>().ElementAt(0);
+                Assert.Equal(EdmType.String, firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Null(firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), firstEntity.Properties);
+            }
+            {
+                var secondEntity = entities.Cast<DynamicTableEntity>().ElementAt(1);
+                Assert.Equal(EdmType.Int32, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Equal(3, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), secondEntity.Properties);
+            }
+        }
+
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingStronglyTypedQueryWithEntityResolverAndProjection_ReturnsEntitiesWithSelectedProperties()
+        {
+            await _AddTestData();
+            var query = new TableQuery<TableEntity>()
+                .Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-1"),
+                        TableOperators.Or,
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-2")
+                    )
+                )
+                .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
+
+            var entities = await _GetAllAsync(
+                query,
+                (partitionKey, rowKey, timestamp, properties, etag) => new DynamicTableEntity(partitionKey, rowKey, etag, properties)
+                {
+                    Timestamp = timestamp
+                }
+            );
+
+            _AssertResult(entities, ("partition-1", "row-1"), ("partition-2", "row-2"));
+            {
+                var firstEntity = entities.Cast<DynamicTableEntity>().ElementAt(0);
+                Assert.Equal(EdmType.String, firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Null(firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), firstEntity.Properties);
+            }
+            {
+                var secondEntity = entities.Cast<DynamicTableEntity>().ElementAt(1);
+                Assert.Equal(EdmType.Int32, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Equal(3, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), secondEntity.Properties);
+            }
+        }
+
         private static object _GetFilterValue(object filterValue)
         {
             switch (filterValue)
@@ -435,6 +563,53 @@ namespace CloudStub.Tests
             do
             {
                 var result = await CloudTable.ExecuteQuerySegmentedAsync(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
+        private async Task<IEnumerable<TResult>> _GetAllAsync<TResult>(TableQuery query, EntityResolver<TResult> entityResolver)
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<TResult>();
+
+            do
+            {
+                var result = await CloudTable.ExecuteQuerySegmentedAsync(query, entityResolver, continuationToken, null, null);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
+        private async Task<IEnumerable<TEntity>> _GetAllAsync<TEntity>(TableQuery<TEntity> query)
+            where TEntity : ITableEntity, new()
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<TEntity>();
+
+            do
+            {
+                var result = await CloudTable.ExecuteQuerySegmentedAsync(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
+        private async Task<IEnumerable<TResult>> _GetAllAsync<TEntity, TResult>(TableQuery<TEntity> query, EntityResolver<TResult> entityResolver)
+            where TEntity : ITableEntity, new()
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<TResult>();
+
+            do
+            {
+                var result = await CloudTable.ExecuteQuerySegmentedAsync(query, entityResolver, continuationToken, null, null);
                 continuationToken = result.ContinuationToken;
                 entities.AddRange(result);
             } while (continuationToken != null);

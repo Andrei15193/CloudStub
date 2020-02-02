@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace CloudStub.Tests
 {
-    public class InMemoryCloudTableTests : AzureStorageUnitTest
+    public abstract class InMemoryCloudTableTests : AzureStorageUnitTest
     {
         /// <summary>A temporary flag to easily switch between in-memory cloud table and actual Azure Storage Table.</summary>
         protected static bool UseInMemory { get; } = true;

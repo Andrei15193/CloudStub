@@ -170,17 +170,16 @@ namespace CloudStub
             }
         }
 
-        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token)
-            => ExecuteQuerySegmentedAsync(query, token, null, null);
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null);
 
-        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
-            => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, requestOptions, operationContext, CancellationToken.None);
 
-        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
         {
-            var entityResolver = _GetEntityResolver(TableOperation.Retrieve<T>(string.Empty, string.Empty));
-            T GetConcreteEntity(DynamicTableEntity existingEntity) =>
-                (T)entityResolver(
+            TResult GetConcreteEntity(DynamicTableEntity existingEntity) =>
+                resolver(
                     existingEntity.PartitionKey,
                     existingEntity.RowKey,
                     existingEntity.Timestamp,
@@ -192,9 +191,40 @@ namespace CloudStub
             {
                 var entities = _QueryEntities(query.FilterString, query.SelectColumns);
                 return Task.FromResult(_CreateTableQuerySegment(entities.Select(GetConcreteEntity)));
-
             }
         }
+
+        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token)
+            => ExecuteQuerySegmentedAsync(query, token, null, null);
+
+        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteQuerySegmentedAsync(query, token, requestOptions, operationContext, CancellationToken.None);
+
+        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                _GetEntityResolver<T>(TableOperation.Retrieve<T>(string.Empty, string.Empty)),
+                token,
+                requestOptions,
+                operationContext,
+                cancellationToken
+            );
+
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<T, TResult>(TableQuery<T> query, EntityResolver<TResult> resolver, TableContinuationToken token)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null);
+
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<T, TResult>(TableQuery<T> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, requestOptions, operationContext, CancellationToken.None);
+
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<T, TResult>(TableQuery<T> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                resolver,
+                token,
+                requestOptions,
+                operationContext,
+                cancellationToken
+            );
 
         public override Task<TablePermissions> GetPermissionsAsync()
             => throw new NotImplementedException();
@@ -227,10 +257,13 @@ namespace CloudStub
 
         private IEnumerable<DynamicTableEntity> _QueryEntities(string filterString, IEnumerable<string> selectColumns)
         {
-            var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
-            var filteredEntities = _ApplyFilter(allEntities, filterString);
+            var projection = selectColumns != null && selectColumns.Any()
+                ? entity => _Clone(entity, selectColumns)
+                : new Func<DynamicTableEntity, DynamicTableEntity>(_Clone);
 
-            return filteredEntities.Select(_Clone);
+            var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
+            var result = _ApplyFilter(allEntities, filterString).Select(projection);
+            return result;
         }
 
         private IEnumerable<DynamicTableEntity> _ApplyFilter(IEnumerable<DynamicTableEntity> entities, string filterString)
@@ -239,7 +272,7 @@ namespace CloudStub
             var tokens = scanner.Scan(filterString ?? string.Empty);
             var parser = new FilterTokenParser();
             var predicate = parser.Parse(tokens);
-            var result = entities.Where(predicate).ToList();
+            var result = entities.Where(predicate);
             return result;
         }
 
@@ -535,7 +568,7 @@ namespace CloudStub
                 existingEntity.Properties :
                 existingEntity.Properties.Where(property => selectColumns.Contains(property.Key, StringComparer.Ordinal));
 
-            var entityResolver = _GetEntityResolver(tableOperation);
+            var entityResolver = _GetEntityResolver<object>(tableOperation);
             var entityResult = entityResolver(
                 existingEntity.PartitionKey,
                 existingEntity.RowKey,
@@ -660,7 +693,7 @@ namespace CloudStub
         {
             var timestamp = DateTimeOffset.UtcNow;
             var properties = entity is DynamicTableEntity dynamicTableEntity
-                ? new Dictionary<string, EntityProperty>(dynamicTableEntity.Properties, StringComparer.Ordinal)
+                ? _Clone(dynamicTableEntity).Properties
                 : TableEntity.Flatten(entity, operationContext);
             properties.Remove(nameof(TableEntity.PartitionKey));
             properties.Remove(nameof(TableEntity.RowKey));
@@ -700,12 +733,13 @@ namespace CloudStub
             return (IEnumerable<string>)selectColumnsPropertyInfo.GetValue(tableOperation);
         }
 
-        private static Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object> _GetEntityResolver(TableOperation tableOperation)
+        private static EntityResolver<T> _GetEntityResolver<T>(TableOperation tableOperation)
         {
             var retrieveResolverPropertyInfo = typeof(TableOperation)
                 .GetTypeInfo()
                 .GetProperty("RetrieveResolver", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
-            return (Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object>)retrieveResolverPropertyInfo.GetValue(tableOperation);
+            var defaultEntityResolver = (Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object>)retrieveResolverPropertyInfo.GetValue(tableOperation);
+            return (partitionKey, rowKey, timestamp, properties, etag) => (T)defaultEntityResolver(partitionKey, rowKey, timestamp, properties, etag);
         }
 
         private static TableQuerySegment _CreateTableQuerySegment(IEnumerable<DynamicTableEntity> entities)
@@ -729,7 +763,33 @@ namespace CloudStub
                 RowKey = entity.RowKey,
                 ETag = entity.ETag,
                 Timestamp = entity.Timestamp,
-                Properties = new Dictionary<string, EntityProperty>(entity.Properties, StringComparer.Ordinal)
+                Properties = _CloneProperties(entity.Properties)
             };
+
+        private static DynamicTableEntity _Clone(DynamicTableEntity entity, IEnumerable<string> selectColumns)
+            => new DynamicTableEntity
+            {
+                PartitionKey = entity.PartitionKey,
+                RowKey = entity.RowKey,
+                ETag = entity.ETag,
+                Timestamp = entity.Timestamp,
+                Properties = _CloneProperties(entity.Properties, selectColumns)
+            };
+
+        private static IDictionary<string, EntityProperty> _CloneProperties(IDictionary<string, EntityProperty> properties)
+            => properties.ToDictionary(
+                pair => pair.Key,
+                pair => EntityProperty.CreateEntityPropertyFromObject(pair.Value.PropertyAsObject),
+                StringComparer.Ordinal
+            );
+
+        private static IDictionary<string, EntityProperty> _CloneProperties(IDictionary<string, EntityProperty> properties, IEnumerable<string> selectColumns)
+            => selectColumns.ToDictionary(
+                column => column,
+                column => properties.TryGetValue(column, out var property)
+                    ? EntityProperty.CreateEntityPropertyFromObject(property.PropertyAsObject)
+                    : EntityProperty.GeneratePropertyForString(null),
+                StringComparer.Ordinal
+            );
     }
 }
