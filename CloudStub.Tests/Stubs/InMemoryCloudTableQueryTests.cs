@@ -335,6 +335,29 @@ namespace CloudStub.Tests
                 Assert.Empty(entities);
         }
 
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingTakeCount_ReturnsAllEntities()
+        {
+            await _AddTestData();
+            var query = new TableQuery().Take(5);
+
+            var entities = await _GetAllAsync(query);
+
+            _AssertResult(
+                entities,
+                ("partition-1", "row-1"),
+                ("partition-10", "row-10"),
+                ("partition-2", "row-2"),
+                ("partition-3", "row-3"),
+                ("partition-4", "row-4"),
+                ("partition-5", "row-5"),
+                ("partition-6", "row-6"),
+                ("partition-7", "row-7"),
+                ("partition-8", "row-8"),
+                ("partition-9", "row-9")
+            );
+        }
+
         private static object _GetFilterValue(object filterValue)
         {
             switch (filterValue)

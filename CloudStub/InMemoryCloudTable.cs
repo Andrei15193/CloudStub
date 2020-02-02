@@ -165,10 +165,8 @@ namespace CloudStub
         {
             lock (_locker)
             {
-                var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
-                var filteredEntities = _ApplyFilter(allEntities, query.FilterString);
-
-                return Task.FromResult(_CreateTableQuerySegment(filteredEntities.Select(_Clone)));
+                var entities = _QueryEntities(query.FilterString, query.SelectColumns);
+                return Task.FromResult(_CreateTableQuerySegment(entities));
             }
         }
 
@@ -192,10 +190,9 @@ namespace CloudStub
 
             lock (_locker)
             {
-                var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
-                var filteredEntities = _ApplyFilter(allEntities, query.FilterString);
+                var entities = _QueryEntities(query.FilterString, query.SelectColumns);
+                return Task.FromResult(_CreateTableQuerySegment(entities.Select(GetConcreteEntity)));
 
-                return Task.FromResult(_CreateTableQuerySegment(filteredEntities.Select(GetConcreteEntity)));
             }
         }
 
@@ -226,6 +223,14 @@ namespace CloudStub
             }
 
             return entitiesByRowKey;
+        }
+
+        private IEnumerable<DynamicTableEntity> _QueryEntities(string filterString, IEnumerable<string> selectColumns)
+        {
+            var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
+            var filteredEntities = _ApplyFilter(allEntities, filterString);
+
+            return filteredEntities.Select(_Clone);
         }
 
         private IEnumerable<DynamicTableEntity> _ApplyFilter(IEnumerable<DynamicTableEntity> entities, string filterString)
