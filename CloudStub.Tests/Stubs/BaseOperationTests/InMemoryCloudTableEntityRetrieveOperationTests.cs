@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace CloudStub.Tests
+namespace CloudStub.Tests.BaseOperationTests
 {
-    public class InMemoryCloudTableEntityRetrieveOperationTests : InMemoryCloudTableTests
+    public abstract class InMemoryCloudTableEntityRetrieveOperationTests : BaseInMemoryCloudTableOperationTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenEntityExists_RetrievesEntity()
@@ -28,7 +28,8 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(GetOperation(testEntity));
+            var tableResults = await ExecuteAsync(GetOperation(testEntity));
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(200, tableResult.HttpStatusCode);
             Assert.NotNull(tableResult.Etag);
@@ -53,7 +54,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenEntityExistsAndOnlySomePropertiesAreSelected_RetrievesEntity()
+        public virtual async Task ExecuteAsync_WhenEntityExistsAndOnlySomePropertiesAreSelected_RetrievesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -65,9 +66,10 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(
+            var tableResults = await ExecuteAsync(
                 TableOperation.Retrieve(testEntity.PartitionKey, testEntity.RowKey, new List<string> { nameof(TestEntity.StringProp) })
             );
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(200, tableResult.HttpStatusCode);
             Assert.NotNull(tableResult.Etag);
@@ -114,7 +116,8 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(TableOperation.Retrieve<TestEntity>(testEntity.PartitionKey, testEntity.RowKey));
+            var tableResults = await ExecuteAsync(TableOperation.Retrieve<TestEntity>(testEntity.PartitionKey, testEntity.RowKey));
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(200, tableResult.HttpStatusCode);
             Assert.NotNull(tableResult.Etag);
@@ -136,7 +139,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenTypedEntityOperationIsUsedAndOnlySelectedFieldsAreSpecified_RetrievesSpecificEntity()
+        public virtual async Task ExecuteAsync_WhenTypedEntityOperationIsUsedAndOnlySelectedFieldsAreSpecified_RetrievesSpecificEntity()
         {
             var testEntity = new TestEntity
             {
@@ -155,9 +158,10 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(
+            var tableResults = await ExecuteAsync(
                 TableOperation.Retrieve<TestEntity>(testEntity.PartitionKey, testEntity.RowKey, new List<string> { nameof(TestEntity.StringProp) })
             );
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(200, tableResult.HttpStatusCode);
             Assert.NotNull(tableResult.Etag);
@@ -198,7 +202,7 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(
+            var tableResults = await ExecuteAsync(
                 TableOperation.Retrieve(
                     testEntity.PartitionKey,
                     testEntity.RowKey,
@@ -212,6 +216,7 @@ namespace CloudStub.Tests
                     }
                 )
             );
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(200, tableResult.HttpStatusCode);
             Assert.NotNull(tableResult.Etag);
@@ -239,7 +244,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenResolverIsUsedAndOnlySomeColumnsAreSelected_RetrievesEntityWithSelectedColumns()
+        public virtual async Task ExecuteAsync_WhenResolverIsUsedAndOnlySomeColumnsAreSelected_RetrievesEntityWithSelectedColumns()
         {
             var testEntity = new TestEntity
             {
@@ -251,7 +256,7 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(
+            var tableResults = await ExecuteAsync(
                 TableOperation.Retrieve(
                     testEntity.PartitionKey,
                     testEntity.RowKey,
@@ -266,6 +271,7 @@ namespace CloudStub.Tests
                     new List<string> { nameof(TestEntity.StringProp) }
                 )
             );
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(200, tableResult.HttpStatusCode);
             Assert.NotNull(tableResult.Etag);
@@ -301,7 +307,8 @@ namespace CloudStub.Tests
                 RowKey = "row-key"
             };
 
-            var tableResult = await CloudTable.ExecuteAsync(GetOperation(testEntity));
+            var tableResults = await ExecuteAsync(GetOperation(testEntity));
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(404, tableResult.HttpStatusCode);
             Assert.Null(tableResult.Etag);
@@ -318,7 +325,8 @@ namespace CloudStub.Tests
             };
             await CloudTable.CreateAsync();
 
-            var tableResult = await CloudTable.ExecuteAsync(GetOperation(testEntity));
+            var tableResults = await ExecuteAsync(GetOperation(testEntity));
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(404, tableResult.HttpStatusCode);
             Assert.Null(tableResult.Etag);
@@ -337,7 +345,7 @@ namespace CloudStub.Tests
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "partitionKey",
-                () => CloudTable.ExecuteAsync(GetOperation(testEntity))
+                () => ExecuteAsync(GetOperation(testEntity))
             );
 
             Assert.Equal(new ArgumentNullException("partitionKey").Message, exception.Message);
@@ -355,13 +363,13 @@ namespace CloudStub.Tests
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "rowkey",
-                () => CloudTable.ExecuteAsync(GetOperation(testEntity))
+                () => ExecuteAsync(GetOperation(testEntity))
             );
 
             Assert.Equal(new ArgumentNullException("rowkey").Message, exception.Message);
         }
 
-        protected virtual TableOperation GetOperation(ITableEntity entity)
+        protected sealed override TableOperation GetOperation(ITableEntity entity)
             => TableOperation.Retrieve(entity.PartitionKey, entity.RowKey);
     }
 }

@@ -5,12 +5,12 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace CloudStub.Tests
+namespace CloudStub.Tests.BaseOperationTests
 {
-    public abstract class InMemoryCloudTableEntityOperationTests : InMemoryCloudTableTests
+    public abstract class InMemoryCloudTableEntityEditOperationsTests : BaseInMemoryCloudTableOperationTests
     {
         [Fact]
-        public async Task ExecuteAsync_WhenTableDoesNotExist_ThrowsException()
+        public virtual async Task ExecuteAsync_WhenTableDoesNotExist_ThrowsException()
         {
             var testEntity = new TestEntity
             {
@@ -19,9 +19,9 @@ namespace CloudStub.Tests
                 ETag = "*"
             };
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(GetOperation(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
 
-            Assert.Equal("Not Found", exception.Message);
+            AssertExceptionMessageWithFallback("Not Found", exception.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -30,11 +30,11 @@ namespace CloudStub.Tests
 
             Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Equal("Not Found", exception.RequestInformation.ExceptionInfo.Message);
+            AssertExceptionMessageWithFallback("Not Found", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
@@ -53,9 +53,9 @@ namespace CloudStub.Tests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(GetOperation(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
 
-            Assert.Equal("Bad Request", exception.Message);
+            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -64,11 +64,11 @@ namespace CloudStub.Tests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
@@ -87,9 +87,9 @@ namespace CloudStub.Tests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(GetOperation(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
 
-            Assert.Equal("Bad Request", exception.Message);
+            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -98,11 +98,11 @@ namespace CloudStub.Tests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
@@ -116,6 +116,18 @@ namespace CloudStub.Tests
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
-        protected abstract TableOperation GetOperation(ITableEntity entity);
+        protected virtual string ExpectedErrorMessagePattern
+            => null;
+
+        protected virtual string ExpectedErrorCode
+            => null;
+
+        protected void AssertExceptionMessageWithFallback(string expected, string message)
+        {
+            if (ExpectedErrorMessagePattern == null)
+                Assert.Equal(expected, message);
+            else
+                Assert.Matches($"^{ExpectedErrorMessagePattern}$", message);
+        }
     }
 }

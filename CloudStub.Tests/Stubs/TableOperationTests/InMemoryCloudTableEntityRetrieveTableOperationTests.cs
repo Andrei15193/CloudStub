@@ -1,0 +1,13 @@
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using CloudStub.Tests.BaseOperationTests;
+using Microsoft.WindowsAzure.Storage.Table;
+
+namespace CloudStub.Tests.TableOperationTests
+{
+    public sealed class InMemoryCloudTableEntityRetrieveTableOperationTests : InMemoryCloudTableEntityRetrieveOperationTests
+    {
+        protected override async Task<IEnumerable<TableResult>> ExecuteAsync(TableOperation tableOperation)
+            => new[] { await CloudTable.ExecuteAsync(tableOperation) };
+    }
+}

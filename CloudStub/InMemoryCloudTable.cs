@@ -132,13 +132,13 @@ namespace CloudStub
             => DeleteIfExistsAsync();
 
         public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch)
-            => throw new NotImplementedException();
+            => ExecuteBatchAsync(batch, null, null);
 
         public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteBatchAsync(batch, requestOptions, operationContext, CancellationToken.None);
 
         public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
-            => ExecuteBatchAsync(batch);
+            => throw new NotImplementedException();
 
         public override Task<TableResult> ExecuteAsync(TableOperation operation)
             => ExecuteAsync(operation, null, null, CancellationToken.None);

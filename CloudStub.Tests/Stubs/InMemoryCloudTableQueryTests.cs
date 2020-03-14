@@ -7,7 +7,7 @@ using Xunit;
 
 namespace CloudStub.Tests
 {
-    public class InMemoryCloudTableQueryTests : InMemoryCloudTableTests
+    public class InMemoryCloudTableQueryTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public async Task ExecuteQuerySegmentedAsync_WhenThereAreNoFilters_ReturnsAllItems()

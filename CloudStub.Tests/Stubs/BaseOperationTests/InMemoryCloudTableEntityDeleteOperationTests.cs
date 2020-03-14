@@ -5,14 +5,13 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace CloudStub.Tests
+namespace CloudStub.Tests.BaseOperationTests
 {
-    public class InMemoryCloudTableEntityDeleteOperationTests : InMemoryCloudTableEntityOperationTests
+    public abstract class InMemoryCloudTableEntityDeleteOperationTests : InMemoryCloudTableEntityEditOperationsTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenETagsIsWildcard_DeletesEntity()
         {
-            var startTime = DateTimeOffset.UtcNow;
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
@@ -31,7 +30,8 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(GetOperation(testEntityToRemove));
+            var tableResults = await ExecuteAsync(GetOperation(testEntityToRemove));
+            var tableResult = Assert.Single(tableResults);
 
             Assert.Equal(204, tableResult.HttpStatusCode);
             Assert.Null(tableResult.Etag);
@@ -64,7 +64,8 @@ namespace CloudStub.Tests
                 ETag = tableResult.Etag
             };
 
-            tableResult = await CloudTable.ExecuteAsync(GetOperation(testEntityToRemove));
+            var tableResults = await ExecuteAsync(GetOperation(testEntityToRemove));
+            tableResult = Assert.Single(tableResults);
 
             Assert.Equal(204, tableResult.HttpStatusCode);
             Assert.Null(tableResult.Etag);
@@ -77,7 +78,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenEntityDoesNotExist_ThrowsException()
+        public virtual async Task ExecuteAsync_WhenEntityDoesNotExist_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -87,9 +88,9 @@ namespace CloudStub.Tests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(GetOperation(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
 
-            Assert.Equal("Not Found", exception.Message);
+            AssertExceptionMessageWithFallback("Not Found", exception.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -98,11 +99,11 @@ namespace CloudStub.Tests
 
             Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Equal("Not Found", exception.RequestInformation.ExceptionInfo.Message);
+            AssertExceptionMessageWithFallback("Not Found", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
@@ -127,9 +128,9 @@ namespace CloudStub.Tests
             };
             await CloudTable.ExecuteAsync(TableOperation.InsertOrReplace(testEntity));
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(GetOperation(testEntityToRemove)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntityToRemove)));
 
-            Assert.Equal("Precondition Failed", exception.Message);
+            AssertExceptionMessageWithFallback("Precondition Failed", exception.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -138,11 +139,11 @@ namespace CloudStub.Tests
 
             Assert.Equal(412, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Equal("Precondition Failed", exception.RequestInformation.ExceptionInfo.Message);
+            AssertExceptionMessageWithFallback("Precondition Failed", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
@@ -150,7 +151,7 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
+        public virtual async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -162,14 +163,14 @@ namespace CloudStub.Tests
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "Delete requires a valid PartitionKey",
-                () => CloudTable.ExecuteAsync(GetOperation(testEntity))
+                () => ExecuteAsync(GetOperation(testEntity))
             );
 
             Assert.Equal(new ArgumentNullException("Delete requires a valid PartitionKey").Message, exception.Message);
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenRowKeyIsNull_ThrowsException()
+        public virtual async Task ExecuteAsync_WhenRowKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -181,7 +182,7 @@ namespace CloudStub.Tests
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "Delete requires a valid RowKey",
-                () => CloudTable.ExecuteAsync(GetOperation(testEntity))
+                () => ExecuteAsync(GetOperation(testEntity))
             );
 
             Assert.Equal(new ArgumentNullException("Delete requires a valid RowKey").Message, exception.Message);
@@ -207,7 +208,7 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            await CloudTable.ExecuteAsync(GetOperation(testEntityToRemove));
+            await ExecuteAsync(GetOperation(testEntityToRemove));
 
             var entities = await GetAllEntitiesAsync();
             Assert.Empty(entities);
@@ -233,7 +234,7 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            await CloudTable.ExecuteAsync(GetOperation(testEntityToRemove));
+            await ExecuteAsync(GetOperation(testEntityToRemove));
 
             var entities = await GetAllEntitiesAsync();
             Assert.Empty(entities);
@@ -259,7 +260,7 @@ namespace CloudStub.Tests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            await CloudTable.ExecuteAsync(GetOperation(testEntityToRemove));
+            await ExecuteAsync(GetOperation(testEntityToRemove));
 
             var entities = await GetAllEntitiesAsync();
             Assert.Empty(entities);
@@ -272,7 +273,7 @@ namespace CloudStub.Tests
             Assert.Equal(new ArgumentException("Delete requires an ETag (which may be the '*' wildcard).").Message, exception.Message);
         }
 
-        protected override TableOperation GetOperation(ITableEntity entity)
+        protected sealed override TableOperation GetOperation(ITableEntity entity)
             => TableOperation.Delete(entity);
     }
 }
