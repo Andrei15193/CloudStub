@@ -7,7 +7,7 @@ using Xunit;
 
 namespace CloudStub.Tests
 {
-    public abstract class InMemoryCloudTableTests : BaseInMemoryCloudTableTests
+    public class InMemoryCloudTableTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public void TableName_GetsTheSameNameWhichWasProvided()

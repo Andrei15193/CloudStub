@@ -5,7 +5,7 @@ using Xunit;
 
 namespace CloudStub.Tests.TableBatchOperationTests
 {
-    public class InMemoryCloudTableBatchOperationTests : InMemoryCloudTableTests
+    public class InMemoryCloudTableBatchOperationTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public async Task ExecuteBatchAsync_WhenBatchIsNull_ThrowsException()
