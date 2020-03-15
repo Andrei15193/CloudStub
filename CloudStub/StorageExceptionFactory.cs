@@ -165,6 +165,18 @@ namespace CloudStub
                 }
             );
 
+        public static StorageException InvalidDuplicateRowException(int operationIndex)
+            => _FromTemplate(
+                new Template
+                {
+                    HttpStatusCode = 400,
+                    HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
+                    ErrorCode = null,
+                    ErrorDetailsCode = "InvalidDuplicateRow",
+                    ErrorDetailsMessage = $"Element {operationIndex} in the batch returned an unexpected response code."
+                }
+            );
+
         public static StorageException InvalidOperationInBatchException(int operationIndex, StorageException operationException)
             => _FromTemplate(
                 new Template

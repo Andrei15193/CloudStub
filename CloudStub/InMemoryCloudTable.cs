@@ -168,38 +168,9 @@ namespace CloudStub
 
             lock (_locker)
             {
-                var operationValidationResult = batch
-                    .Select(
-                        (tableOperation, tableOperationIndex) => new
-                        {
-                            tableOperation.OperationType,
-                            OperationIndex = tableOperationIndex,
-                            OperationException = _tableOperationExecutors.TryGetValue(tableOperation.OperationType, out var tableOperationExecutor) ? tableOperationExecutor.Validate(tableOperation, operationContext) : null
-                        }
-                    )
-                    .FirstOrDefault(operationValidation => operationValidation.OperationException != null);
-                if (operationValidationResult != null)
-                    if (operationValidationResult.OperationException is StorageException operationStorageException)
-                        if (operationStorageException.RequestInformation.ErrorCode == "TableAlreadyExists")
-                            return Task.FromException<IList<TableResult>>(
-                                InvalidOperationInBatchException(operationValidationResult.OperationIndex, operationStorageException)
-                            );
-                        else if (operationStorageException.RequestInformation.ExtendedErrorInformation.ErrorMessage.StartsWith("The specified resource does not exist.")
-                                || operationStorageException.RequestInformation.ExtendedErrorInformation.ErrorMessage.StartsWith("The specified entity already exists."))
-                            return Task.FromException<IList<TableResult>>(
-                                InvalidOperationInBatchExceptionWithDetailedMessage(operationStorageException)
-                            );
-                        else if (operationValidationResult.OperationType != TableOperationType.Insert
-                                && operationStorageException.RequestInformation.ExtendedErrorInformation.ErrorMessage.StartsWith("The table specified does not exist."))
-                            return Task.FromException<IList<TableResult>>(
-                                InvalidOperationInBatchExceptionWithDetailedMessage(operationValidationResult.OperationIndex, operationStorageException)
-                            );
-                        else
-                            return Task.FromException<IList<TableResult>>(
-                                InvalidOperationInBatchExceptionWithoutErrorCode(operationValidationResult.OperationIndex, operationStorageException)
-                            );
-                    else if (operationValidationResult.OperationException != null)
-                        return Task.FromException<IList<TableResult>>(operationValidationResult.OperationException);
+                var batchOperationException = _ValidateBatchOperation(batch) ?? _ValidateOperationsInBatch(batch, operationContext);
+                if (batchOperationException != null)
+                    return Task.FromException<IList<TableResult>>(batchOperationException);
 
                 return Task.FromResult<IList<TableResult>>(
                     batch
@@ -214,6 +185,60 @@ namespace CloudStub
                         .ToList()
                 );
             }
+        }
+
+        private static Exception _ValidateBatchOperation(TableBatchOperation batch)
+        {
+            if (batch.Count > 100)
+                return new InvalidOperationException("The maximum number of operations allowed in one batch has been exceeded.");
+            if (batch.Count > 1 && batch.Where(operation => operation.OperationType == TableOperationType.Retrieve).Skip(1).Any())
+                return new ArgumentException("A batch transaction with a retrieve operation cannot contain any other operations.");
+            if (batch.GroupBy(operation => operation.GetPartitionKey()).Skip(1).Any())
+                return new ArgumentException("All entities in a given batch must have the same partition key.");
+
+            int? duplicateIndex = null;
+            var operationIndex = 0;
+            var addedRowKeys = new HashSet<string>(StringComparer.Ordinal);
+            while (operationIndex < batch.Count && duplicateIndex == null)
+                if (batch[operationIndex].Entity != null && !addedRowKeys.Add(batch[operationIndex].Entity.RowKey))
+                    duplicateIndex = operationIndex;
+                else
+                    operationIndex++;
+            if (duplicateIndex != null)
+                return InvalidDuplicateRowException(duplicateIndex.Value);
+
+            return null;
+        }
+
+        private Exception _ValidateOperationsInBatch(TableBatchOperation batch, OperationContext operationContext)
+        {
+            var operationValidationResult = batch
+                .Select(
+                    (tableOperation, tableOperationIndex) => new
+                    {
+                        tableOperation.OperationType,
+                        OperationIndex = tableOperationIndex,
+                        OperationException = _tableOperationExecutors.TryGetValue(tableOperation.OperationType, out var tableOperationExecutor) ? tableOperationExecutor.Validate(tableOperation, operationContext) : null
+                    }
+                )
+                .FirstOrDefault(operationValidation => operationValidation.OperationException != null);
+
+            if (operationValidationResult != null)
+                if (operationValidationResult.OperationException is StorageException operationStorageException)
+                    if (operationStorageException.RequestInformation.ErrorCode == "TableAlreadyExists")
+                        return InvalidOperationInBatchException(operationValidationResult.OperationIndex, operationStorageException);
+                    else if (operationStorageException.RequestInformation.ExtendedErrorInformation.ErrorMessage.StartsWith("The specified resource does not exist.")
+                            || operationStorageException.RequestInformation.ExtendedErrorInformation.ErrorMessage.StartsWith("The specified entity already exists."))
+                        return InvalidOperationInBatchExceptionWithDetailedMessage(operationStorageException);
+                    else if (operationValidationResult.OperationType != TableOperationType.Insert
+                            && operationStorageException.RequestInformation.ExtendedErrorInformation.ErrorMessage.StartsWith("The table specified does not exist."))
+                        return InvalidOperationInBatchExceptionWithDetailedMessage(operationValidationResult.OperationIndex, operationStorageException);
+                    else
+                        return InvalidOperationInBatchExceptionWithoutErrorCode(operationValidationResult.OperationIndex, operationStorageException);
+                else
+                    return operationValidationResult.OperationException;
+            else
+                return null;
         }
 
         private TableOperation _WithoutSelectionList(TableOperation tableOperation)
