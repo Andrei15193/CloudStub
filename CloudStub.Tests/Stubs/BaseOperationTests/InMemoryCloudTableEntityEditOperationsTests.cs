@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace CloudStub.Tests.BaseOperationTests
@@ -36,74 +35,11 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Not Found", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
-
-            Assert.Same(exception, exception.RequestInformation.Exception);
-        }
-
-        [Theory]
-        [ClassData(typeof(TableInvalidKeyTestData))]
-        public async Task ExecuteAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
-        {
-            var testEntity = new TableEntity
-            {
-                PartitionKey = partitionKey,
-                RowKey = "row-key",
-                ETag = "*"
-            };
-            await CloudTable.CreateAsync();
-
-            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
-
-            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
-            Assert.Null(exception.HelpLink);
-            Assert.Equal(-2146233088, exception.HResult);
-            Assert.Null(exception.InnerException);
-            Assert.IsAssignableFrom<IDictionary>(exception.Data);
-
-            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
-            Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
-            Assert.Null(exception.RequestInformation.Etag);
-
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
-
-            Assert.Same(exception, exception.RequestInformation.Exception);
-        }
-
-        [Theory]
-        [ClassData(typeof(TableInvalidKeyTestData))]
-        public async Task ExecuteAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
-        {
-            var testEntity = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = rowKey,
-                ETag = "*"
-            };
-            await CloudTable.CreateAsync();
-
-            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
-
-            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
-            Assert.Null(exception.HelpLink);
-            Assert.Equal(-2146233088, exception.HResult);
-            Assert.Null(exception.InnerException);
-            Assert.IsAssignableFrom<IDictionary>(exception.Data);
-
-            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
-            Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
-            Assert.Null(exception.RequestInformation.Etag);
-
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("TableNotFound", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The table specified does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);

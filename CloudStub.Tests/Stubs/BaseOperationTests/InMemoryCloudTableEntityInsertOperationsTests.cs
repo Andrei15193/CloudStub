@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -78,15 +79,161 @@ namespace CloudStub.Tests.BaseOperationTests
         }
 
         [Fact]
-        public Task ExecuteAsync_WhenPartitionKeyExceedsLimit_ThrowsException()
-            => ExecuteAsync_WhenPartitionKeyIsInvalid_ThrowsException(new string('t', 1 << 10 + 1));
+        public async Task ExecuteAsync_WhenPartitionKeyExceedsLimit_ThrowsException()
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = new string('t', 1 << 10 + 1),
+                RowKey = "row-key",
+                ETag = "*"
+            };
+            await CloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
+
+            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
 
         [Fact]
-        public Task ExecuteAsync_WhenRowKeyExceedsLimit_ThrowsException()
-            => ExecuteAsync_WhenRowKeyIsInvalid_ThrowsException(new string('t', 1 << 10 + 1));
+        public async Task ExecuteAsync_WhenRowKeyExceedsLimit_ThrowsException()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = new string('t', 1 << 10 + 1),
+                ETag = "*"
+            };
+            await CloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
+
+            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
 
         [Theory]
-        [ClassData(typeof(TableInvalidStringPropertyTestData))]
+        [MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
+        public virtual async Task ExecuteAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = partitionKey,
+                RowKey = "row-key",
+                ETag = "*"
+            };
+            await CloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
+
+            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The 'PartitionKey' parameter of value '{Regex.Escape(partitionKey)}' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Theory]
+        [MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
+        public virtual async Task ExecuteAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = rowKey,
+                ETag = "*"
+            };
+            await CloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => ExecuteAsync(GetOperation(testEntity)));
+
+            AssertExceptionMessageWithFallback("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Equal(ExpectedErrorCode, exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The 'RowKey' parameter of value '{Regex.Escape(rowKey)}' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Theory]
+        [MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
         public async Task ExecuteAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
             var testEntity = new TestEntity
@@ -115,13 +262,18 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
 
         [Theory]
-        [ClassData(typeof(TableInvalidBinaryPropertyTestData))]
+        [MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
         public async Task ExecuteAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
             var testEntity = new TestEntity
@@ -150,14 +302,19 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
 
         [Theory]
-        [ClassData(typeof(TableInvalidDateTimePropertyTestData))]
-        public async Task ExecuteAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
+        [MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
+        public virtual async Task ExecuteAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
             var testEntity = new TestEntity
             {
@@ -185,6 +342,11 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);

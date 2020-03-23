@@ -10,7 +10,7 @@ namespace CloudStub.Tests.BaseOperationTests
     public abstract class InMemoryCloudTableEntityInsertOperationTests : InMemoryCloudTableEntityInsertOperationsTests
     {
         [Fact]
-        public virtual async Task ExecuteAsync_InsertOperationWhenPartitionKeyIsNull_ThrowsException()
+        public virtual async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -33,6 +33,11 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("PropertiesNeedValue", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The values are not specified for all properties in the entity.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
@@ -62,6 +67,11 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("PropertiesNeedValue", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The values are not specified for all properties in the entity.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
@@ -92,6 +102,11 @@ namespace CloudStub.Tests.BaseOperationTests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             AssertExceptionMessageWithFallback("Conflict", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("EntityAlreadyExists", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The specified entity already exists.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);

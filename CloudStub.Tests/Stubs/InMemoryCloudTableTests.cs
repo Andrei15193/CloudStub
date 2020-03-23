@@ -73,19 +73,19 @@ namespace CloudStub.Tests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             Assert.Equal("Conflict", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("TableAlreadyExists", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The table specified already exists.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
 
         [Theory]
-        [InlineData("tables")]
         [InlineData("invalid_table_name")]
         [InlineData("1nvalid")]
-        [InlineData(" ")]
-        [InlineData("t")]
-        [InlineData("tt")]
-        [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
         public async Task CreateAsync_WhenTableNameIsInvalid_ThrowsException(string tableName)
         {
             var cloudTable = GetCloudTable(tableName);
@@ -107,6 +107,80 @@ namespace CloudStub.Tests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("InvalidResourceName", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The specifed resource name contains invalid characters.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Theory]
+        [InlineData("tables")]
+        public async Task CreateAsync_WhenTableNameIsReserved_ThrowsException(string tableName)
+        {
+            var cloudTable = GetCloudTable(tableName);
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => cloudTable.CreateAsync(null, null));
+
+            Assert.Equal("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("InvalidInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^One of the request inputs is not valid.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Theory]
+        [InlineData(" ")]
+        [InlineData("t")]
+        [InlineData("tt")]
+        [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
+        public async Task CreateAsync_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+        {
+            var cloudTable = GetCloudTable(tableName);
+
+            var exception = await Assert.ThrowsAsync<StorageException>(() => cloudTable.CreateAsync(null, null));
+
+            Assert.Equal("Bad Request", exception.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
+            Assert.Equal("Bad Request", exception.RequestInformation.ExceptionInfo.Message);
+            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The specified resource name length is not within the permissible limits.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
@@ -148,6 +222,11 @@ namespace CloudStub.Tests
             Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
             Assert.Equal("Not Found", exception.RequestInformation.ExceptionInfo.Message);
             Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
+            Assert.Equal("ResourceNotFound", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The specified resource does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
             Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
