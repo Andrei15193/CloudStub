@@ -205,7 +205,19 @@ namespace CloudStub
                 else
                     operationIndex++;
             if (duplicateIndex != null)
-                return InvalidDuplicateRowException(duplicateIndex.Value);
+                return FromTemplate(
+                    new StorageExceptionTemplate
+                    {
+                        HttpStatusCode = 400,
+                        HttpStatusName = $"Element {duplicateIndex} in the batch returned an unexpected response code.",
+                        ErrorCode = null,
+                        ErrorDetails =
+                        {
+                            Code = "InvalidDuplicateRow",
+                            Message = $"{duplicateIndex}:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request."
+                        }
+                    }
+                );
 
             return null;
         }
