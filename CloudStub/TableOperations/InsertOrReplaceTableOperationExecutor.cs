@@ -1,26 +1,112 @@
-﻿using System;
-using Microsoft.WindowsAzure.Storage;
+﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using System;
+using System.Collections.Generic;
+using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub.TableOperations
 {
-    internal sealed class InsertOrReplaceTableOperationExecutor : AddTableOperationExecutor
+    internal sealed class InsertOrReplaceTableOperationExecutor : TableOperationExecutor
     {
         public InsertOrReplaceTableOperationExecutor(ITableOperationExecutorContext context)
             : base(context)
         {
         }
 
-        protected override Exception GetMissingPartitionKeyException()
-            => new ArgumentNullException("Upserts require a valid PartitionKey");
+        public override Exception Validate(TableOperation tableOperation, OperationContext operationContext)
+        {
+            if (!Context.TableExists)
+                return TableDoesNotExistException();
 
-        protected override Exception GetMissingRowKeyException()
-            => new ArgumentNullException("Upserts require a valid RowKey");
+            if (tableOperation.Entity.PartitionKey == null)
+                return new ArgumentNullException("Upserts require a valid PartitionKey");
+            if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
+                return PropertyValueTooLargeException();
+            var partitionKeyException = ValidateKeyProperty(tableOperation.Entity.PartitionKey);
+            if (partitionKeyException != null)
+                return partitionKeyException;
+
+            if (tableOperation.Entity.RowKey == null)
+                return new ArgumentNullException("Upserts require a valid RowKey");
+            if (tableOperation.Entity.RowKey.Length > (1 << 10))
+                return PropertyValueTooLargeException();
+            var rowKeyException = ValidateKeyProperty(tableOperation.Entity.RowKey);
+            if (rowKeyException != null)
+                return rowKeyException;
+
+            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity, operationContext);
+            if (entityPropertyException != null)
+                return entityPropertyException;
+
+            return null;
+        }
+
+        public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
+        {
+            if (!Context.TableExists)
+                return FromTemplate(
+                    new StorageExceptionTemplate
+                    {
+                        HttpStatusCode = 404,
+                        HttpStatusName = $"{operationIndex}:The table specified does not exist.",
+                        DetailedExceptionMessage = true,
+                        ErrorDetails =
+                        {
+                            Code = "TableNotFound",
+                            Message = $"{operationIndex}:The table specified does not exist."
+                        }
+                    }
+                );
+
+            if (tableOperation.Entity.PartitionKey == null)
+                return new ArgumentNullException("Upserts require a valid PartitionKey");
+            if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
+                return FromTemplate(
+                    new StorageExceptionTemplate
+                    {
+                        HttpStatusCode = 400,
+                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
+                        ErrorDetails =
+                        {
+                            Code = "PropertyValueTooLarge",
+                            Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
+                        }
+                    }
+                );
+            var partitionKeyException = ValidateBatckKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
+            if (partitionKeyException != null)
+                return partitionKeyException;
+
+            if (tableOperation.Entity.RowKey == null)
+                return new ArgumentNullException("Upserts require a valid RowKey");
+            if (tableOperation.Entity.RowKey.Length > (1 << 10))
+                return FromTemplate(
+                    new StorageExceptionTemplate
+                    {
+                        HttpStatusCode = 400,
+                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
+                        ErrorDetails =
+                        {
+                            Code = "PropertyValueTooLarge",
+                            Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
+                        }
+                    }
+                );
+            var rowKeyException = ValidateBatckKeyProperty(tableOperation.Entity.RowKey, operationIndex);
+            if (rowKeyException != null)
+                return rowKeyException;
+
+            var entityPropertyException = ValidateEntityPropertiesForBatch(tableOperation.Entity, operationContext, operationIndex);
+            if (entityPropertyException != null)
+                return entityPropertyException;
+
+            return null;
+        }
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
             var dynamicEntity = GetDynamicEntity(tableOperation.Entity, operationContext);
-            var partition = GetPartition(dynamicEntity);
+            var partition = _GetPartition(dynamicEntity);
             partition[dynamicEntity.RowKey] = dynamicEntity;
 
             return new TableResult
@@ -35,6 +121,17 @@ namespace CloudStub.TableOperations
                     Timestamp = default(DateTimeOffset)
                 }
             };
+        }
+
+        private IDictionary<string, DynamicTableEntity> _GetPartition(ITableEntity entity)
+        {
+            if (!Context.Entities.TryGetValue(entity.PartitionKey, out var entitiesByRowKey))
+            {
+                entitiesByRowKey = new SortedList<string, DynamicTableEntity>(StringComparer.Ordinal);
+                Context.Entities.Add(entity.PartitionKey, entitiesByRowKey);
+            }
+
+            return entitiesByRowKey;
         }
     }
 }

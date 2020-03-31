@@ -22,6 +22,9 @@ namespace CloudStub.TableOperations
             return null;
         }
 
+        public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
+            => Validate(tableOperation, operationContext);
+
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
             if (Context.Entities.TryGetValue(tableOperation.GetPartitionKey(), out var partition)
