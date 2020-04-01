@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -7,8 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using CloudStub.FilterParser;
 using CloudStub.TableOperations;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub
@@ -205,19 +205,7 @@ namespace CloudStub
                 else
                     operationIndex++;
             if (duplicateIndex != null)
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 400,
-                        HttpStatusName = $"Element {duplicateIndex} in the batch returned an unexpected response code.",
-                        ErrorCode = null,
-                        ErrorDetails =
-                        {
-                            Code = "InvalidDuplicateRow",
-                            Message = $"{duplicateIndex}:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request."
-                        }
-                    }
-                );
+                return MultipleOperationsChangeSameEntityException(duplicateIndex.Value);
 
             return null;
         }
