@@ -232,8 +232,8 @@ namespace CloudStub
         {
             lock (_locker)
             {
-                var entities = _QueryEntities(query.FilterString, query.SelectColumns);
-                return Task.FromResult(_CreateTableQuerySegment(entities));
+                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                return Task.FromResult(_CreateTableQuerySegment(result));
             }
         }
 
@@ -256,8 +256,9 @@ namespace CloudStub
 
             lock (_locker)
             {
-                var entities = _QueryEntities(query.FilterString, query.SelectColumns);
-                return Task.FromResult(_CreateTableQuerySegment(entities.Select(GetConcreteEntity)));
+                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                var typedResult = new QueryResult<TResult>(result.Entities.Select(GetConcreteEntity).ToList(), result.ContinuationToken);
+                return Task.FromResult(_CreateTableQuerySegment(typedResult));
             }
         }
 
@@ -311,15 +312,42 @@ namespace CloudStub
         public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => throw new NotImplementedException();
 
-        private IEnumerable<DynamicTableEntity> _QueryEntities(string filterString, IEnumerable<string> selectColumns)
+        private QueryResult<DynamicTableEntity> _QueryEntities(string filterString, int? takeCount, IEnumerable<string> selectColumns, TableContinuationToken continuationToken)
         {
+            const int defaultPageSize = 1000;
+
             var projection = selectColumns != null && selectColumns.Any()
                 ? entity => entity.Clone(selectColumns)
                 : new Func<DynamicTableEntity, DynamicTableEntity>(CloudTableExtensions.Clone);
 
             var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
-            var result = _ApplyFilter(allEntities, filterString).Select(projection);
-            return result;
+            var filteredEntities = _ApplyFilter(allEntities, filterString).Select(projection);
+            var remainingEntities = continuationToken != null
+                    ? filteredEntities
+                        .SkipWhile(
+                            entity => string.Compare(entity.PartitionKey, continuationToken.NextPartitionKey, StringComparison.Ordinal) <= 0
+                                && string.Compare(entity.RowKey, continuationToken.NextRowKey, StringComparison.Ordinal) < 0
+                        )
+                    : filteredEntities;
+
+            var pageSize = takeCount != null ? Math.Min(defaultPageSize, takeCount.Value) : defaultPageSize;
+            var entitiesPage = remainingEntities.Take(pageSize + 1).ToList();
+            var lastEntity = default(DynamicTableEntity);
+            if (entitiesPage.Count > pageSize)
+            {
+                lastEntity = entitiesPage[pageSize];
+                entitiesPage.RemoveAt(pageSize);
+            }
+            var nextContinuationToken = lastEntity != null
+                ? new TableContinuationToken
+                {
+                    NextPartitionKey = lastEntity.PartitionKey,
+                    NextRowKey = lastEntity.RowKey,
+                    TargetLocation = StorageLocation.Primary
+                }
+                : null;
+
+            return new QueryResult<DynamicTableEntity>(entitiesPage, nextContinuationToken);
         }
 
         private IEnumerable<DynamicTableEntity> _ApplyFilter(IEnumerable<DynamicTableEntity> entities, string filterString)
@@ -332,19 +360,39 @@ namespace CloudStub
             return result;
         }
 
-        private static TableQuerySegment _CreateTableQuerySegment(IEnumerable<DynamicTableEntity> entities)
-            => (TableQuerySegment)typeof(TableQuerySegment)
+        private static TableQuerySegment _CreateTableQuerySegment(QueryResult<DynamicTableEntity> result)
+        {
+            var resultSegment = (TableQuerySegment)typeof(TableQuerySegment)
                 .GetTypeInfo()
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
                 .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<DynamicTableEntity>) }))
-                .Invoke(new[] { entities.ToList() });
+                .Invoke(new[] { result.Entities });
 
-        private static TableQuerySegment<TElement> _CreateTableQuerySegment<TElement>(IEnumerable<TElement> entities)
-            => (TableQuerySegment<TElement>)typeof(TableQuerySegment<TElement>)
+            if (result.ContinuationToken != null)
+                typeof(TableQuerySegment)
+                    .GetTypeInfo()
+                    .GetProperty(nameof(TableQuerySegment.ContinuationToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty)
+                    .SetValue(resultSegment, result.ContinuationToken);
+
+            return resultSegment;
+        }
+
+        private static TableQuerySegment<TElement> _CreateTableQuerySegment<TElement>(QueryResult<TElement> result)
+        {
+            var resultSegment = (TableQuerySegment<TElement>)typeof(TableQuerySegment<TElement>)
                 .GetTypeInfo()
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
                 .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<TElement>) }))
-                .Invoke(new[] { entities.ToList() });
+                .Invoke(new[] { result.Entities });
+
+            if (result.ContinuationToken != null)
+                typeof(TableQuerySegment<TElement>)
+                    .GetTypeInfo()
+                    .GetProperty(nameof(TableQuerySegment<TElement>.ContinuationToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty)
+                    .SetValue(resultSegment, result.ContinuationToken);
+
+            return resultSegment;
+        }
 
         private sealed class TableOperationExecutorContext : ITableOperationExecutorContext
         {
@@ -358,6 +406,19 @@ namespace CloudStub
 
             public IDictionary<string, IDictionary<string, DynamicTableEntity>> Entities
                 => _inMemoryCloudTable._entitiesByPartitionKey;
+        }
+
+        private sealed class QueryResult<TResult>
+        {
+            public QueryResult(IReadOnlyList<TResult> entities, TableContinuationToken continuationToken)
+            {
+                Entities = entities;
+                ContinuationToken = continuationToken;
+            }
+
+            public IReadOnlyList<TResult> Entities { get; }
+
+            public TableContinuationToken ContinuationToken { get; }
         }
     }
 }

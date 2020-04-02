@@ -1,8 +1,8 @@
+using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace CloudStub.Tests
@@ -356,6 +356,75 @@ namespace CloudStub.Tests
                 ("partition-8", "row-8"),
                 ("partition-9", "row-9")
             );
+        }
+
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingZeroTakeCount_ThrowsException()
+        {
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _GetAllAsync(new TableQuery().Take(0)));
+
+            Assert.Equal(new ArgumentException("Take count must be positive and greater than 0.").Message, exception.Message);
+        }
+
+        [Fact]
+        public async Task ExecuteQuerySegmentedAsync_TakeCountGreaterThan1000_ReturnsEntitiesInPagesOf1000()
+        {
+            await CloudTable.CreateAsync();
+            for (var batchIndex = 0; batchIndex < 20; batchIndex++)
+            {
+                var batchOperation = new TableBatchOperation();
+                for (var index = 1; index <= 100; index++)
+                    batchOperation.Add(TableOperation.Insert(new TableEntity("partition", $"row-{index + batchIndex * 100}")));
+
+                await CloudTable.ExecuteBatchAsync(batchOperation);
+            }
+
+            var continuationToken = default(TableContinuationToken);
+            var query = new TableQuery().Take(1001);
+            do
+            {
+                var result = await CloudTable.ExecuteQuerySegmentedAsync(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                Assert.Equal(1000, result.Count());
+            } while (continuationToken != null);
+        }
+
+        [Theory]
+        [InlineData(5)]
+        [InlineData(10)]
+        [InlineData(15)]
+        [InlineData(20)]
+        [InlineData(25)]
+        public async Task ExecuteQuerySegmentedAsync_TakeLessThan1000_ReturnsEntitiesInSpecifiedPageSizes(int takeCount)
+        {
+            await CloudTable.CreateAsync();
+            var batchOperation = new TableBatchOperation();
+            for (var index = 0; index < takeCount * 4; index++)
+                batchOperation.Add(TableOperation.Insert(new TableEntity("partition", $"row-{index:000}")));
+
+            await CloudTable.ExecuteBatchAsync(batchOperation);
+
+            var pageIndex = 0;
+            var continuationToken = default(TableContinuationToken);
+            var query = new TableQuery().Take(takeCount);
+            do
+            {
+                var result = await CloudTable.ExecuteQuerySegmentedAsync(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                Assert.Equal(takeCount, result.Count());
+
+                for (var index = 0; index < takeCount; index++)
+                    Assert.Equal($"row-{index + pageIndex * takeCount:000}", result.ElementAt(index).RowKey);
+                pageIndex++;
+
+                if (continuationToken != null)
+                {
+                    Assert.NotNull(continuationToken.NextPartitionKey);
+                    Assert.NotNull(continuationToken.NextRowKey);
+                    Assert.Null(continuationToken.NextTableName);
+                    Assert.NotNull(continuationToken.TargetLocation);
+                }
+            } while (continuationToken != null);
         }
 
         [Fact]

@@ -37,7 +37,7 @@ namespace CloudStub.Tests
             return entities;
         }
 
-        protected CloudTable GetCloudTable(string tableName)
+        protected static CloudTable GetCloudTable(string tableName)
             => UseInMemory ?
                 new InMemoryCloudTable(tableName) :
                 CloudStorageAccount
