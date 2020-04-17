@@ -42,19 +42,7 @@ namespace CloudStub.TableOperations
         public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
         {
             if (!Context.TableExists)
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 404,
-                        HttpStatusName = $"{operationIndex}:The table specified does not exist.",
-                        DetailedExceptionMessage = true,
-                        ErrorDetails =
-                        {
-                            Code = "TableNotFound",
-                            Message = $"{operationIndex}:The table specified does not exist."
-                        }
-                    }
-                );
+                return TableDoesNotExistForBatchException(operationIndex);
 
             if (tableOperation.Entity.PartitionKey == null)
                 return new ArgumentNullException("Delete requires a valid PartitionKey");
@@ -70,33 +58,10 @@ namespace CloudStub.TableOperations
 
             if (!Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition)
                 || !partition.TryGetValue(tableOperation.Entity.RowKey, out var existingEntity))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 404,
-                        HttpStatusName = "The specified resource does not exist.",
-                        DetailedExceptionMessage = true,
-                        ErrorDetails =
-                        {
-                            Code = "ResourceNotFound",
-                            Message = "The specified resource does not exist."
-                        }
-                    }
-                );
+                return ResourceNotFoundForBatchException();
 
             if (tableOperation.Entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(tableOperation.Entity.ETag, existingEntity.ETag))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 412,
-                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                        ErrorDetails =
-                        {
-                            Code = "UpdateConditionNotSatisfied",
-                            Message = "The update condition specified in the request was not satisfied."
-                        }
-                    }
-                );
+                return PreconditionFailedForBatchException(operationIndex);
 
             return null;
         }

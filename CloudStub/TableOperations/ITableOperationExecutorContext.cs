@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Microsoft.WindowsAzure.Storage.Table;
+﻿using Microsoft.WindowsAzure.Storage.Table;
+using System.Collections.Generic;
 
 namespace CloudStub.TableOperations
 {

@@ -10,8 +10,10 @@ namespace CloudStub
 {
     internal static class StorageExceptionFactory
     {
+        private static readonly PropertyInfo _extendedErrorInformationProperty = typeof(RequestResult).GetRuntimeProperty("ExtendedErrorInformation");
+
         public static StorageException InvalidTableNameLengthException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -26,7 +28,7 @@ namespace CloudStub
             );
 
         public static StorageException TableDoesNotExistException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 404,
@@ -41,7 +43,7 @@ namespace CloudStub
             );
 
         public static StorageException TableDoesNotExistForBatchException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 404,
@@ -56,7 +58,7 @@ namespace CloudStub
             );
 
         public static StorageException TableDoesNotExistForBatchInsertException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 404,
@@ -70,7 +72,7 @@ namespace CloudStub
             );
 
         public static StorageException TableAlreadyExistsException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 409,
@@ -85,7 +87,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidInputException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -100,7 +102,7 @@ namespace CloudStub
             );
 
         public static StorageException BadRequestException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -110,7 +112,7 @@ namespace CloudStub
             );
 
         public static StorageException BadRequestForBatchException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -124,7 +126,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidResourceNameException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -139,7 +141,7 @@ namespace CloudStub
             );
 
         public static StorageException ResourceNotFoundException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 404,
@@ -154,7 +156,7 @@ namespace CloudStub
             );
 
         public static StorageException ResourceNotFoundForBatchException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 404,
@@ -169,7 +171,7 @@ namespace CloudStub
             );
 
         public static StorageException PropertiesWithoutValueException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -184,7 +186,7 @@ namespace CloudStub
             );
 
         public static StorageException PropertyValueTooLargeException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -199,7 +201,7 @@ namespace CloudStub
             );
 
         public static StorageException PropertyValueTooLargeForBatchException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -213,7 +215,7 @@ namespace CloudStub
             );
 
         public static StorageException ErrorInQuerySyntaxException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -228,7 +230,7 @@ namespace CloudStub
             );
 
         public static StorageException InputOutOfRangeException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -243,7 +245,7 @@ namespace CloudStub
             );
 
         public static StorageException InputOutOfRangeForBatchException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -257,7 +259,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidPartitionKeyException(string partitionKey)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -272,7 +274,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidPartitionKeyForBatchException(string partitionKey, int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -286,7 +288,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidRowKeyException(string rowKey)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -301,7 +303,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidRowKeyForBatchException(string partitionKey, int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -315,7 +317,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidDateTimePropertyException(string propertyName, DateTime value)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -330,7 +332,7 @@ namespace CloudStub
             );
 
         public static StorageException InvalidDateTimePropertyForBatchException(string propertyName, DateTime value, int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -344,7 +346,7 @@ namespace CloudStub
             );
 
         public static StorageException EntityAlreadyExistsException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 409,
@@ -359,7 +361,7 @@ namespace CloudStub
             );
 
         public static StorageException EntityAlreadyExistsForBatchException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 409,
@@ -374,7 +376,7 @@ namespace CloudStub
             );
 
         public static StorageException PreconditionFailedException()
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 412,
@@ -389,7 +391,7 @@ namespace CloudStub
             );
 
         public static StorageException PreconditionFailedForBatchException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 412,
@@ -403,7 +405,7 @@ namespace CloudStub
             );
 
         public static StorageException MultipleOperationsChangeSameEntityException(int operationIndex)
-            => FromTemplate(
+            => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
@@ -417,10 +419,10 @@ namespace CloudStub
                 }
             );
 
-        public static StorageException FromTemplate(StorageExceptionTemplate template)
-            => FromTemplate(template, null);
+        private static StorageException _FromTemplate(StorageExceptionTemplate template)
+            => _FromTemplate(template, null);
 
-        public static StorageException FromTemplate(StorageExceptionTemplate template, Exception innerException)
+        private static StorageException _FromTemplate(StorageExceptionTemplate template, Exception innerException)
         {
             var requestId = Guid.NewGuid();
             var requestTimestamp = DateTimeOffset.UtcNow;
@@ -462,7 +464,7 @@ Time:{requestTimestamp:yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'}</Message>
                 requestResult.ReadXml(xmlReader);
 
             if (string.IsNullOrEmpty(requestResult.ExtendedErrorInformation.ErrorCode))
-                requestResult.GetType().GetTypeInfo().GetProperty("ExtendedErrorInformation").SetValue(requestResult, null);
+                _extendedErrorInformationProperty.SetValue(requestResult, null);
 
             var storageException = new StorageException(requestResult, message, innerException)
             {
@@ -483,25 +485,25 @@ Time:{requestTimestamp:yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'}</Message>
                             : builder.Append(@char))
                     .ToString()
                 : value;
-    }
 
-    internal class StorageExceptionTemplate
-    {
-        public bool DetailedExceptionMessage { get; set; }
+        private class StorageExceptionTemplate
+        {
+            public bool DetailedExceptionMessage { get; set; }
 
-        public int HttpStatusCode { get; set; }
+            public int HttpStatusCode { get; set; }
 
-        public string HttpStatusName { get; set; }
+            public string HttpStatusName { get; set; }
 
-        public string ErrorCode { get; set; }
+            public string ErrorCode { get; set; }
 
-        public StorageExceptionErrorDetailTemplate ErrorDetails { get; } = new StorageExceptionErrorDetailTemplate();
-    }
+            public StorageExceptionErrorDetailTemplate ErrorDetails { get; } = new StorageExceptionErrorDetailTemplate();
+        }
 
-    internal class StorageExceptionErrorDetailTemplate
-    {
-        public string Code { get; set; }
+        private class StorageExceptionErrorDetailTemplate
+        {
+            public string Code { get; set; }
 
-        public string Message { get; set; }
+            public string Message { get; set; }
+        }
     }
 }

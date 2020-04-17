@@ -1,7 +1,7 @@
-﻿using System;
-using System.Linq;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using System;
+using System.Linq;
 
 namespace CloudStub.TableOperations
 {

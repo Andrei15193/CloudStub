@@ -70,19 +70,7 @@ namespace CloudStub.TableOperations
                         {
                             case '/':
                             case '\\':
-                                return FromTemplate(
-                                    new StorageExceptionTemplate
-                                    {
-                                        HttpStatusCode = 400,
-                                        HttpStatusName = "Bad Request",
-                                        ErrorCode = string.Empty,
-                                        ErrorDetails =
-                                        {
-                                            Code = "InvalidInput",
-                                            Message = "Bad Request - Error in query syntax."
-                                        }
-                                    }
-                                );
+                                return ErrorInQuerySyntaxException();
 
                             case '\u007F':
                             case '\u0081':
@@ -90,25 +78,11 @@ namespace CloudStub.TableOperations
                             case '\u008F':
                             case '\u0090':
                             case '\u009D':
-                                return FromTemplate(
-                                    new StorageExceptionTemplate
-                                    {
-                                        HttpStatusCode = 400,
-                                        HttpStatusName = "Bad Request",
-                                        ErrorCode = string.Empty
-                                    }
-                                );
+                                return BadRequestException();
 
                             default:
                                 if ('\u0000' <= @char && @char <= '\u001F')
-                                    return FromTemplate(
-                                        new StorageExceptionTemplate
-                                        {
-                                            HttpStatusCode = 400,
-                                            HttpStatusName = "Bad Request",
-                                            ErrorCode = string.Empty
-                                        }
-                                    );
+                                    return BadRequestException();
 
                                 return !IsValidKeyCharacter(@char) ? InputOutOfRangeException() : null;
                         }
@@ -125,34 +99,10 @@ namespace CloudStub.TableOperations
                         {
                             case '/':
                             case '\\':
-                                return FromTemplate(
-                                    new StorageExceptionTemplate
-                                    {
-                                        HttpStatusCode = 400,
-                                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                                        ErrorDetails =
-                                        {
-                                            Code = "InvalidInput",
-                                            Message = $"{operationIndex}:Bad Request - Error in query syntax."
-                                        }
-                                    }
-                                );
+                                return BadRequestForBatchException(operationIndex);
 
                             default:
-                                return !IsValidKeyCharacter(@char)
-                                    ? FromTemplate(
-                                        new StorageExceptionTemplate
-                                        {
-                                            HttpStatusCode = 400,
-                                            HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                                            ErrorDetails =
-                                            {
-                                                Code = "OutOfRangeInput",
-                                                Message = $"{operationIndex}:One of the request inputs is out of range."
-                                            }
-                                        }
-                                    )
-                                    : null;
+                                return !IsValidKeyCharacter(@char) ? InputOutOfRangeForBatchException(operationIndex) : null;
                         }
                     }
                 )
@@ -191,32 +141,10 @@ namespace CloudStub.TableOperations
             {
                 case EdmType.String when property.StringValue.Length > (1 << 15):
                 case EdmType.Binary when property.BinaryValue.Length > (1 << 16):
-                    return FromTemplate(
-                        new StorageExceptionTemplate
-                        {
-                            HttpStatusCode = 400,
-                            HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                            ErrorDetails =
-                            {
-                                Code = "PropertyValueTooLarge",
-                                Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
-                            }
-                        }
-                    );
+                    return PropertyValueTooLargeForBatchException(operationIndex);
 
                 case EdmType.DateTime when property.DateTime != null && property.DateTime < new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc):
-                    return FromTemplate(
-                        new StorageExceptionTemplate
-                        {
-                            HttpStatusCode = 400,
-                            HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                            ErrorDetails =
-                            {
-                                Code = "OutOfRangeInput",
-                                Message = $"{operationIndex}:The '{name}' parameter of value '{property.DateTime:MM/dd/yyyy HH:mm:ss}' is out of range."
-                            }
-                        }
-                    );
+                    return InvalidDateTimePropertyForBatchException(name, property.DateTime.Value, operationIndex);
 
                 default:
                     return null;

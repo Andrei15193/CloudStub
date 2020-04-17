@@ -1,7 +1,6 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
-using System.Linq;
 using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub.TableOperations
@@ -47,19 +46,7 @@ namespace CloudStub.TableOperations
         public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
         {
             if (!Context.TableExists)
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 404,
-                        HttpStatusName = $"{operationIndex}:The table specified does not exist.",
-                        DetailedExceptionMessage = true,
-                        ErrorDetails =
-                        {
-                            Code = "TableNotFound",
-                            Message = $"{operationIndex}:The table specified does not exist."
-                        }
-                    }
-                );
+                return TableDoesNotExistForBatchException(operationIndex);
 
             if (tableOperation.Entity.PartitionKey == null)
                 return new ArgumentNullException("Replace requires a valid PartitionKey");

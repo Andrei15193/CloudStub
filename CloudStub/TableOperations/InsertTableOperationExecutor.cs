@@ -46,54 +46,21 @@ namespace CloudStub.TableOperations
         public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
         {
             if (!Context.TableExists)
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 404,
-                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                        ErrorDetails =
-                        {
-                            Code = "TableNotFound",
-                            Message = $"{operationIndex}:The table specified does not exist."
-                        }
-                    }
-                );
+                return TableDoesNotExistForBatchInsertException(operationIndex);
 
             if (tableOperation.Entity.PartitionKey == null)
                 return new ArgumentNullException("Upserts require a valid PartitionKey");
             if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 400,
-                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                        ErrorDetails =
-                        {
-                            Code = "PropertyValueTooLarge",
-                            Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
-                        }
-                    }
-                );
-            var partitionKeyException = _ValidateBatckKeyProperty(nameof(ITableEntity.PartitionKey), tableOperation.Entity.PartitionKey, operationIndex);
+                return PropertyValueTooLargeForBatchException(operationIndex);
+            var partitionKeyException = _ValidateBatckPartitionKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
             if (partitionKeyException != null)
                 return partitionKeyException;
 
             if (tableOperation.Entity.RowKey == null)
                 return new ArgumentNullException("Upserts require a valid RowKey");
             if (tableOperation.Entity.RowKey.Length > (1 << 10))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 400,
-                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                        ErrorDetails =
-                        {
-                            Code = "PropertyValueTooLarge",
-                            Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
-                        }
-                    }
-                );
-            var rowKeyException = _ValidateBatckKeyProperty(nameof(ITableEntity.RowKey), tableOperation.Entity.RowKey, operationIndex);
+                return PropertyValueTooLargeForBatchException(operationIndex);
+            var rowKeyException = _ValidateBatckRowKeyProperty(tableOperation.Entity.RowKey, operationIndex);
             if (rowKeyException != null)
                 return rowKeyException;
 
@@ -102,19 +69,7 @@ namespace CloudStub.TableOperations
                 return entityPropertyException;
 
             if (Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition) && partition.ContainsKey(tableOperation.Entity.RowKey))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 409,
-                        HttpStatusName = "The specified entity already exists.",
-                        DetailedExceptionMessage = true,
-                        ErrorDetails =
-                        {
-                            Code = "EntityAlreadyExists",
-                            Message = "The specified entity already exists."
-                        }
-                    }
-                );
+                return EntityAlreadyExistsForBatchException();
 
             return null;
         }
@@ -139,46 +94,14 @@ namespace CloudStub.TableOperations
             };
         }
 
-        private StorageException _ValidateBatckKeyProperty(string keyName, string value, int operationIndex)
+        private StorageException _ValidateBatckPartitionKeyProperty(string value, int operationIndex)
             => value
-                .Select(
-                    @char =>
-                    {
-                        switch (@char)
-                        {
-                            case '/':
-                            case '\\':
-                                return FromTemplate(
-                                    new StorageExceptionTemplate
-                                    {
-                                        HttpStatusCode = 400,
-                                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                                        ErrorDetails =
-                                        {
-                                            Code = "OutOfRangeInput",
-                                            Message = $"{operationIndex}:The '{keyName}' parameter of value '" + value + "' is out of range."
-                                        }
-                                    }
-                                );
+                .Select(@char => !IsValidKeyCharacter(@char) ? InvalidPartitionKeyForBatchException(value, operationIndex) : null)
+                .FirstOrDefault(exception => exception != null);
 
-                            default:
-                                return !IsValidKeyCharacter(@char)
-                                    ? FromTemplate(
-                                        new StorageExceptionTemplate
-                                        {
-                                            HttpStatusCode = 400,
-                                            HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                                            ErrorDetails =
-                                            {
-                                                Code = "OutOfRangeInput",
-                                                Message = $"{operationIndex}:The '{keyName}' parameter of value '" + value + "' is out of range."
-                                            }
-                                        }
-                                    )
-                                    : null;
-                        }
-                    }
-                )
+        private StorageException _ValidateBatckRowKeyProperty(string value, int operationIndex)
+            => value
+                .Select(@char => !IsValidKeyCharacter(@char) ? InvalidRowKeyForBatchException(value, operationIndex) : null)
                 .FirstOrDefault(exception => exception != null);
 
         private IDictionary<string, DynamicTableEntity> _GetPartition(ITableEntity entity)

@@ -1,13 +1,26 @@
-﻿using System;
+﻿using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace CloudStub
 {
     internal static class CloudTableExtensions
     {
+        private static readonly PropertyInfo _partitionKeyProperty = typeof(TableOperation)
+            .GetRuntimeProperties()
+            .Single(property => property.Name == "PartitionKey");
+        private static readonly PropertyInfo _rowKeyProperty = typeof(TableOperation)
+            .GetRuntimeProperties()
+            .Single(property => property.Name == "RowKey");
+        private static readonly PropertyInfo _selectColumnsProperty = typeof(TableOperation)
+            .GetRuntimeProperties()
+            .Single(property => property.Name == "SelectColumns");
+        private static readonly PropertyInfo _retrieveResolverProperty = typeof(TableOperation)
+            .GetRuntimeProperties()
+            .Single(property => property.Name == "RetrieveResolver");
+
         public static DynamicTableEntity Clone(this DynamicTableEntity entity)
             => new DynamicTableEntity
             {
@@ -29,29 +42,17 @@ namespace CloudStub
             };
 
         public static string GetPartitionKey(this TableOperation tableOperation)
-            => (string)typeof(TableOperation)
-            .GetTypeInfo()
-            .GetProperty("PartitionKey", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty)
-            .GetValue(tableOperation);
+            => (string)_partitionKeyProperty.GetValue(tableOperation);
 
         public static string GetRowKey(this TableOperation tableOperation)
-            => (string)typeof(TableOperation)
-            .GetTypeInfo()
-            .GetProperty("RowKey", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty)
-            .GetValue(tableOperation);
+            => (string)_rowKeyProperty.GetValue(tableOperation);
 
         public static IEnumerable<string> GetSelectColumns(this TableOperation tableOperation)
-            => (IEnumerable<string>)typeof(TableOperation)
-            .GetTypeInfo()
-            .GetProperty("SelectColumns", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty)
-            .GetValue(tableOperation);
+            => (IEnumerable<string>)_selectColumnsProperty.GetValue(tableOperation);
 
         public static EntityResolver<T> GetEntityResolver<T>(this TableOperation tableOperation)
         {
-            var retrieveResolverPropertyInfo = typeof(TableOperation)
-                .GetTypeInfo()
-                .GetProperty("RetrieveResolver", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetProperty);
-            var defaultEntityResolver = (Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object>)retrieveResolverPropertyInfo.GetValue(tableOperation);
+            var defaultEntityResolver = (Func<string, string, DateTimeOffset, IDictionary<string, EntityProperty>, string, object>)_retrieveResolverProperty.GetValue(tableOperation);
             return (partitionKey, rowKey, timestamp, properties, etag) => (T)defaultEntityResolver(partitionKey, rowKey, timestamp, properties, etag);
         }
 

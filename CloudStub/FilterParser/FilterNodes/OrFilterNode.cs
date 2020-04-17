@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Microsoft.WindowsAzure.Storage.Table;
+using System.Collections.Generic;
 using System.Linq;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace CloudStub.FilterParser.FilterNodes
 {

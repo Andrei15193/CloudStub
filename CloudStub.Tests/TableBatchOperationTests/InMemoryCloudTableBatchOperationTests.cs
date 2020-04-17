@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace CloudStub.Tests.TableBatchOperationTests
@@ -17,6 +17,17 @@ namespace CloudStub.Tests.TableBatchOperationTests
             var exception = await Assert.ThrowsAsync<ArgumentNullException>("batch", () => CloudTable.ExecuteBatchAsync(null));
 
             Assert.Equal(new ArgumentNullException("batch").Message, exception.Message);
+        }
+
+        [Fact]
+        public async Task ExecuteBatchAsync_WhenBatchIsEmpty_ThrowsException()
+        {
+            await CloudTable.CreateAsync();
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => CloudTable.ExecuteBatchAsync(new TableBatchOperation()));
+
+            Assert.Equal("Cannot execute an empty batch operation", exception.Message);
+            Assert.Null(exception.InnerException);
         }
 
         [Fact]

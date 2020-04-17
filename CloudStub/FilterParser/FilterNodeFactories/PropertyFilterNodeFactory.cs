@@ -1,9 +1,9 @@
-﻿using System;
+﻿using CloudStub.FilterParser.FilterNodes;
+using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CloudStub.FilterParser.FilterNodes;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace CloudStub.FilterParser.FilterNodeFactories
 {

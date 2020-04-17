@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CloudStub.Tests
 {
@@ -9,19 +10,17 @@ namespace CloudStub.Tests
         {
             get
             {
-                yield return new object[] { "#" };
-                yield return new object[] { "?" };
-                yield return new object[] { "\t" };
-                yield return new object[] { "\n" };
-                yield return new object[] { "\r" };
-                yield return new object[] { "/" };
-                yield return new object[] { "\\" };
+                var reservedCharacters = new[] { '#', '?', '\t', '\n', '\r', '/', '\\' };
+                foreach (var reservedCharacter in reservedCharacters)
+                    yield return new object[] { new string(reservedCharacter, 1) };
 
                 for (var controlChar = (char)0x0000; controlChar <= 0x001F; controlChar++)
-                    yield return new object[] { new string(controlChar, 1) };
+                    if (!reservedCharacters.Contains(controlChar))
+                        yield return new object[] { new string(controlChar, 1) };
 
                 for (var controlChar = (char)0x007F; controlChar <= 0x009F; controlChar++)
-                    yield return new object[] { new string(controlChar, 1) };
+                    if (!reservedCharacters.Contains(controlChar))
+                        yield return new object[] { new string(controlChar, 1) };
             }
         }
 

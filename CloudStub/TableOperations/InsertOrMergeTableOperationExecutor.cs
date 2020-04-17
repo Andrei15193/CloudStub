@@ -44,35 +44,13 @@ namespace CloudStub.TableOperations
         public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
         {
             if (!Context.TableExists)
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 404,
-                        HttpStatusName = $"{operationIndex}:The table specified does not exist.",
-                        DetailedExceptionMessage = true,
-                        ErrorDetails =
-                        {
-                            Code = "TableNotFound",
-                            Message = $"{operationIndex}:The table specified does not exist."
-                        }
-                    }
-                );
+
+                return TableDoesNotExistForBatchException(operationIndex);
 
             if (tableOperation.Entity.PartitionKey == null)
                 return new ArgumentNullException("Upserts require a valid PartitionKey");
             if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 400,
-                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                        ErrorDetails =
-                        {
-                            Code = "PropertyValueTooLarge",
-                            Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
-                        }
-                    }
-                );
+                return PropertyValueTooLargeForBatchException(operationIndex);
             var partitionKeyException = ValidateBatckKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
             if (partitionKeyException != null)
                 return partitionKeyException;
@@ -80,18 +58,7 @@ namespace CloudStub.TableOperations
             if (tableOperation.Entity.RowKey == null)
                 return new ArgumentNullException("Upserts require a valid RowKey");
             if (tableOperation.Entity.RowKey.Length > (1 << 10))
-                return FromTemplate(
-                    new StorageExceptionTemplate
-                    {
-                        HttpStatusCode = 400,
-                        HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                        ErrorDetails =
-                        {
-                            Code = "PropertyValueTooLarge",
-                            Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
-                        }
-                    }
-                );
+                return PropertyValueTooLargeForBatchException(operationIndex);
             var rowKeyException = ValidateBatckKeyProperty(tableOperation.Entity.RowKey, operationIndex);
             if (rowKeyException != null)
                 return rowKeyException;

@@ -1,4 +1,6 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using CloudStub.FilterParser;
+using CloudStub.TableOperations;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
@@ -7,14 +9,30 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using CloudStub.FilterParser;
-using CloudStub.TableOperations;
 using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub
 {
     public class InMemoryCloudTable : CloudTable
     {
+        private static readonly ConstructorInfo _tableQuerySegmentConstructor = typeof(TableQuerySegment)
+            .GetTypeInfo()
+            .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
+            .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<DynamicTableEntity>) }));
+        private static readonly PropertyInfo _continuationTokenProperty = typeof(TableQuerySegment)
+            .GetRuntimeProperty(nameof(TableQuerySegment.ContinuationToken));
+
+        private static class TableQuerySegmentInfo<TElement>
+        {
+            public static ConstructorInfo TableQuerySegmentConstructor { get; } = typeof(TableQuerySegment<TElement>)
+                .GetTypeInfo()
+                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
+                .First(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<TElement>) }));
+
+            public static PropertyInfo ContinuationTokenProperty { get; } = typeof(TableQuerySegment<TElement>)
+                .GetRuntimeProperty(nameof(TableQuerySegment<TElement>.ContinuationToken));
+        }
+
         private readonly object _locker;
         private bool _tableExists;
         private readonly IReadOnlyDictionary<TableOperationType, TableOperationExecutor> _tableOperationExecutors;
@@ -30,7 +48,7 @@ namespace CloudStub
 
             _locker = new object();
             _tableExists = false;
-            _entitiesByPartitionKey = new SortedList<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
+            _entitiesByPartitionKey = new SortedDictionary<string, IDictionary<string, DynamicTableEntity>>(StringComparer.Ordinal);
 
             var context = new TableOperationExecutorContext(this);
             _tableOperationExecutors = new Dictionary<TableOperationType, TableOperationExecutor>
@@ -189,6 +207,8 @@ namespace CloudStub
 
         private static Exception _ValidateBatchOperation(TableBatchOperation batch)
         {
+            if (batch.Count == 0)
+                return new InvalidOperationException("Cannot execute an empty batch operation");
             if (batch.Count > 100)
                 return new InvalidOperationException("The maximum number of operations allowed in one batch has been exceeded.");
             if (batch.Count > 1 && batch.Where(operation => operation.OperationType == TableOperationType.Retrieve).Skip(1).Any())
@@ -362,34 +382,20 @@ namespace CloudStub
 
         private static TableQuerySegment _CreateTableQuerySegment(QueryResult<DynamicTableEntity> result)
         {
-            var resultSegment = (TableQuerySegment)typeof(TableQuerySegment)
-                .GetTypeInfo()
-                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
-                .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<DynamicTableEntity>) }))
-                .Invoke(new[] { result.Entities });
+            var resultSegment = (TableQuerySegment)_tableQuerySegmentConstructor.Invoke(new[] { result.Entities });
 
             if (result.ContinuationToken != null)
-                typeof(TableQuerySegment)
-                    .GetTypeInfo()
-                    .GetProperty(nameof(TableQuerySegment.ContinuationToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty)
-                    .SetValue(resultSegment, result.ContinuationToken);
+                _continuationTokenProperty.SetValue(resultSegment, result.ContinuationToken);
 
             return resultSegment;
         }
 
         private static TableQuerySegment<TElement> _CreateTableQuerySegment<TElement>(QueryResult<TElement> result)
         {
-            var resultSegment = (TableQuerySegment<TElement>)typeof(TableQuerySegment<TElement>)
-                .GetTypeInfo()
-                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
-                .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<TElement>) }))
-                .Invoke(new[] { result.Entities });
+            var resultSegment = (TableQuerySegment<TElement>)TableQuerySegmentInfo<TElement>.TableQuerySegmentConstructor.Invoke(new[] { result.Entities });
 
             if (result.ContinuationToken != null)
-                typeof(TableQuerySegment<TElement>)
-                    .GetTypeInfo()
-                    .GetProperty(nameof(TableQuerySegment<TElement>.ContinuationToken), BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty)
-                    .SetValue(resultSegment, result.ContinuationToken);
+                TableQuerySegmentInfo<TElement>.ContinuationTokenProperty.SetValue(resultSegment, result.ContinuationToken);
 
             return resultSegment;
         }
