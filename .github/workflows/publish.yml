@@ -1,0 +1,158 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - master
+      - releases/*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Generate Package Info
+      if: startsWith(github.ref, 'refs/heads/releases/')
+      id: package_info
+      shell: pwsh
+      run: |
+        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+        $releaseBranchName = $env:GITHUB_REF.Substring($env:GITHUB_REF.LastIndexOf('/') + 1)
+        $minorVersionSeparatorIndex = $releaseBranchName.IndexOf('.')
+        $preReleaseVersionSeparatorIndex = $releaseBranchName.IndexOf('-')
+
+        $majorVersion = $releaseBranchName.Substring(0, $minorVersionSeparatorIndex)
+        if ($preReleaseVersionSeparatorIndex -gt -1)
+        {
+          $minorVersion = $releaseBranchName.Substring($minorVersionSeparatorIndex + 1, $preReleaseVersionSeparatorIndex - $minorVersionSeparatorIndex - 1)
+          $preRelease = $releaseBranchName.Substring($preReleaseVersionSeparatorIndex + 1)
+        }
+        else
+        {
+          $minorVersion = $releaseBranchName.Substring($minorVersionSeparatorIndex + 1)
+          $preRelease = $null
+        }
+        $preReleaseOffset = switch ($preRelease)
+        {
+          'alpha' { 1000 }
+          'beta' { 2000 }
+          'rc' { 3000 }
+          default { 0 }
+        }
+
+        $latestRevision = 0
+        (git tag) |
+          Where-Object { $_ -match "^${majorVersion}\.${minorVersion}\.\d+(-\w+\d*)?$" } |
+          ForEach-Object { $latestRevision = [Math]::Max($latestRevision, $_.Split('.')[2].Split('-')[0]) }
+
+        $hasRelease = $false
+        $latestPreRelease = 0
+        (git tag) |
+          Where-Object { $_ -match "^${majorVersion}\.${minorVersion}\.${latestRevision}(-\w+\d*)?$" } |
+          ForEach-Object {
+            if ($_.Contains('-'))
+            {
+              $preReleasePart = $_.Split('-')[1]
+              if ($preRelease -ne $null -and $preReleasePart.StartsWith($preRelease))
+              {
+                $latestPreRelease = [Math]::Max($latestPreRelease, $preReleasePart.Substring($preRelease.Length))
+              }
+            }
+            else
+            {
+              $hasRelease = $true
+            }
+          }
+
+        $currentRevision = if ($hasRelease) { $latestRevision + 1 } else { $latestRevision }
+        if ($preRelease -ne $null)
+        {
+          $assemblyVersion = "${majorVersion}.${minorVersion}.$($preReleaseOffset + $latestPreRelease + 1).${currentRevision}"
+          $packageVersion = "${majorVersion}.${minorVersion}.${currentRevision}-${preRelease}$($latestPreRelease + 1)"
+        }
+        else
+        {
+          $assemblyVersion = "${majorVersion}.${minorVersion}.0.$($currentRevision)"
+          $packageVersion = "${majorVersion}.${minorVersion}.$($currentRevision)"
+        }
+
+        $description = (Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/Description/text()").Node.Data.Trim()
+        $releaseNotes = (
+            (Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/PackageReleaseNotes/text()").Node.Data -split '\r?\n\r?' |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+              Foreach-Object { $_.Trim() }
+          ) -join '%0A'
+
+        Write-Host "::set-output name=package_version::$packageVersion"
+        Write-Host "::set-output name=assembly_version::$assemblyVersion"
+        Write-Host "::set-output name=package_description::$description"
+        Write-Host "::set-output name=package_release_notes::$releaseNotes"
+        Write-Host "::set-output name=is_pre_release::$(($preRelease -ne $null).ToString().ToLowerInvariant())"
+        [System.IO.File]::WriteAllBytes([System.IO.Path]::Combine((pwd), "CloudStub.snk"), [Convert]::FromBase64String("${{ secrets.KeyFile }}"))
+
+    - name: Push Tag
+      if: startsWith(github.ref, 'refs/heads/releases/')
+      uses: anothrNick/github-tag-action@1.17.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CUSTOM_TAG : ${{ steps.package_info.outputs.package_version }}
+        RELEASE_BRANCHES: releases/*
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
+
+    - name: Install Dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test --configuration Release --no-restore --verbosity normal
+
+    - name: Pack
+      if: startsWith(github.ref, 'refs/heads/releases/')
+      shell: pwsh
+      run: |
+        dotnet pack CloudStub.sln `
+          --configuration Release `
+          --output publish `
+          -property:Version=${{ steps.package_info.outputs.assembly_version }} `
+          -property:PackageVersion=${{ steps.package_info.outputs.package_version }} `
+          -property:RepositoryCommit=$env:GITHUB_SHA `
+          -property:SignAssembly=True `
+          -property:AssemblyOriginatorKeyFile=../CloudStub.snk
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/heads/releases/')
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.package_info.outputs.package_version }}
+        release_name: Release ${{ steps.package_info.outputs.package_version }}
+        body: |
+          ${{ steps.package_info.outputs.package_description }}
+
+          Release Notes
+          -------------
+          ${{ steps.package_info.outputs.package_release_notes }}
+        draft: true
+        prerelease: ${{ steps.package_info.outputs.is_pre_release }}
+
+    - name: Upload NuGet Package to Release
+      if: startsWith(github.ref, 'refs/heads/releases/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./publish/CloudStub.${{ steps.package_info.outputs.package_version }}.nupkg
+        asset_name: CloudStub.${{ steps.package_info.outputs.package_version }}.nupkg
+        asset_content_type: application/zip
