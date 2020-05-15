@@ -91,7 +91,7 @@ jobs:
         Write-Host "::set-output name=package_description::$description"
         Write-Host "::set-output name=package_release_notes::$releaseNotes"
         Write-Host "::set-output name=is_pre_release::$(($preRelease -ne $null).ToString().ToLowerInvariant())"
-        [System.IO.File]::WriteAllBytes([System.IO.Path]::Combine((pwd), "CloudStub.snk"), [Convert]::FromBase64String("${{ secrets.KeyFile }}"))
+        [Convert]::FromBase64String("${{ secrets.KeyFile }}") | Set-Content ./CloudStub.snk -AsByteStream
 
     - name: Push Tag
       if: startsWith(github.ref, 'refs/heads/releases/')
