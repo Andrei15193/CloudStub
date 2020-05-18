@@ -2,9 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard1.6</TargetFramework>
-    <Authors>Andrei15193</Authors>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <Description>An in-memory implementation of Azure Cloud Storage Services useful for testing.</Description>
-    <Copyright>Andrei15193</Copyright>
+    <Authors>Andrei Fangli</Authors>
+    <Copyright>Andrei Fangli</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>logo.png</PackageIcon>
