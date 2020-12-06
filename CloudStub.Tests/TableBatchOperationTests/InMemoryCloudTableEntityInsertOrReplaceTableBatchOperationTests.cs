@@ -1,8 +1,7 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
 using System.Collections;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
 namespace CloudStub.Tests.TableBatchOperationTests
@@ -28,7 +27,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
                 + $"RequestId:{exception.RequestInformation.ServiceRequestID}\n"
                 + @"Time:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$",
                 exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -39,19 +38,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(
-                "^0:The table specified does not exist.\n"
-                + $"RequestId:{exception.RequestInformation.ServiceRequestID}\n"
-                + @"Time:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$",
-                exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Equal("TableNotFound", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
                 @$"^0:The table specified does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -204,7 +195,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -214,10 +205,6 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ContentMd5);
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
-
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
 
             switch (partitionKey)
             {
@@ -238,7 +225,6 @@ namespace CloudStub.Tests.TableBatchOperationTests
                     );
                     break;
             }
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -259,7 +245,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -270,15 +256,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
                 @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -315,7 +297,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -326,9 +308,6 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             switch (rowKey)
             {
                 case "/":
@@ -348,7 +327,6 @@ namespace CloudStub.Tests.TableBatchOperationTests
                     );
                     break;
             }
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -369,7 +347,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -379,16 +357,6 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ContentMd5);
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
-
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
-            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-            Assert.Matches(
-                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-            );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -410,7 +378,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -420,16 +388,6 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ContentMd5);
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
-
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
-            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-            Assert.Matches(
-                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-            );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -451,7 +409,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -462,15 +420,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
                 @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -492,7 +446,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -503,15 +457,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
                 @$"^0:The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }

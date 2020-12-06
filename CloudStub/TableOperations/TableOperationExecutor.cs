@@ -1,7 +1,7 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub.TableOperations
@@ -24,7 +24,7 @@ namespace CloudStub.TableOperations
             var timestamp = DateTimeOffset.UtcNow;
             var properties = entity is DynamicTableEntity dynamicTableEntity
                 ? dynamicTableEntity.Clone().Properties
-                : TableEntity.Flatten(entity, operationContext);
+                : _GetProperties(entity);
             properties.Remove(nameof(TableEntity.PartitionKey));
             properties.Remove(nameof(TableEntity.RowKey));
             properties.Remove(nameof(TableEntity.Timestamp));
@@ -50,8 +50,8 @@ namespace CloudStub.TableOperations
                 && @char != '\n'
                 && @char != '\r';
 
-        protected static Exception ValidateEntityProperties(ITableEntity entity, OperationContext operationContext)
-            => (from property in (entity is DynamicTableEntity dynamicTableEntity ? dynamicTableEntity.Properties : TableEntity.Flatten(entity, operationContext))
+        protected static Exception ValidateEntityProperties(ITableEntity entity)
+            => (from property in (entity is DynamicTableEntity dynamicTableEntity ? dynamicTableEntity.Properties : _GetProperties(entity))
                 where property.Key != nameof(TableEntity.PartitionKey)
                     && property.Key != nameof(TableEntity.RowKey)
                     && property.Key != nameof(TableEntity.Timestamp)
@@ -125,7 +125,7 @@ namespace CloudStub.TableOperations
         }
 
         protected static Exception ValidateEntityPropertiesForBatch(ITableEntity entity, OperationContext operationContext, int operationIndex)
-            => (from property in (entity is DynamicTableEntity dynamicTableEntity ? dynamicTableEntity.Properties : TableEntity.Flatten(entity, operationContext))
+            => (from property in (entity is DynamicTableEntity dynamicTableEntity ? dynamicTableEntity.Properties : _GetProperties(entity))
                 where property.Key != nameof(TableEntity.PartitionKey)
                     && property.Key != nameof(TableEntity.RowKey)
                     && property.Key != nameof(TableEntity.Timestamp)
@@ -149,6 +149,37 @@ namespace CloudStub.TableOperations
                 default:
                     return null;
             }
+        }
+
+        private static IDictionary<string, EntityProperty> _GetProperties(ITableEntity entity)
+        {
+            var entityPropertyFactories = new Func<Type, object, EntityProperty>[]
+            {
+                (type, value) => type == typeof(byte[]) && value is byte[] byteArray ?  EntityProperty.GeneratePropertyForByteArray(byteArray) : null,
+                (type, value) => type == typeof(bool) ? EntityProperty.GeneratePropertyForBool((bool)value) : null,
+                (type, value) => type == typeof(bool?) && value is bool @bool ?  EntityProperty.GeneratePropertyForBool(@bool) : null,
+                (type, value) => type == typeof(DateTime) && value is DateTime dateTime ?  EntityProperty.GeneratePropertyForDateTimeOffset(dateTime == default ? default(DateTimeOffset) : dateTime) : null,
+                (type, value) => type == typeof(DateTime?) && value is DateTime dateTime ?  EntityProperty.GeneratePropertyForDateTimeOffset(dateTime == default ? default(DateTimeOffset) : dateTime) : null,
+                (type, value) => type == typeof(DateTimeOffset) ?  EntityProperty.GeneratePropertyForDateTimeOffset((DateTimeOffset)value) : null,
+                (type, value) => type == typeof(DateTimeOffset?) && value is DateTimeOffset dateTimeOffset ?  EntityProperty.GeneratePropertyForDateTimeOffset(dateTimeOffset) : null,
+                (type, value) => type == typeof(int) ?  EntityProperty.GeneratePropertyForInt((int)value) : null,
+                (type, value) => type == typeof(int?) && value is int @int ?  EntityProperty.GeneratePropertyForInt(@int) : null,
+                (type, value) => type == typeof(long) ?  EntityProperty.GeneratePropertyForLong((long)value) : null,
+                (type, value) => type == typeof(long?) && value is long @long ?  EntityProperty.GeneratePropertyForLong(@long) : null,
+                (type, value) => type == typeof(double) ?  EntityProperty.GeneratePropertyForDouble((double)value) : null,
+                (type, value) => type == typeof(double?) && value is double @double ?  EntityProperty.GeneratePropertyForDouble(@double) : null,
+                (type, value) => type == typeof(Guid) ? EntityProperty.GeneratePropertyForGuid((Guid)value) : null,
+                (type, value) => type == typeof(Guid?) && value is Guid guid ?  EntityProperty.GeneratePropertyForGuid(guid) : null,
+                (type, value) => type == typeof(string) && value is string @string ?  EntityProperty.GeneratePropertyForString(@string) : null,
+            };
+            return (
+                from property in entity.GetType().GetProperties()
+                from entityPropertyFactory in entityPropertyFactories
+                let entityProperty = entityPropertyFactory(property.PropertyType, property.GetValue(entity))
+                where entityProperty is object
+                select (Key: property.Name, Value: entityProperty)
+            )
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         }
     }
 }

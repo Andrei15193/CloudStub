@@ -1,7 +1,7 @@
-﻿using CloudStub.FilterParser.FilterNodes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CloudStub.FilterParser.FilterNodes;
 
 namespace CloudStub.FilterParser.FilterNodeFactories
 {

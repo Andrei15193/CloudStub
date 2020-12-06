@@ -9,9 +9,9 @@ namespace CloudStub.Tests.TableOperationTests
         [Fact]
         public async Task ExecuteAsync_WhenOperationIsNull_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("operation", () => CloudTable.ExecuteAsync(null));
+            var exception = await Assert.ThrowsAsync<NullReferenceException>(() => CloudTable.ExecuteAsync(null));
 
-            Assert.Equal(new ArgumentNullException("operation").Message, exception.Message);
+            Assert.Equal(new NullReferenceException().Message, exception.Message);
         }
     }
 }

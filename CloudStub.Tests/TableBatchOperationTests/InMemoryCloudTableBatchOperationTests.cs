@@ -1,8 +1,7 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
 using System.Collections;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
 namespace CloudStub.Tests.TableBatchOperationTests
@@ -100,7 +99,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             );
 
             Assert.Equal("Element 1 in the batch returned an unexpected response code.", exception.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.Source);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
             Assert.Null(exception.InnerException);
@@ -111,15 +110,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            Assert.Equal("StorageException", exception.RequestInformation.ExceptionInfo.Type);
-            Assert.Equal("Element 1 in the batch returned an unexpected response code.", exception.RequestInformation.ExceptionInfo.Message);
-            Assert.Equal("Microsoft.WindowsAzure.Storage", exception.RequestInformation.ExceptionInfo.Source);
             Assert.Equal("InvalidDuplicateRow", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
                 @$"^1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
-            Assert.Null(exception.RequestInformation.ExceptionInfo.InnerExceptionInfo);
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }

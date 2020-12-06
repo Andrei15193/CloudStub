@@ -1,7 +1,7 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
 namespace CloudStub.Tests.TableOperationTests

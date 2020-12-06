@@ -1,26 +1,25 @@
-﻿using CloudStub.FilterParser;
-using CloudStub.TableOperations;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using CloudStub.FilterParser;
+using CloudStub.TableOperations;
+using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub
 {
     public class InMemoryCloudTable : CloudTable
     {
-        private static readonly ConstructorInfo _tableQuerySegmentConstructor = typeof(TableQuerySegment)
+        private static readonly ConstructorInfo _tableQuerySegmentConstructor = typeof(TableQuerySegment<DynamicTableEntity>)
             .GetTypeInfo()
             .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.CreateInstance)
             .Single(constructor => constructor.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(new[] { typeof(List<DynamicTableEntity>) }));
-        private static readonly PropertyInfo _continuationTokenProperty = typeof(TableQuerySegment)
-            .GetRuntimeProperty(nameof(TableQuerySegment.ContinuationToken));
+        private static readonly PropertyInfo _continuationTokenProperty = typeof(TableQuerySegment<DynamicTableEntity>)
+            .GetRuntimeProperty(nameof(TableQuerySegment<DynamicTableEntity>.ContinuationToken));
 
         private static class TableQuerySegmentInfo<TElement>
         {
@@ -158,9 +157,6 @@ namespace CloudStub
 
         public override Task<TableResult> ExecuteAsync(TableOperation operation, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
         {
-            if (operation == null)
-                throw new ArgumentNullException(nameof(operation));
-
             if (_tableOperationExecutors.TryGetValue(operation.OperationType, out var tableOperationExecutor))
                 lock (_locker)
                 {
@@ -173,13 +169,13 @@ namespace CloudStub
             return Task.FromException<TableResult>(new NotImplementedException());
         }
 
-        public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch)
+        public override Task<TableBatchResult> ExecuteBatchAsync(TableBatchOperation batch)
             => ExecuteBatchAsync(batch, null, null);
 
-        public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext)
+        public override Task<TableBatchResult> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteBatchAsync(batch, requestOptions, operationContext, CancellationToken.None);
 
-        public override Task<IList<TableResult>> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        public override Task<TableBatchResult> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
         {
             if (batch == null)
                 throw new ArgumentNullException(nameof(batch));
@@ -188,9 +184,10 @@ namespace CloudStub
             {
                 var batchOperationException = _ValidateBatchOperation(batch) ?? _ValidateOperationsInBatch(batch, operationContext);
                 if (batchOperationException != null)
-                    return Task.FromException<IList<TableResult>>(batchOperationException);
+                    return Task.FromException<TableBatchResult>(batchOperationException);
 
-                return Task.FromResult<IList<TableResult>>(
+                var result = new TableBatchResult();
+                result.AddRange(
                     batch
                         .Select(
                             tableOperation => _tableOperationExecutors.TryGetValue(tableOperation.OperationType, out var tableOperationExecutor)
@@ -200,8 +197,9 @@ namespace CloudStub
                                 )
                                 : null
                         )
-                        .ToList()
                 );
+
+                return Task.FromResult<TableBatchResult>(result);
             }
         }
 
@@ -242,13 +240,13 @@ namespace CloudStub
         private TableOperation _WithoutSelectionList(TableOperation tableOperation)
             => TableOperation.Retrieve(tableOperation.GetPartitionKey(), tableOperation.GetRowKey(), tableOperation.GetEntityResolver<object>());
 
-        public override Task<TableQuerySegment> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token)
+        public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token)
             => ExecuteQuerySegmentedAsync(query, token, null, null);
 
-        public override Task<TableQuerySegment> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+        public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
 
-        public override Task<TableQuerySegment> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
         {
             lock (_locker)
             {
@@ -380,9 +378,9 @@ namespace CloudStub
             return result;
         }
 
-        private static TableQuerySegment _CreateTableQuerySegment(QueryResult<DynamicTableEntity> result)
+        private static TableQuerySegment<DynamicTableEntity> _CreateTableQuerySegment(QueryResult<DynamicTableEntity> result)
         {
-            var resultSegment = (TableQuerySegment)_tableQuerySegmentConstructor.Invoke(new[] { result.Entities });
+            var resultSegment = (TableQuerySegment<DynamicTableEntity>)_tableQuerySegmentConstructor.Invoke(new[] { result.Entities });
 
             if (result.ContinuationToken != null)
                 _continuationTokenProperty.SetValue(resultSegment, result.ContinuationToken);

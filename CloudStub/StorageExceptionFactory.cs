@@ -1,25 +1,18 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Xml;
+﻿using System;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace CloudStub
 {
     internal static class StorageExceptionFactory
     {
-        private static readonly PropertyInfo _extendedErrorInformationProperty = typeof(RequestResult).GetRuntimeProperty("ExtendedErrorInformation");
-
         public static StorageException InvalidTableNameLengthException()
             => _FromTemplate(
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
                         Message = "The specified resource name length is not within the permissible limits."
@@ -34,7 +27,7 @@ namespace CloudStub
                     HttpStatusCode = 404,
                     HttpStatusName = "Not Found",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "TableNotFound",
                         Message = "The table specified does not exist."
@@ -49,7 +42,7 @@ namespace CloudStub
                     HttpStatusCode = 404,
                     HttpStatusName = $"{operationIndex}:The table specified does not exist.",
                     DetailedExceptionMessage = true,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "TableNotFound",
                         Message = $"{operationIndex}:The table specified does not exist."
@@ -63,7 +56,7 @@ namespace CloudStub
                 {
                     HttpStatusCode = 404,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "TableNotFound",
                         Message = $"{operationIndex}:The table specified does not exist."
@@ -78,7 +71,7 @@ namespace CloudStub
                     HttpStatusCode = 409,
                     HttpStatusName = "Conflict",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "TableAlreadyExists",
                         Message = "The table specified already exists."
@@ -91,9 +84,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "InvalidInput",
                         Message = "One of the request inputs is not valid."
@@ -106,7 +99,7 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty
                 }
             );
@@ -117,7 +110,7 @@ namespace CloudStub
                 {
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "InvalidInput",
                         Message = $"{operationIndex}:Bad Request - Error in query syntax."
@@ -130,9 +123,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "InvalidResourceName",
                         Message = "The specifed resource name contains invalid characters."
@@ -147,7 +140,7 @@ namespace CloudStub
                     HttpStatusCode = 404,
                     HttpStatusName = "Not Found",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "ResourceNotFound",
                         Message = "The specified resource does not exist."
@@ -162,7 +155,7 @@ namespace CloudStub
                     HttpStatusCode = 404,
                     HttpStatusName = "The specified resource does not exist.",
                     DetailedExceptionMessage = true,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "ResourceNotFound",
                         Message = "The specified resource does not exist."
@@ -175,9 +168,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "PropertiesNeedValue",
                         Message = "The values are not specified for all properties in the entity."
@@ -190,9 +183,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "PropertyValueTooLarge",
                         Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
@@ -206,7 +199,7 @@ namespace CloudStub
                 {
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "PropertyValueTooLarge",
                         Message = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
@@ -219,9 +212,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "InvalidInput",
                         Message = "Bad Request - Error in query syntax."
@@ -234,9 +227,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
                         Message = $"One of the request inputs is out of range."
@@ -250,7 +243,7 @@ namespace CloudStub
                 {
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
                         Message = $"{operationIndex}:One of the request inputs is out of range."
@@ -263,12 +256,12 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
-                        Message = $"The 'PartitionKey' parameter of value '{_Escape(partitionKey)}' is out of range."
+                        Message = $"The 'PartitionKey' parameter of value '{partitionKey}' is out of range."
                     }
                 }
             );
@@ -279,10 +272,10 @@ namespace CloudStub
                 {
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
-                        Message = $"{operationIndex}:The 'PartitionKey' parameter of value '{_Escape(partitionKey)}' is out of range."
+                        Message = $"{operationIndex}:The 'PartitionKey' parameter of value '{partitionKey}' is out of range."
                     }
                 }
             );
@@ -292,12 +285,12 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
-                        Message = $"The 'RowKey' parameter of value '{_Escape(rowKey)}' is out of range."
+                        Message = $"The 'RowKey' parameter of value '{rowKey}' is out of range."
                     }
                 }
             );
@@ -308,10 +301,10 @@ namespace CloudStub
                 {
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
-                        Message = $"{operationIndex}:The 'RowKey' parameter of value '{_Escape(partitionKey)}' is out of range."
+                        Message = $"{operationIndex}:The 'RowKey' parameter of value '{partitionKey}' is out of range."
                     }
                 }
             );
@@ -321,9 +314,9 @@ namespace CloudStub
                 new StorageExceptionTemplate
                 {
                     HttpStatusCode = 400,
-                    HttpStatusName = "Bad Request",
+                    HttpStatusName = "The remote server returned an error: (400) Bad Request.",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
                         Message = $"The '{propertyName}' parameter of value '{value:MM/dd/yyyy HH:mm:ss}' is out of range."
@@ -337,7 +330,7 @@ namespace CloudStub
                 {
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "OutOfRangeInput",
                         Message = $"{operationIndex}:The '{propertyName}' parameter of value '{value:MM/dd/yyyy HH:mm:ss}' is out of range."
@@ -352,7 +345,7 @@ namespace CloudStub
                     HttpStatusCode = 409,
                     HttpStatusName = "Conflict",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "EntityAlreadyExists",
                         Message = "The specified entity already exists."
@@ -367,7 +360,7 @@ namespace CloudStub
                     HttpStatusCode = 409,
                     HttpStatusName = "The specified entity already exists.",
                     DetailedExceptionMessage = true,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "EntityAlreadyExists",
                         Message = "The specified entity already exists."
@@ -382,7 +375,7 @@ namespace CloudStub
                     HttpStatusCode = 412,
                     HttpStatusName = "Precondition Failed",
                     ErrorCode = string.Empty,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "UpdateConditionNotSatisfied",
                         Message = "The update condition specified in the request was not satisfied."
@@ -396,7 +389,7 @@ namespace CloudStub
                 {
                     HttpStatusCode = 412,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
                         Code = "UpdateConditionNotSatisfied",
                         Message = "The update condition specified in the request was not satisfied."
@@ -411,10 +404,10 @@ namespace CloudStub
                     HttpStatusCode = 400,
                     HttpStatusName = $"Element {operationIndex} in the batch returned an unexpected response code.",
                     ErrorCode = null,
-                    ErrorDetails =
+                    ErrorDetails = new StorageExceptionErrorDetailTemplate
                     {
-                            Code = "InvalidDuplicateRow",
-                            Message = $"{operationIndex}:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request."
+                        Code = "InvalidDuplicateRow",
+                        Message = $"{operationIndex}:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request."
                     }
                 }
             );
@@ -424,67 +417,47 @@ namespace CloudStub
 
         private static StorageException _FromTemplate(StorageExceptionTemplate template, Exception innerException)
         {
-            var requestId = Guid.NewGuid();
+            var requestId = Guid.NewGuid().ToString();
             var requestTimestamp = DateTimeOffset.UtcNow;
 
             var exceptionMessage = template.DetailedExceptionMessage
                 ? $"{template.HttpStatusName}\nRequestId:{requestId}\nTime:{requestTimestamp:yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'}"
                 : template.HttpStatusName;
 
-            return _FromXml(
-                exceptionMessage,
-                $@"<?xml version=""1.0"" encoding=""UTF-8""?>
-<!--An exception has occurred. For more information please deserialize this message via RequestResult.TranslateFromExceptionMessage.-->
-<RequestResult>
-    <HTTPStatusCode>{template.HttpStatusCode}</HTTPStatusCode>
-    <HttpStatusMessage>{_Escape(template.HttpStatusName)}</HttpStatusMessage>
-    <TargetLocation>Primary</TargetLocation>
-    <ServiceRequestID>{requestId}</ServiceRequestID>
-    <ContentMd5 />
-    <Etag />
-    <RequestDate>{requestTimestamp:ddd, d MMM yyy HH':'mm':'ss 'GMT'}</RequestDate>
-    {(template.ErrorCode != null ? $"<ErrorCode>{_Escape(template.ErrorCode)}</ErrorCode>" : "")}
-    <StartTime>{requestTimestamp:ddd, d MMM yyy HH':'mm':'ss 'GMT'}</StartTime>
-    <EndTime>{requestTimestamp:ddd, d MMM yyy HH':'mm':'ss 'GMT'}</EndTime>
-    <Error>
-        <Code>{_Escape(template.ErrorDetails.Code)}</Code>
-        <Message>{_Escape(template.ErrorDetails.Message)}
-RequestId:{requestId}
-Time:{requestTimestamp:yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'}</Message>
-    </Error>
-</RequestResult>",
-                innerException);
-        }
-
-        private static StorageException _FromXml(string message, string xmlContent, Exception innerException)
-        {
-            var requestResult = new RequestResult();
-            using (var stringReader = new StringReader(xmlContent))
-            using (var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings { CheckCharacters = false }))
-                requestResult.ReadXml(xmlReader);
-
-            if (string.IsNullOrEmpty(requestResult.ExtendedErrorInformation.ErrorCode))
-                _extendedErrorInformationProperty.SetValue(requestResult, null);
-
-            var storageException = new StorageException(requestResult, message, innerException)
+            var extendedErrorInformation = default(StorageExtendedErrorInformation);
+            if (template.ErrorDetails is object)
             {
-                Source = "Microsoft.WindowsAzure.Storage",
+                extendedErrorInformation = new StorageExtendedErrorInformation();
+                typeof(StorageExtendedErrorInformation).GetProperty(nameof(StorageExtendedErrorInformation.ErrorCode)).SetValue(extendedErrorInformation, template.ErrorDetails.Code);
+                typeof(StorageExtendedErrorInformation).GetProperty(nameof(StorageExtendedErrorInformation.ErrorMessage)).SetValue(extendedErrorInformation, $"{template.ErrorDetails.Message}\nRequestId:{requestId}\nTime:{requestTimestamp:yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'}");
+            }
+
+            var requestResult = new RequestResult
+            {
+                HttpStatusCode = template.HttpStatusCode
+            };
+            typeof(RequestResult).GetProperty(nameof(RequestResult.HttpStatusMessage)).SetValue(requestResult, template.HttpStatusName);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.ServiceRequestID)).SetValue(requestResult, requestId);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.ContentMd5)).SetValue(requestResult, null);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.Etag)).SetValue(requestResult, null);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.RequestDate)).SetValue(requestResult, requestTimestamp.ToString("ddd, d MMM yyy HH':'mm':'ss 'GMT'"));
+            typeof(RequestResult).GetProperty(nameof(RequestResult.TargetLocation)).SetValue(requestResult, StorageLocation.Primary);
+
+            typeof(RequestResult).GetProperty(nameof(RequestResult.ExtendedErrorInformation)).SetValue(requestResult, extendedErrorInformation);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.ErrorCode)).SetValue(requestResult, template.ErrorCode);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.IsRequestServerEncrypted)).SetValue(requestResult, true);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.StartTime)).SetValue(requestResult, requestTimestamp);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.EndTime)).SetValue(requestResult, requestTimestamp);
+            typeof(RequestResult).GetProperty(nameof(RequestResult.RequestCharge)).SetValue(requestResult, default(decimal?));
+
+            var storageException = new StorageException(requestResult, exceptionMessage, innerException)
+            {
+                Source = "Microsoft.Azure.Cosmos.Table",
             };
             requestResult.Exception = storageException;
 
             return storageException;
         }
-
-        private static string _Escape(string value)
-            => value != null && value.Any(char.IsControl)
-                ? value
-                    .Aggregate(
-                        new StringBuilder(),
-                        (builder, @char) => char.IsControl(@char)
-                            ? builder.Append("&#x").Append(((short)@char).ToString("X4")).Append(';')
-                            : builder.Append(@char))
-                    .ToString()
-                : value;
 
         private class StorageExceptionTemplate
         {
@@ -496,7 +469,7 @@ Time:{requestTimestamp:yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'}</Message>
 
             public string ErrorCode { get; set; }
 
-            public StorageExceptionErrorDetailTemplate ErrorDetails { get; } = new StorageExceptionErrorDetailTemplate();
+            public StorageExceptionErrorDetailTemplate ErrorDetails { get; set; }
         }
 
         private class StorageExceptionErrorDetailTemplate

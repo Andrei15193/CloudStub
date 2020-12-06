@@ -1,6 +1,6 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace CloudStub.FilterParser
 {

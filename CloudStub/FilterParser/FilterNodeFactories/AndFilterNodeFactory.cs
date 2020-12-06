@@ -1,5 +1,5 @@
-using CloudStub.FilterParser.FilterNodes;
 using System.Collections.Generic;
+using CloudStub.FilterParser.FilterNodes;
 
 namespace CloudStub.FilterParser.FilterNodeFactories
 {

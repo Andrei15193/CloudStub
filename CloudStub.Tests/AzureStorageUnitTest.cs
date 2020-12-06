@@ -1,10 +1,8 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Table;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace CloudStub.Tests
 {
@@ -18,12 +16,6 @@ namespace CloudStub.Tests
     /// </summary>
     public abstract class AzureStorageUnitTest : IDisposable
     {
-        private const string _testBlobContainerPrefix = "testblobcontainer";
-        private static int _blobCount = 0;
-
-        private const string _testQueuePrefix = "testqueue";
-        private static int _queueCount = 0;
-
         private const string _testTablePrefix = "testtable";
         private static int _tableCount = 0;
 
@@ -37,25 +29,11 @@ namespace CloudStub.Tests
             .DefaultIfEmpty("UseDevelopmentStorage=true;")
             .First();
 
-        private readonly Lazy<string> _blobContainerName;
-        private readonly Lazy<string> _testQueueName;
         private readonly Lazy<string> _testTableName;
 
         /// <summary>Initializes a new instance of the <see cref="AzureStorageUnitTest"/> class.</summary>
         protected AzureStorageUnitTest()
-        {
-            _blobContainerName = new Lazy<string>(() => Task.Run(_GetTestBlobContainerNameAsync).Result);
-            _testQueueName = new Lazy<string>(() => Task.Run(_GetTestQueueNameAsync).Result);
-            _testTableName = new Lazy<string>(() => Task.Run(_GetTestTableNameAsync).Result);
-        }
-
-        /// <summary>Gets the test blob container name. Unique for each test method.</summary>
-        protected string TestBlobContainerName
-            => _blobContainerName.Value;
-
-        /// <summary>Gets the test queue name. Unique for each test method.</summary>
-        protected string TestQueueName
-            => _testQueueName.Value;
+            => _testTableName = new Lazy<string>(() => Task.Run(_GetTestTableNameAsync).Result);
 
         /// <summary>Gets the test table name. Unique for each test method.</summary>
         protected string TestTableName
@@ -76,77 +54,8 @@ namespace CloudStub.Tests
         }
 
         private Task _ClearTestEnvironmentAsync()
-            => Task.WhenAll(
-                _ClearTestBlobContainersAsync(),
-                _ClearTableAsync(),
-                _ClearTestQueuesAsync()
-            );
+            => _ClearTableAsync();
 
-        private static async Task<string> _GetTestBlobContainerNameAsync()
-        {
-            var blobContainerName = $"{_testBlobContainerPrefix}{Interlocked.Increment(ref _blobCount)}";
-            var blobContainer = CloudStorageAccount
-                .Parse(AzureStorageConnectionString)
-                .CreateCloudBlobClient()
-                .GetContainerReference(blobContainerName);
-            if (await blobContainer.ExistsAsync().ConfigureAwait(false))
-                await _ClearBlobs(blobContainer).ConfigureAwait(false);
-            else
-                await blobContainer.CreateAsync(BlobContainerPublicAccessType.Off, new BlobRequestOptions(), new OperationContext());
-
-            return blobContainerName;
-        }
-
-        private static async Task _ClearBlobs(CloudBlobContainer blobContainer)
-        {
-            var deletedBlobs = 0;
-            do
-            {
-                var blobsToDelete = (await blobContainer.ListBlobsSegmentedAsync(null).ConfigureAwait(false)).Results.OfType<ICloudBlob>().ToList();
-
-                await Task.WhenAll(
-                    from blobToDelete in blobsToDelete
-                    select blobToDelete.DeleteIfExistsAsync()
-                ).ConfigureAwait(false);
-                deletedBlobs = blobsToDelete.Count;
-            } while (deletedBlobs > 0);
-        }
-
-        private async Task _ClearTestBlobContainersAsync()
-        {
-            if (_blobContainerName.IsValueCreated)
-                await CloudStorageAccount
-                    .Parse(AzureStorageConnectionString)
-                    .CreateCloudBlobClient()
-                    .GetContainerReference(_blobContainerName.Value)
-                    .DeleteIfExistsAsync()
-                    .ConfigureAwait(false);
-        }
-
-        private static async Task<string> _GetTestQueueNameAsync()
-        {
-            var queueName = $"{_testQueuePrefix}{Interlocked.Increment(ref _queueCount)}";
-            var queue = CloudStorageAccount
-                .Parse(AzureStorageConnectionString)
-                .CreateCloudQueueClient()
-                .GetQueueReference(queueName);
-
-            if (await queue.ExistsAsync().ConfigureAwait(false))
-                await queue.ClearAsync();
-
-            return queueName;
-        }
-
-        private async Task _ClearTestQueuesAsync()
-        {
-            if (_testQueueName.IsValueCreated)
-                await CloudStorageAccount
-                    .Parse(AzureStorageConnectionString)
-                    .CreateCloudQueueClient()
-                    .GetQueueReference(_testQueueName.Value)
-                    .DeleteIfExistsAsync()
-                    .ConfigureAwait(false);
-        }
 
         private async Task<string> _GetTestTableNameAsync()
         {

@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
 namespace CloudStub.TableOperations
@@ -39,7 +38,7 @@ namespace CloudStub.TableOperations
             if (!entity.RowKey.All(IsValidKeyCharacter))
                 return InvalidRowKeyException(entity.RowKey);
 
-            var entityPropertyException = ValidateEntityProperties(entity, operationContext);
+            var entityPropertyException = ValidateEntityProperties(entity);
             if (entityPropertyException != null)
                 return entityPropertyException;
 
