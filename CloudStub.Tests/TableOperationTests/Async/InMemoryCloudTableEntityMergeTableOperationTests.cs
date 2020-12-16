@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests.TableBatchOperationTests
+namespace CloudStub.Tests.TableOperationTests.Async
 {
-    public class InMemoryCloudTableEntityMergeTableBatchOperationTests : BaseInMemoryCloudTableTests
+    public class InMemoryCloudTableEntityMergeTableOperationTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenTableDoesNotExist_ThrowsException()
@@ -18,15 +18,9 @@ namespace CloudStub.Tests.TableBatchOperationTests
                 ETag = "*"
             };
 
-            var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(testEntity) })
-            );
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
 
-            Assert.Matches(
-                "^0:The table specified does not exist.\n"
-                + $"RequestId:{exception.RequestInformation.ServiceRequestID}\n"
-                + @"Time:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$",
-                exception.Message);
+            Assert.Equal("Not Found", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -35,12 +29,12 @@ namespace CloudStub.Tests.TableBatchOperationTests
 
             Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Null(exception.RequestInformation.ErrorCode);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("TableNotFound", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
-                @$"^0:The table specified does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                @$"^The table specified does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
 
@@ -83,8 +77,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResults = await CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(updatedTestEntity) });
-            var tableResult = Assert.Single(tableResults);
+            var tableResult = await CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity));
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
             Assert.Equal(204, tableResult.HttpStatusCode);
@@ -128,8 +121,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
                 ETag = tableResult.Etag
             };
 
-            var tableResults = await CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(updatedTestEntity) });
-            tableResult = Assert.Single(tableResults);
+            tableResult = await CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity));
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
             Assert.Equal(204, tableResult.HttpStatusCode);
@@ -239,14 +231,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                "item",
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(testEntity) })
+                "Merge requires a valid PartitionKey",
+                () => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity))
             );
 
-            Assert.Equal(
-                new ArgumentNullException("item", "A batch non-retrieve operation requires a non-null partition key and row key.").Message,
-                exception.Message
-            );
+            Assert.Equal(new ArgumentNullException("Merge requires a valid PartitionKey").Message, exception.Message);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
@@ -260,11 +249,9 @@ namespace CloudStub.Tests.TableBatchOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(testEntity) })
-            );
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
 
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
+            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -273,7 +260,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Null(exception.RequestInformation.ErrorCode);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             switch (partitionKey)
@@ -282,15 +269,56 @@ namespace CloudStub.Tests.TableBatchOperationTests
                 case "\\":
                     Assert.Equal("InvalidInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
                     Assert.Matches(
-                        @$"^0:Bad Request - Error in query syntax.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                        @$"^Bad Request - Error in query syntax.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                         exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
                     );
+                    break;
+
+                case "\u0000":
+                case "\u0001":
+                case "\u0002":
+                case "\u0003":
+                case "\u0004":
+                case "\u0005":
+                case "\u0006":
+                case "\u0007":
+                case "\u0008":
+                case "\u0009":
+                case "\u000A":
+                case "\u000C":
+                case "\u000B":
+                case "\u000D":
+                case "\u000E":
+                case "\u000F":
+                case "\u0010":
+                case "\u0011":
+                case "\u0012":
+                case "\u0013":
+                case "\u0014":
+                case "\u0015":
+                case "\u0016":
+                case "\u0017":
+                case "\u0018":
+                case "\u0019":
+                case "\u001A":
+                case "\u001B":
+                case "\u001C":
+                case "\u001D":
+                case "\u001E":
+                case "\u001F":
+                case "\u007F":
+                case "\u0081":
+                case "\u008D":
+                case "\u008F":
+                case "\u0090":
+                case "\u009D":
+                    Assert.Null(exception.RequestInformation.ExtendedErrorInformation);
                     break;
 
                 default:
                     Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
                     Assert.Matches(
-                        @$"^0:One of the request inputs is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                        @$"^One of the request inputs is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                         exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
                     );
                     break;
@@ -311,14 +339,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                "item",
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(testEntity) })
+                "Merge requires a valid RowKey",
+                () => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity))
             );
 
-            Assert.Equal(
-                new ArgumentNullException("item", "A batch non-retrieve operation requires a non-null partition key and row key.").Message,
-                exception.Message
-            );
+            Assert.Equal(new ArgumentNullException("Merge requires a valid RowKey").Message, exception.Message);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
@@ -332,11 +357,9 @@ namespace CloudStub.Tests.TableBatchOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Merge(testEntity) })
-            );
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
 
-            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
+            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -345,7 +368,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Null(exception.RequestInformation.ErrorCode);
+            Assert.Empty(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             switch (rowKey)
@@ -354,15 +377,56 @@ namespace CloudStub.Tests.TableBatchOperationTests
                 case "\\":
                     Assert.Equal("InvalidInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
                     Assert.Matches(
-                        @$"^0:Bad Request - Error in query syntax.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                        @$"^Bad Request - Error in query syntax.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                         exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
                     );
+                    break;
+
+                case "\u0000":
+                case "\u0001":
+                case "\u0002":
+                case "\u0003":
+                case "\u0004":
+                case "\u0005":
+                case "\u0006":
+                case "\u0007":
+                case "\u0008":
+                case "\u0009":
+                case "\u000A":
+                case "\u000C":
+                case "\u000B":
+                case "\u000D":
+                case "\u000E":
+                case "\u000F":
+                case "\u0010":
+                case "\u0011":
+                case "\u0012":
+                case "\u0013":
+                case "\u0014":
+                case "\u0015":
+                case "\u0016":
+                case "\u0017":
+                case "\u0018":
+                case "\u0019":
+                case "\u001A":
+                case "\u001B":
+                case "\u001C":
+                case "\u001D":
+                case "\u001E":
+                case "\u001F":
+                case "\u007F":
+                case "\u0081":
+                case "\u008D":
+                case "\u008F":
+                case "\u0090":
+                case "\u009D":
+                    Assert.Null(exception.RequestInformation.ExtendedErrorInformation);
                     break;
 
                 default:
                     Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
                     Assert.Matches(
-                        @$"^0:One of the request inputs is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                        @$"^One of the request inputs is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                         exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
                     );
                     break;

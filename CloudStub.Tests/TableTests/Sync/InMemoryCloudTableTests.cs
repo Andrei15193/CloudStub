@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections;
-using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests
+namespace CloudStub.Tests.TableTests.Sync
 {
     public class InMemoryCloudTableTests : BaseInMemoryCloudTableTests
     {
@@ -15,47 +15,47 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public void CreateAsync_WhenTableNameIsNull_ThrowsException()
+        public void Create_WhenTableNameIsNull_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentNullException>("tableName", () => GetCloudTable(null));
             Assert.Equal(new ArgumentNullException("tableName").Message, exception.Message);
         }
 
         [Fact]
-        public void CreateAsync_WhenTableNameIsEmpty_ThrowsException()
+        public void Create_WhenTableNameIsEmpty_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentException>("tableName", () => GetCloudTable(""));
             Assert.Equal(new ArgumentException("The argument must not be empty string.", "tableName").Message, exception.Message);
         }
 
         [Fact]
-        public async Task ExistsAsync_WhenTableDoesNotExist_ReturnsFalse()
+        public void Exists_WhenTableDoesNotExist_ReturnsFalse()
         {
-            Assert.False(await CloudTable.ExistsAsync(null, null));
+            Assert.False(CloudTable.Exists(null, null));
         }
 
         [Fact]
-        public async Task ExistsAsync_WhenTableExist_ReturnsTrue()
+        public void Exists_WhenTableExist_ReturnsTrue()
         {
-            await CloudTable.CreateAsync(null, null);
+            CloudTable.Create(null, null, null, null, null);
 
-            Assert.True(await CloudTable.ExistsAsync(null, null));
+            Assert.True(CloudTable.Exists(null, null));
         }
 
         [Fact]
-        public async Task CreateAsync_WhenTableDoesNotExist_CreatesTable()
+        public void Create_WhenTableDoesNotExist_CreatesTable()
         {
-            await CloudTable.CreateAsync(null, null);
+            CloudTable.Create(null, null, null, null, null);
 
-            Assert.True(await CloudTable.ExistsAsync(null, null));
+            Assert.True(CloudTable.Exists(null, null));
         }
 
         [Fact]
-        public async Task CreateAsync_WhenTableExists_ThrowsException()
+        public void Create_WhenTableExists_ThrowsException()
         {
-            await CloudTable.CreateAsync(null, null);
+            CloudTable.Create(null, null, null, null, null);
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.CreateAsync(null, null));
+            var exception = Assert.Throws<StorageException>(() => CloudTable.Create(null, null, null, null, null));
 
             Assert.Equal("Conflict", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -81,11 +81,11 @@ namespace CloudStub.Tests
         [Theory]
         [InlineData("invalid_table_name")]
         [InlineData("1nvalid")]
-        public async Task CreateAsync_WhenTableNameIsInvalid_ThrowsException(string tableName)
+        public void Create_WhenTableNameIsInvalid_ThrowsException(string tableName)
         {
             var cloudTable = GetCloudTable(tableName);
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => cloudTable.CreateAsync(null, null));
+            var exception = Assert.Throws<StorageException>(() => cloudTable.Create(null, null, null, null, null));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -110,11 +110,11 @@ namespace CloudStub.Tests
 
         [Theory]
         [InlineData("tables")]
-        public async Task CreateAsync_WhenTableNameIsReserved_ThrowsException(string tableName)
+        public void Create_WhenTableNameIsReserved_ThrowsException(string tableName)
         {
             var cloudTable = GetCloudTable(tableName);
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => cloudTable.CreateAsync(null, null));
+            var exception = Assert.Throws<StorageException>(() => cloudTable.Create(null, null, null, null, null));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -142,11 +142,11 @@ namespace CloudStub.Tests
         [InlineData("t")]
         [InlineData("tt")]
         [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
-        public async Task CreateAsync_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+        public void Create_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
         {
             var cloudTable = GetCloudTable(tableName);
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => cloudTable.CreateAsync(null, null));
+            var exception = Assert.Throws<StorageException>(() => cloudTable.Create(null, null, null, null, null));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -170,25 +170,25 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task CreateIfNotExistsAsync_WhenTableDoesNotExist_ReturnsFalse()
+        public void CreateIfNotExists_WhenTableDoesNotExist_ReturnsFalse()
         {
-            Assert.True(await CloudTable.CreateIfNotExistsAsync(null, null));
+            Assert.True(CloudTable.CreateIfNotExists(null, null));
 
-            Assert.True(await CloudTable.ExistsAsync(null, null));
+            Assert.True(CloudTable.Exists(null, null));
         }
 
         [Fact]
-        public async Task CreateIfNotExistsAsync_WhenTableExists_ReturnsFalse()
+        public void CreateIfNotExists_WhenTableExists_ReturnsFalse()
         {
-            await CloudTable.CreateAsync(null, null);
+            CloudTable.Create(null, null, null, null, null);
 
-            Assert.False(await CloudTable.CreateIfNotExistsAsync(null, null));
+            Assert.False(CloudTable.CreateIfNotExists(null, null));
         }
 
         [Fact]
-        public async Task DeleteAsync_WhenTableDoesNotExist_ThrowsException()
+        public void Delete_WhenTableDoesNotExist_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.DeleteAsync(null, null));
+            var exception = Assert.Throws<StorageException>(() => CloudTable.Delete(null, null));
 
             Assert.Equal("Not Found", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -212,56 +212,56 @@ namespace CloudStub.Tests
         }
 
         [Fact]
-        public async Task DeleteAsync_WhenTableExists_DeletesTable()
+        public void Delete_WhenTableExists_DeletesTable()
         {
-            await CloudTable.CreateAsync(null, null);
+            CloudTable.Create(null, null, null, null, null);
 
-            await CloudTable.DeleteAsync(null, null);
+            CloudTable.Delete(null, null);
 
-            Assert.False(await CloudTable.ExistsAsync(null, null));
+            Assert.False(CloudTable.Exists(null, null));
         }
 
         [Fact]
-        public async Task DeleteIfExistsAsync_WhenTableDoesNotExist_ReturnsFalse()
+        public void DeleteIfExists_WhenTableDoesNotExist_ReturnsFalse()
         {
-            Assert.False(await CloudTable.DeleteIfExistsAsync(null, null));
+            Assert.False(CloudTable.DeleteIfExists(null, null));
         }
 
         [Fact]
-        public async Task DeleteIfExistsAsync_WhenTableExists_ReturnsTrue()
+        public void DeleteIfExists_WhenTableExists_ReturnsTrue()
         {
-            await CloudTable.CreateAsync(null, null);
+            CloudTable.Create(null, null, null, null, null);
 
-            Assert.True(await CloudTable.DeleteIfExistsAsync(null, null));
-            Assert.False(await CloudTable.DeleteIfExistsAsync(null, null));
+            Assert.True(CloudTable.DeleteIfExists(null, null));
+            Assert.False(CloudTable.DeleteIfExists(null, null));
         }
 
         [Fact]
-        public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()
+        public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()
         {
-            await CloudTable.CreateAsync();
-            await CloudTable.ExecuteAsync(TableOperation.Insert(new TableEntity("partition-key", "row-key")));
-            await CloudTable.DeleteAsync();
+            CloudTable.Create();
+            CloudTable.Execute(TableOperation.Insert(new TableEntity("partition-key", "row-key")));
+            CloudTable.Delete();
 
             if (!UseInMemory)
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                Thread.Sleep(TimeSpan.FromMinutes(1));
 
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var entities = await GetAllEntitiesAsync();
+            var entities = GetAllEntities();
             Assert.Empty(entities);
         }
 
         [Fact]
-        public async Task GetPermissionsAsync_WhenNotImplemented_ThrowsException()
+        public void GetPermissions_WhenNotImplemented_ThrowsException()
         {
-            await Assert.ThrowsAsync<NotImplementedException>(() => CloudTable.GetPermissionsAsync(null, null));
+            Assert.Throws<NotImplementedException>(() => CloudTable.GetPermissions(null, null));
         }
 
         [Fact]
-        public async Task SetPermissionsAsync_WhenNotImplemented_ThrowsException()
+        public void SetPermissions_WhenNotImplemented_ThrowsException()
         {
-            await Assert.ThrowsAsync<NotImplementedException>(() => CloudTable.SetPermissionsAsync(null, null, null));
+            Assert.Throws<NotImplementedException>(() => CloudTable.SetPermissions(null, null, null));
         }
     }
 }

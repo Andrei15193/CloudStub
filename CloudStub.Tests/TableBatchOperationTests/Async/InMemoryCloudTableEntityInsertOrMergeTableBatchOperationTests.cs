@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests.TableBatchOperationTests
+namespace CloudStub.Tests.TableBatchOperationTests.Async
 {
-    public class InMemoryCloudTableEntityInsertOrReplaceTableBatchOperationTests : BaseInMemoryCloudTableTests
+    public class InMemoryCloudTableEntityInsertOrMergeTableBatchOperationTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenTableDoesNotExist_ThrowsException()
@@ -19,7 +19,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             };
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(
@@ -50,49 +50,11 @@ namespace CloudStub.Tests.TableBatchOperationTests
         [Fact]
         public void TableOperation_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.InsertOrReplace(null));
+            var exception = Assert.Throws<ArgumentNullException>(
+                "entity",
+                () => TableOperation.InsertOrMerge(null)
+            );
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
-        }
-
-        [Fact]
-        public async Task TableOperation_InsertOrReplaceOperation_RepleacesEntity()
-        {
-            var testEntity = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                StringProp = "string value",
-                Int32Prop = 4
-            };
-            var updatedTestEntity = new TestEntity
-            {
-                PartitionKey = testEntity.PartitionKey,
-                RowKey = testEntity.RowKey,
-                ETag = "this is not a vaild e-tag, it's ignored",
-                Int32Prop = 8,
-                Int64Prop = 8
-            };
-            await CloudTable.CreateAsync();
-            await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
-
-            var tableResults = await CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(updatedTestEntity) });
-            var tableResult = Assert.Single(tableResults);
-
-            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
-            Assert.Equal(204, tableResult.HttpStatusCode);
-            Assert.Equal(resultEntity.ETag, tableResult.Etag);
-
-            var entities = await GetAllEntitiesAsync();
-            var entity = Assert.Single(entities);
-            var entityProps = entity.WriteEntity(null);
-            Assert.False(entityProps.ContainsKey(nameof(TestEntity.StringProp)));
-            Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), entityProps[nameof(TestEntity.Int32Prop)]);
-            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), entityProps[nameof(TestEntity.Int64Prop)]);
-
-            Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
-            Assert.Equal(entity.RowKey, resultEntity.RowKey);
-            Assert.Equal(entity.ETag, resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
         }
 
         [Fact]
@@ -164,13 +126,54 @@ namespace CloudStub.Tests.TableBatchOperationTests
         }
 
         [Fact]
-        public async Task ExecuteAsync_InsertOrReplaceOperationWhenPartitionKeyIsNull_ThrowsException()
+        public async Task TableOperation_InsertOrMergeOperation_MergesEntities()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string value",
+                Int32Prop = 4
+            };
+            var updatedTestEntity = new TestEntity
+            {
+                PartitionKey = testEntity.PartitionKey,
+                RowKey = testEntity.RowKey,
+                ETag = "this is not a vaild e-tag, it's ignored",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+            await CloudTable.CreateAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
+
+            var tableResults = await CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(updatedTestEntity) });
+            var tableResult = Assert.Single(tableResults);
+
+            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
+            Assert.Equal(204, tableResult.HttpStatusCode);
+            Assert.Equal(resultEntity.ETag, tableResult.Etag);
+
+            var entities = await GetAllEntitiesAsync();
+            var entity = Assert.Single(entities);
+            var entityProps = entity.WriteEntity(null);
+            Assert.Equal(new EntityProperty(testEntity.StringProp), entityProps[nameof(TestEntity.StringProp)]);
+            Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), entityProps[nameof(TestEntity.Int32Prop)]);
+            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), entityProps[nameof(TestEntity.Int64Prop)]);
+
+            Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
+            Assert.Equal(entity.RowKey, resultEntity.RowKey);
+            Assert.Equal(entity.ETag, resultEntity.ETag);
+            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "item",
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(new TableEntity(null, "row-key")) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(new TableEntity(null, "row-key")) })
             );
 
             Assert.Equal(
@@ -191,7 +194,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
@@ -241,7 +244,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
@@ -272,7 +275,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "item",
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(new TableEntity("partition-key", null)) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(new TableEntity("partition-key", null)) })
             );
 
             Assert.Equal(
@@ -293,7 +296,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
@@ -343,7 +346,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
@@ -357,6 +360,12 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ContentMd5);
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -374,7 +383,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
@@ -388,6 +397,12 @@ namespace CloudStub.Tests.TableBatchOperationTests
             Assert.Null(exception.RequestInformation.ContentMd5);
             Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The property value exceeds the maximum allowed size \(64KB\). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -405,7 +420,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
@@ -442,7 +457,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrReplace(testEntity) })
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.InsertOrMerge(testEntity) })
             );
 
             Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);

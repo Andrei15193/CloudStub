@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests.TableOperationTests
+namespace CloudStub.Tests.TableOperationTests.Async
 {
-    public class InMemoryCloudTableEntityMergeTableOperationTests : BaseInMemoryCloudTableTests
+    public class InMemoryCloudTableEntityReplaceTableOperationTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenTableDoesNotExist_ThrowsException()
@@ -18,7 +18,7 @@ namespace CloudStub.Tests.TableOperationTests
                 ETag = "*"
             };
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(testEntity)));
 
             Assert.Equal("Not Found", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -44,40 +44,38 @@ namespace CloudStub.Tests.TableOperationTests
         [Fact]
         public void TableOperation_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.Merge(null));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.Replace(null));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
         [Fact]
         public void TableOperation_WhenETagIsMissing_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentException>(() => TableOperation.Merge(new TableEntity()));
-            Assert.Equal(new ArgumentException("Merge requires an ETag (which may be the '*' wildcard).").Message, exception.Message);
+            var exception = Assert.Throws<ArgumentException>(() => TableOperation.Replace(new TableEntity()));
+            Assert.Equal(new ArgumentException("Replace requires an ETag (which may be the '*' wildcard).").Message, exception.Message);
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenETagsIsWildcard_MergesEntity()
+        public async Task ExecuteAsync_WhenETagsIsWildcard_ReplacesEntity()
         {
             var startTime = DateTimeOffset.UtcNow;
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
-                StringProp = "string-prop",
-                Int32Prop = 4
+                StringProp = "string-prop"
             };
             var updatedTestEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
                 Int32Prop = 8,
-                Int64Prop = 8,
                 ETag = "*"
             };
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var tableResult = await CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity));
+            var tableResult = await CloudTable.ExecuteAsync(TableOperation.Replace(updatedTestEntity));
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
             Assert.Equal(204, tableResult.HttpStatusCode);
@@ -90,9 +88,8 @@ namespace CloudStub.Tests.TableOperationTests
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.RowKey)));
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.Timestamp)));
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.ETag)));
-            Assert.Equal(new EntityProperty(testEntity.StringProp), actualProps[nameof(TestEntity.StringProp)]);
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.StringProp)));
             Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), actualProps[nameof(TestEntity.Int32Prop)]);
-            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), actualProps[nameof(TestEntity.Int64Prop)]);
 
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
@@ -101,14 +98,13 @@ namespace CloudStub.Tests.TableOperationTests
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenETagsMatch_MergesEntity()
+        public async Task ExecuteAsync_WhenETagsMatch_ReplacesEntity()
         {
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
-                StringProp = "string-prop",
-                Int32Prop = 4
+                StringProp = "string-prop"
             };
             await CloudTable.CreateAsync();
             var tableResult = await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
@@ -117,11 +113,10 @@ namespace CloudStub.Tests.TableOperationTests
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
                 Int32Prop = 8,
-                Int64Prop = 8,
                 ETag = tableResult.Etag
             };
 
-            tableResult = await CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity));
+            tableResult = await CloudTable.ExecuteAsync(TableOperation.Replace(updatedTestEntity));
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
             Assert.Equal(204, tableResult.HttpStatusCode);
@@ -134,9 +129,8 @@ namespace CloudStub.Tests.TableOperationTests
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.RowKey)));
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.Timestamp)));
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.ETag)));
-            Assert.Equal(new EntityProperty(testEntity.StringProp), actualProps[nameof(TestEntity.StringProp)]);
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.StringProp)));
             Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), actualProps[nameof(TestEntity.Int32Prop)]);
-            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), actualProps[nameof(TestEntity.Int64Prop)]);
 
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
@@ -155,7 +149,7 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(testEntity)));
 
             Assert.Equal("Not Found", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -196,7 +190,7 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.ExecuteAsync(TableOperation.InsertOrReplace(testEntity));
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(updatedTestEntity)));
 
             Assert.Equal("Precondition Failed", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -231,11 +225,11 @@ namespace CloudStub.Tests.TableOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                "Merge requires a valid PartitionKey",
-                () => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity))
+                "Replace requires a valid PartitionKey",
+                () => CloudTable.ExecuteAsync(TableOperation.Replace(testEntity))
             );
 
-            Assert.Equal(new ArgumentNullException("Merge requires a valid PartitionKey").Message, exception.Message);
+            Assert.Equal(new ArgumentNullException("Replace requires a valid PartitionKey").Message, exception.Message);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
@@ -249,7 +243,7 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(testEntity)));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -339,11 +333,11 @@ namespace CloudStub.Tests.TableOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                "Merge requires a valid RowKey",
-                () => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity))
+                "Replace requires a valid RowKey",
+                () => CloudTable.ExecuteAsync(TableOperation.Replace(testEntity))
             );
 
-            Assert.Equal(new ArgumentNullException("Merge requires a valid RowKey").Message, exception.Message);
+            Assert.Equal(new ArgumentNullException("Replace requires a valid RowKey").Message, exception.Message);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
@@ -357,7 +351,7 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(testEntity)));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -454,7 +448,7 @@ namespace CloudStub.Tests.TableOperationTests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(updatedTestEntity)));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -496,7 +490,7 @@ namespace CloudStub.Tests.TableOperationTests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(updatedTestEntity)));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
@@ -538,7 +532,7 @@ namespace CloudStub.Tests.TableOperationTests
             await CloudTable.CreateAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Merge(updatedTestEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.Replace(updatedTestEntity)));
 
             Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);

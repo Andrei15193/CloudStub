@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests.TableOperationTests
+namespace CloudStub.Tests.TableOperationTests.Async
 {
     public class InMemoryCloudTableEntityInsertTableOperationTests : BaseInMemoryCloudTableTests
     {

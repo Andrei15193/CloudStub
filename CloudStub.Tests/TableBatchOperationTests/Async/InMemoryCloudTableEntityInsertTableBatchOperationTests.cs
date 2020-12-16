@@ -1,12 +1,13 @@
-using System;
+﻿using System;
 using System.Collections;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests.TableOperationTests
+namespace CloudStub.Tests.TableBatchOperationTests.Async
 {
-    public class InMemoryCloudTableEntityInsertOrMergeTableOperationTests : BaseInMemoryCloudTableTests
+    public class InMemoryCloudTableEntityInsertTableBatchOperationTests : BaseInMemoryCloudTableTests
     {
         [Fact]
         public async Task ExecuteAsync_WhenTableDoesNotExist_ThrowsException()
@@ -18,9 +19,11 @@ namespace CloudStub.Tests.TableOperationTests
                 ETag = "*"
             };
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("Not Found", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -29,12 +32,12 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("TableNotFound", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
-                @$"^The table specified does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                @$"^0:The table specified does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
 
@@ -44,7 +47,7 @@ namespace CloudStub.Tests.TableOperationTests
         [Fact]
         public void TableOperation_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.InsertOrMerge(null));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableOperation.Insert(null));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
@@ -75,6 +78,57 @@ namespace CloudStub.Tests.TableOperationTests
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
             Assert.Equal(entity.ETag, resultEntity.ETag);
             Assert.Equal(entity.Timestamp, resultEntity.Timestamp);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_InsertOperationWhenEntityAlreadyExists_ThrowsException()
+        {
+            await CloudTable.CreateAsync();
+            await CloudTable.ExecuteAsync(TableOperation.Insert(new TableEntity("partition-key", "row-key")));
+
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(new TableEntity("partition-key", "row-key")) })
+            );
+
+            Assert.Matches(
+                "^The specified entity already exists.\n"
+                + $"RequestId:{exception.RequestInformation.ServiceRequestID}\n"
+                + @"Time:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$",
+                exception.Message);
+            Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
+            Assert.Null(exception.HelpLink);
+            Assert.Equal(-2146233088, exception.HResult);
+            Assert.Null(exception.InnerException);
+            Assert.IsAssignableFrom<IDictionary>(exception.Data);
+
+            Assert.Equal(409, exception.RequestInformation.HttpStatusCode);
+            Assert.Null(exception.RequestInformation.ContentMd5);
+            Assert.Null(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.Etag);
+
+            Assert.Equal("EntityAlreadyExists", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^The specified entity already exists.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
+
+            Assert.Same(exception, exception.RequestInformation.Exception);
+        }
+
+        [Fact]
+        public async Task TableOperation_InsertOperationWhenEchoContentIsFalse_HasNoEffect()
+        {
+            var startTime = DateTimeOffset.UtcNow;
+            await CloudTable.CreateAsync();
+
+            var tableResults = await CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(new TableEntity("partition-key", "row-key"), echoContent: false) });
+            var tableResult = Assert.Single(tableResults);
+
+            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
+            Assert.Equal("partition-key", resultEntity.PartitionKey);
+            Assert.Equal("row-key", resultEntity.RowKey);
+            Assert.NotNull(resultEntity.ETag);
+            Assert.True(startTime.AddSeconds(-10) <= resultEntity.Timestamp.ToUniversalTime());
         }
 
         [Fact]
@@ -117,56 +171,18 @@ namespace CloudStub.Tests.TableOperationTests
         }
 
         [Fact]
-        public async Task TableOperation_InsertOrMergeOperation_MergesEntities()
-        {
-            var testEntity = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                StringProp = "string value",
-                Int32Prop = 4
-            };
-            var updatedTestEntity = new TestEntity
-            {
-                PartitionKey = testEntity.PartitionKey,
-                RowKey = testEntity.RowKey,
-                ETag = "this is not a vaild e-tag, it's ignored",
-                Int32Prop = 8,
-                Int64Prop = 8
-            };
-            await CloudTable.CreateAsync();
-            await CloudTable.ExecuteAsync(TableOperation.Insert(testEntity));
-
-            var tableResult = await CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(updatedTestEntity));
-
-            var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
-            Assert.Equal(204, tableResult.HttpStatusCode);
-            Assert.Equal(resultEntity.ETag, tableResult.Etag);
-
-            var entities = await GetAllEntitiesAsync();
-            var entity = Assert.Single(entities);
-            var entityProps = entity.WriteEntity(null);
-            Assert.Equal(new EntityProperty(testEntity.StringProp), entityProps[nameof(TestEntity.StringProp)]);
-            Assert.Equal(new EntityProperty(updatedTestEntity.Int32Prop), entityProps[nameof(TestEntity.Int32Prop)]);
-            Assert.Equal(new EntityProperty(updatedTestEntity.Int64Prop), entityProps[nameof(TestEntity.Int64Prop)]);
-
-            Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
-            Assert.Equal(entity.RowKey, resultEntity.RowKey);
-            Assert.Equal(entity.ETag, resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
-        }
-
-        [Fact]
         public async Task ExecuteAsync_WhenPartitionKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                "Upserts require a valid PartitionKey",
-                () => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(new TableEntity(null, "row-key")))
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(new TableEntity(null, "row-key")) })
             );
 
-            Assert.Equal(new ArgumentNullException("Upserts require a valid PartitionKey").Message, exception.Message);
+            Assert.Equal(
+                new ArgumentNullException(null, "A batch non-retrieve operation requires a non-null partition key and row key. (Parameter 'item')").Message,
+                exception.Message
+            );
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
@@ -180,9 +196,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -191,69 +209,14 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            switch (partitionKey)
-            {
-                case "/":
-                case "\\":
-                    Assert.Equal("InvalidInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-                    Assert.Matches(
-                        @$"^Bad Request - Error in query syntax.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-                        exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-                    );
-                    break;
-
-                case "\u0000":
-                case "\u0001":
-                case "\u0002":
-                case "\u0003":
-                case "\u0004":
-                case "\u0005":
-                case "\u0006":
-                case "\u0007":
-                case "\u0008":
-                case "\u0009":
-                case "\u000A":
-                case "\u000C":
-                case "\u000B":
-                case "\u000D":
-                case "\u000E":
-                case "\u000F":
-                case "\u0010":
-                case "\u0011":
-                case "\u0012":
-                case "\u0013":
-                case "\u0014":
-                case "\u0015":
-                case "\u0016":
-                case "\u0017":
-                case "\u0018":
-                case "\u0019":
-                case "\u001A":
-                case "\u001B":
-                case "\u001C":
-                case "\u001D":
-                case "\u001E":
-                case "\u001F":
-                case "\u007F":
-                case "\u0081":
-                case "\u008D":
-                case "\u008F":
-                case "\u0090":
-                case "\u009D":
-                    Assert.Null(exception.RequestInformation.ExtendedErrorInformation);
-                    break;
-
-                default:
-                    Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-                    Assert.Matches(
-                        @$"^One of the request inputs is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-                        exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-                    );
-                    break;
-            }
+            Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^0:The 'PartitionKey' parameter of value '" + Regex.Escape(partitionKey) + @$"' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -269,9 +232,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -280,7 +245,7 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
@@ -298,11 +263,13 @@ namespace CloudStub.Tests.TableOperationTests
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                "Upserts require a valid RowKey",
-                () => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(new TableEntity("partition-key", null)))
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(new TableEntity("partition-key", null)) })
             );
 
-            Assert.Equal(new ArgumentNullException("Upserts require a valid RowKey").Message, exception.Message);
+            Assert.Equal(
+                new ArgumentNullException(null, "A batch non-retrieve operation requires a non-null partition key and row key. (Parameter 'item')").Message,
+                exception.Message
+            );
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
@@ -316,9 +283,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -327,69 +296,14 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
-            switch (rowKey)
-            {
-                case "/":
-                case "\\":
-                    Assert.Equal("InvalidInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-                    Assert.Matches(
-                        @$"^Bad Request - Error in query syntax.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-                        exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-                    );
-                    break;
-
-                case "\u0000":
-                case "\u0001":
-                case "\u0002":
-                case "\u0003":
-                case "\u0004":
-                case "\u0005":
-                case "\u0006":
-                case "\u0007":
-                case "\u0008":
-                case "\u0009":
-                case "\u000A":
-                case "\u000C":
-                case "\u000B":
-                case "\u000D":
-                case "\u000E":
-                case "\u000F":
-                case "\u0010":
-                case "\u0011":
-                case "\u0012":
-                case "\u0013":
-                case "\u0014":
-                case "\u0015":
-                case "\u0016":
-                case "\u0017":
-                case "\u0018":
-                case "\u0019":
-                case "\u001A":
-                case "\u001B":
-                case "\u001C":
-                case "\u001D":
-                case "\u001E":
-                case "\u001F":
-                case "\u007F":
-                case "\u0081":
-                case "\u008D":
-                case "\u008F":
-                case "\u0090":
-                case "\u009D":
-                    Assert.Null(exception.RequestInformation.ExtendedErrorInformation);
-                    break;
-
-                default:
-                    Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-                    Assert.Matches(
-                        @$"^One of the request inputs is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-                        exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-                    );
-                    break;
-            }
+            Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            Assert.Matches(
+                @$"^0:The 'RowKey' parameter of value '" + Regex.Escape(rowKey) + @$"' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
+            );
 
             Assert.Same(exception, exception.RequestInformation.Exception);
         }
@@ -405,9 +319,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -416,7 +332,7 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
@@ -440,9 +356,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -451,7 +369,7 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
@@ -475,9 +393,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -486,7 +406,7 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("PropertyValueTooLarge", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
@@ -510,9 +430,11 @@ namespace CloudStub.Tests.TableOperationTests
             };
             await CloudTable.CreateAsync();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(() => CloudTable.ExecuteAsync(TableOperation.InsertOrMerge(testEntity)));
+            var exception = await Assert.ThrowsAsync<StorageException>(
+                () => CloudTable.ExecuteBatchAsync(new TableBatchOperation { TableOperation.Insert(testEntity) })
+            );
 
-            Assert.Equal("The remote server returned an error: (400) Bad Request.", exception.Message);
+            Assert.Matches(@"^Element \d+ in the batch returned an unexpected response code.$", exception.Message);
             Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
             Assert.Null(exception.HelpLink);
             Assert.Equal(-2146233088, exception.HResult);
@@ -521,12 +443,12 @@ namespace CloudStub.Tests.TableOperationTests
 
             Assert.Equal(400, exception.RequestInformation.HttpStatusCode);
             Assert.Null(exception.RequestInformation.ContentMd5);
-            Assert.Empty(exception.RequestInformation.ErrorCode);
+            Assert.Null(exception.RequestInformation.ErrorCode);
             Assert.Null(exception.RequestInformation.Etag);
 
             Assert.Equal("OutOfRangeInput", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
             Assert.Matches(
-                @$"^The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
+                @$"^0:The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
                 exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
             );
 

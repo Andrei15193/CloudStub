@@ -17,6 +17,25 @@ namespace CloudStub.Tests
 
         protected CloudTable CloudTable { get; }
 
+        protected IReadOnlyCollection<ITableEntity> GetAllEntities()
+            => GetAllEntities(CloudTable);
+
+        protected static IReadOnlyCollection<ITableEntity> GetAllEntities(CloudTable cloudTable)
+        {
+            var query = new TableQuery();
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<ITableEntity>();
+
+            do
+            {
+                var result = cloudTable.ExecuteQuerySegmented(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
         protected Task<IReadOnlyCollection<ITableEntity>> GetAllEntitiesAsync()
             => GetAllEntitiesAsync(CloudTable);
 

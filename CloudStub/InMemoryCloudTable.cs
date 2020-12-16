@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CloudStub.FilterParser;
 using CloudStub.TableOperations;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
@@ -62,13 +63,47 @@ namespace CloudStub
             };
         }
 
+        public override void Create(IndexingMode? indexingMode, int? throughput = null, int? defaultTimeToLive = null)
+            => Create(null, null, null, throughput, defaultTimeToLive);
+
+        public override void Create(TableRequestOptions requestOptions = null, OperationContext operationContext = null, string serializedIndexingPolicy = null, int? throughput = null, int? defaultTimeToLive = null)
+        {
+            if (Name.Length < 3 || Name.Length > 63)
+                throw InvalidTableNameLengthException();
+
+            var reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "tables" };
+            if (reservedTableNames.Contains(Name))
+                throw InvalidInputException();
+
+            if (!Regex.IsMatch(Name, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
+                throw InvalidResourceNameException();
+
+            lock (_locker)
+                if (_tableExists)
+                    throw TableAlreadyExistsException();
+                else
+                    _tableExists = true;
+        }
+
         public override Task CreateAsync()
-            => CreateAsync(null, null);
+            => CreateAsync(null, null, null, null, null, CancellationToken.None);
+
+        public override Task CreateAsync(CancellationToken cancellationToken)
+            => CreateAsync(null, null, null, null, null, cancellationToken);
 
         public override Task CreateAsync(TableRequestOptions requestOptions, OperationContext operationContext)
-            => CreateAsync(requestOptions, operationContext, CancellationToken.None);
+            => CreateAsync(requestOptions, operationContext, null, null, null, CancellationToken.None);
 
         public override Task CreateAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => CreateAsync(requestOptions, operationContext, null, null, null, cancellationToken);
+
+        public override Task CreateAsync(int? throughput, IndexingMode indexingMode, int? defaultTimeToLive, CancellationToken cancellationToken)
+            => CreateAsync(null, null, null, throughput, defaultTimeToLive, cancellationToken);
+
+        public override Task CreateAsync(int? throughput, string serializedIndexingPolicy, int? defaultTimeToLive, CancellationToken cancellationToken)
+            => CreateAsync(null, null, serializedIndexingPolicy, throughput, defaultTimeToLive, cancellationToken);
+
+        public override Task CreateAsync(TableRequestOptions requestOptions, OperationContext operationContext, string serializedIndexingPolicy, int? throughput, int? defaultTimeToLive, CancellationToken cancellationToken)
         {
             if (Name.Length < 3 || Name.Length > 63)
                 return Task.FromException(InvalidTableNameLengthException());
@@ -89,13 +124,35 @@ namespace CloudStub
             return Task.CompletedTask;
         }
 
+        public override bool CreateIfNotExists(IndexingMode indexingMode, int? throughput = null, int? defaultTimeToLive = null)
+            => CreateIfNotExists(null, null, null, throughput, defaultTimeToLive);
+
+        public override bool CreateIfNotExists(TableRequestOptions requestOptions = null, OperationContext operationContext = null, string serializedIndexingPolicy = null, int? throughput = null, int? defaultTimeToLive = null)
+        {
+            lock (_locker)
+            {
+                var result = !_tableExists;
+                _tableExists = true;
+                return result;
+            }
+        }
+
         public override Task<bool> CreateIfNotExistsAsync()
-            => CreateIfNotExistsAsync(null, null);
+            => CreateIfNotExistsAsync(null, null, null, null, null, CancellationToken.None);
+
+        public override Task<bool> CreateIfNotExistsAsync(CancellationToken cancellationToken)
+            => CreateIfNotExistsAsync(null, null, null, null, null, cancellationToken);
 
         public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
-            => CreateIfNotExistsAsync(requestOptions, operationContext, CancellationToken.None);
+            => CreateIfNotExistsAsync(requestOptions, operationContext, null, null, null, CancellationToken.None);
 
         public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => CreateIfNotExistsAsync(requestOptions, operationContext, null, null, null, cancellationToken);
+
+        public override Task<bool> CreateIfNotExistsAsync(IndexingMode indexingMode, int? throughput, int? defaultTimeToLive, CancellationToken cancellationToken)
+            => CreateIfNotExistsAsync(null, null, null, throughput, defaultTimeToLive, cancellationToken);
+
+        public override Task<bool> CreateIfNotExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext, string serializedIndexingPolicy, int? throughput, int? defaultTimeToLive, CancellationToken cancellationToken)
         {
             lock (_locker)
             {
@@ -106,7 +163,10 @@ namespace CloudStub
         }
 
         public override Task<bool> ExistsAsync()
-            => ExistsAsync(null, null);
+            => ExistsAsync(null, null, CancellationToken.None);
+
+        public override Task<bool> ExistsAsync(CancellationToken cancellationToken)
+            => ExistsAsync(null, null, cancellationToken);
 
         public override Task<bool> ExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => ExistsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -114,8 +174,23 @@ namespace CloudStub
         public override Task<bool> ExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => Task.FromResult(_tableExists);
 
+        public override void Delete(TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            lock (_locker)
+            {
+                if (!_tableExists)
+                    throw ResourceNotFoundException();
+
+                _tableExists = false;
+                _entitiesByPartitionKey.Clear();
+            }
+        }
+
         public override Task DeleteAsync()
-            => DeleteAsync(null, null);
+            => DeleteAsync(null, null, CancellationToken.None);
+
+        public override Task DeleteAsync(CancellationToken cancellationToken)
+            => DeleteAsync(null, null, cancellationToken);
 
         public override Task DeleteAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => DeleteAsync(requestOptions, operationContext, CancellationToken.None);
@@ -133,8 +208,21 @@ namespace CloudStub
             }
         }
 
+        public override bool DeleteIfExists(TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            lock (_locker)
+            {
+                var result = _tableExists;
+                _tableExists = false;
+                return result;
+            }
+        }
+
         public override Task<bool> DeleteIfExistsAsync()
-            => DeleteIfExistsAsync(null, null);
+            => DeleteIfExistsAsync(null, null, CancellationToken.None);
+
+        public override Task<bool> DeleteIfExistsAsync(CancellationToken cancellationToken)
+            => DeleteIfExistsAsync(null, null, cancellationToken);
 
         public override Task<bool> DeleteIfExistsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => DeleteIfExistsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -149,8 +237,28 @@ namespace CloudStub
             }
         }
 
+        public override TableResult Execute(TableOperation operation, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            if (operation is null)
+                throw new ArgumentNullException(nameof(operation));
+
+            if (_tableOperationExecutors.TryGetValue(operation.OperationType, out var tableOperationExecutor))
+                lock (_locker)
+                {
+                    var exception = tableOperationExecutor.Validate(operation, operationContext);
+                    if (exception != null)
+                        throw exception;
+                    return tableOperationExecutor.Execute(operation, operationContext);
+                }
+
+            throw new NotImplementedException();
+        }
+
         public override Task<TableResult> ExecuteAsync(TableOperation operation)
-            => ExecuteAsync(operation, null, null);
+            => ExecuteAsync(operation, null, null, CancellationToken.None);
+
+        public override Task<TableResult> ExecuteAsync(TableOperation operation, CancellationToken cancellationToken)
+            => ExecuteAsync(operation, null, null, cancellationToken);
 
         public override Task<TableResult> ExecuteAsync(TableOperation operation, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteAsync(operation, requestOptions, operationContext, CancellationToken.None);
@@ -169,8 +277,39 @@ namespace CloudStub
             return Task.FromException<TableResult>(new NotImplementedException());
         }
 
+        public override TableBatchResult ExecuteBatch(TableBatchOperation batch, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            if (batch == null)
+                throw new ArgumentNullException(nameof(batch));
+
+            lock (_locker)
+            {
+                var batchOperationException = _ValidateBatchOperation(batch) ?? _ValidateOperationsInBatch(batch, operationContext);
+                if (batchOperationException != null)
+                    throw batchOperationException;
+
+                var result = new TableBatchResult();
+                result.AddRange(
+                    batch
+                        .Select(
+                            tableOperation => _tableOperationExecutors.TryGetValue(tableOperation.OperationType, out var tableOperationExecutor)
+                                ? tableOperationExecutor.Execute(
+                                    tableOperation.OperationType == TableOperationType.Retrieve ? _WithoutSelectionList(tableOperation) : tableOperation,
+                                    operationContext
+                                )
+                                : null
+                        )
+                );
+
+                return result;
+            }
+        }
+
         public override Task<TableBatchResult> ExecuteBatchAsync(TableBatchOperation batch)
-            => ExecuteBatchAsync(batch, null, null);
+            => ExecuteBatchAsync(batch, null, null, CancellationToken.None);
+
+        public override Task<TableBatchResult> ExecuteBatchAsync(TableBatchOperation batch, CancellationToken cancellationToken)
+            => ExecuteBatchAsync(batch, null, null, cancellationToken);
 
         public override Task<TableBatchResult> ExecuteBatchAsync(TableBatchOperation batch, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteBatchAsync(batch, requestOptions, operationContext, CancellationToken.None);
@@ -199,7 +338,7 @@ namespace CloudStub
                         )
                 );
 
-                return Task.FromResult<TableBatchResult>(result);
+                return Task.FromResult(result);
             }
         }
 
@@ -240,11 +379,100 @@ namespace CloudStub
         private TableOperation _WithoutSelectionList(TableOperation tableOperation)
             => TableOperation.Retrieve(tableOperation.GetPartitionKey(), tableOperation.GetRowKey(), tableOperation.GetEntityResolver<object>());
 
+        public override IEnumerable<DynamicTableEntity> ExecuteQuery(TableQuery query, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            lock (_locker)
+                return _QueryAllEntities(query.FilterString, query.TakeCount, query.SelectColumns).ToList();
+        }
+
+        public override IEnumerable<TResult> ExecuteQuery<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            TResult GetConcreteEntity(DynamicTableEntity existingEntity) =>
+                resolver(
+                    existingEntity.PartitionKey,
+                    existingEntity.RowKey,
+                    existingEntity.Timestamp,
+                    existingEntity.Properties,
+                    existingEntity.ETag
+                );
+
+            lock (_locker)
+            {
+                var result = _QueryAllEntities(query.FilterString, query.TakeCount, query.SelectColumns);
+                return result.Select(GetConcreteEntity).ToList();
+            }
+        }
+
+        public override IEnumerable<TElement> ExecuteQuery<TElement>(TableQuery<TElement> query, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+            => ExecuteQuery(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                TableOperation.Retrieve<TElement>(string.Empty, string.Empty).GetEntityResolver<TElement>(),
+                requestOptions,
+                operationContext
+            );
+
+        public override IEnumerable<TResult> ExecuteQuery<TElement, TResult>(TableQuery<TElement> query, EntityResolver<TResult> resolver, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+            => ExecuteQuery(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                resolver,
+                requestOptions,
+                operationContext
+            );
+
+        public override TableQuerySegment<DynamicTableEntity> ExecuteQuerySegmented(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            lock (_locker)
+            {
+                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                return _CreateTableQuerySegment(result);
+            }
+        }
+
+        public override TableQuerySegment<TElement> ExecuteQuerySegmented<TElement>(TableQuery<TElement> query, TableContinuationToken token, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+            => ExecuteQuerySegmented(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                TableOperation.Retrieve<TElement>(string.Empty, string.Empty).GetEntityResolver<TElement>(),
+                token,
+                requestOptions,
+                operationContext
+            );
+
+        public override TableQuerySegment<TResult> ExecuteQuerySegmented<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+        {
+            TResult GetConcreteEntity(DynamicTableEntity existingEntity) =>
+                resolver(
+                    existingEntity.PartitionKey,
+                    existingEntity.RowKey,
+                    existingEntity.Timestamp,
+                    existingEntity.Properties,
+                    existingEntity.ETag
+                );
+
+            lock (_locker)
+            {
+                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                var typedResult = new QueryResult<TResult>(result.Entities.Select(GetConcreteEntity).ToList(), result.ContinuationToken);
+                return _CreateTableQuerySegment(typedResult);
+            }
+        }
+
+        public override TableQuerySegment<TResult> ExecuteQuerySegmented<TElement, TResult>(TableQuery<TElement> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+            => ExecuteQuerySegmented(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                resolver,
+                token,
+                requestOptions,
+                operationContext
+            );
+
         public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token)
-            => ExecuteQuerySegmentedAsync(query, token, null, null);
+            => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
+
+        public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(query, token, null, null, cancellationToken);
 
         public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
-            => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
+            => ExecuteQuerySegmentedAsync(query, token, requestOptions, operationContext, CancellationToken.None);
 
         public override Task<TableQuerySegment<DynamicTableEntity>> ExecuteQuerySegmentedAsync(TableQuery query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
         {
@@ -255,8 +483,30 @@ namespace CloudStub
             }
         }
 
+        public override Task<TableQuerySegment<TElement>> ExecuteQuerySegmentedAsync<TElement>(TableQuery<TElement> query, TableContinuationToken token)
+            => ExecuteQuerySegmentedAsync(query, token, null, null, CancellationToken.None);
+
+        public override Task<TableQuerySegment<TElement>> ExecuteQuerySegmentedAsync<TElement>(TableQuery<TElement> query, TableContinuationToken token, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(query, token, null, null, cancellationToken);
+
+        public override Task<TableQuerySegment<TElement>> ExecuteQuerySegmentedAsync<TElement>(TableQuery<TElement> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+            => ExecuteQuerySegmentedAsync(query, token, requestOptions, operationContext, CancellationToken.None);
+
+        public override Task<TableQuerySegment<TElement>> ExecuteQuerySegmentedAsync<TElement>(TableQuery<TElement> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(
+                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
+                TableOperation.Retrieve<TElement>(string.Empty, string.Empty).GetEntityResolver<TElement>(),
+                token,
+                requestOptions,
+                operationContext,
+                cancellationToken
+            );
+
         public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token)
-            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null);
+            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null, CancellationToken.None);
+
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null, cancellationToken);
 
         public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TResult>(TableQuery query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteQuerySegmentedAsync(query, resolver, token, requestOptions, operationContext, CancellationToken.None);
@@ -280,29 +530,16 @@ namespace CloudStub
             }
         }
 
-        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token)
-            => ExecuteQuerySegmentedAsync(query, token, null, null);
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TElement, TResult>(TableQuery<TElement> query, EntityResolver<TResult> resolver, TableContinuationToken token)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null, CancellationToken.None);
 
-        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
-            => ExecuteQuerySegmentedAsync(query, token, requestOptions, operationContext, CancellationToken.None);
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TElement, TResult>(TableQuery<TElement> query, EntityResolver<TResult> resolver, TableContinuationToken token, CancellationToken cancellationToken)
+            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null, cancellationToken);
 
-        public override Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(TableQuery<T> query, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
-            => ExecuteQuerySegmentedAsync(
-                new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
-                TableOperation.Retrieve<T>(string.Empty, string.Empty).GetEntityResolver<T>(),
-                token,
-                requestOptions,
-                operationContext,
-                cancellationToken
-            );
-
-        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<T, TResult>(TableQuery<T> query, EntityResolver<TResult> resolver, TableContinuationToken token)
-            => ExecuteQuerySegmentedAsync(query, resolver, token, null, null);
-
-        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<T, TResult>(TableQuery<T> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TElement, TResult>(TableQuery<TElement> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext)
             => ExecuteQuerySegmentedAsync(query, resolver, token, requestOptions, operationContext, CancellationToken.None);
 
-        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<T, TResult>(TableQuery<T> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
+        public override Task<TableQuerySegment<TResult>> ExecuteQuerySegmentedAsync<TElement, TResult>(TableQuery<TElement> query, EntityResolver<TResult> resolver, TableContinuationToken token, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => ExecuteQuerySegmentedAsync(
                 new TableQuery().Where(query.FilterString).Take(query.TakeCount).Select(query.SelectColumns),
                 resolver,
@@ -312,8 +549,14 @@ namespace CloudStub
                 cancellationToken
             );
 
+        public override TablePermissions GetPermissions(TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+            => throw new NotImplementedException();
+
         public override Task<TablePermissions> GetPermissionsAsync()
-            => GetPermissionsAsync(null, null);
+            => GetPermissionsAsync(null, null, CancellationToken.None);
+
+        public override Task<TablePermissions> GetPermissionsAsync(CancellationToken cancellationToken)
+            => GetPermissionsAsync(null, null, cancellationToken);
 
         public override Task<TablePermissions> GetPermissionsAsync(TableRequestOptions requestOptions, OperationContext operationContext)
             => GetPermissionsAsync(requestOptions, operationContext, CancellationToken.None);
@@ -321,8 +564,14 @@ namespace CloudStub
         public override Task<TablePermissions> GetPermissionsAsync(TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => throw new NotImplementedException();
 
+        public override void SetPermissions(TablePermissions permissions, TableRequestOptions requestOptions = null, OperationContext operationContext = null)
+            => throw new NotImplementedException();
+
         public override Task SetPermissionsAsync(TablePermissions permissions)
-            => SetPermissionsAsync(permissions, null, null);
+            => SetPermissionsAsync(permissions, null, null, CancellationToken.None);
+
+        public override Task SetPermissionsAsync(TablePermissions permissions, CancellationToken cancellationToken)
+            => SetPermissionsAsync(permissions, null, null, cancellationToken);
 
         public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext)
             => SetPermissionsAsync(permissions, requestOptions, operationContext, CancellationToken.None);
@@ -366,6 +615,18 @@ namespace CloudStub
                 : null;
 
             return new QueryResult<DynamicTableEntity>(entitiesPage, nextContinuationToken);
+        }
+
+        private IEnumerable<DynamicTableEntity> _QueryAllEntities(string filterString, int? takeCount, IEnumerable<string> selectColumns)
+        {
+            var projection = selectColumns != null && selectColumns.Any()
+                ? entity => entity.Clone(selectColumns)
+                : new Func<DynamicTableEntity, DynamicTableEntity>(CloudTableExtensions.Clone);
+
+            var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
+            var filteredEntities = _ApplyFilter(allEntities, filterString).Select(projection);
+
+            return filteredEntities;
         }
 
         private IEnumerable<DynamicTableEntity> _ApplyFilter(IEnumerable<DynamicTableEntity> entities, string filterString)

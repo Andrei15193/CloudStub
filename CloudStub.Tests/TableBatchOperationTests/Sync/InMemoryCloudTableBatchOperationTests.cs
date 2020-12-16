@@ -1,41 +1,40 @@
 ﻿using System;
 using System.Collections;
-using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests.TableBatchOperationTests
+namespace CloudStub.Tests.TableBatchOperationTests.Sync
 {
     public class InMemoryCloudTableBatchOperationTests : BaseInMemoryCloudTableTests
     {
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchIsNull_ThrowsException()
+        public void ExecuteBatch_WhenBatchIsNull_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("batch", () => CloudTable.ExecuteBatchAsync(null));
+            var exception = Assert.Throws<ArgumentNullException>("batch", () => CloudTable.ExecuteBatch(null));
 
             Assert.Equal(new ArgumentNullException("batch").Message, exception.Message);
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchIsEmpty_ThrowsException()
+        public void ExecuteBatch_WhenBatchIsEmpty_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => CloudTable.ExecuteBatchAsync(new TableBatchOperation()));
+            var exception = Assert.Throws<InvalidOperationException>(() => CloudTable.ExecuteBatch(new TableBatchOperation()));
 
             Assert.Equal("Cannot execute an empty batch operation", exception.Message);
             Assert.Null(exception.InnerException);
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchHasOperationsInMultiplePartitions_ThrowsException()
+        public void ExecuteBatch_WhenBatchHasOperationsInMultiplePartitions_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => CloudTable.ExecuteBatchAsync(
+            var exception = Assert.Throws<ArgumentException>(
+                () => CloudTable.ExecuteBatch(
                     new TableBatchOperation
                     {
                         TableOperation.Insert(new TableEntity("partition-key-1", "row-key")),
@@ -48,12 +47,12 @@ namespace CloudStub.Tests.TableBatchOperationTests
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchHasEditAndRetrieveOperations_ThrowsException()
+        public void ExecuteBatch_WhenBatchHasEditAndRetrieveOperations_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => CloudTable.ExecuteBatchAsync(
+            var exception = Assert.Throws<ArgumentException>(
+                () => CloudTable.ExecuteBatch(
                     new TableBatchOperation
                     {
                         TableOperation.Insert(new TableEntity("partition-key", "row-key")),
@@ -66,12 +65,12 @@ namespace CloudStub.Tests.TableBatchOperationTests
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchHasMultipleRetrieveOperations_ThrowsException()
+        public void ExecuteBatch_WhenBatchHasMultipleRetrieveOperations_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var exception = await Assert.ThrowsAsync<ArgumentException>(
-                () => CloudTable.ExecuteBatchAsync(
+            var exception = Assert.Throws<ArgumentException>(
+                () => CloudTable.ExecuteBatch(
                     new TableBatchOperation
                     {
                         TableOperation.Retrieve("partition-key", "row-key"),
@@ -84,12 +83,12 @@ namespace CloudStub.Tests.TableBatchOperationTests
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WithMultipleOperationsOnSameEntity_ThrowsException()
+        public void ExecuteBatch_WithMultipleOperationsOnSameEntity_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
 
-            var exception = await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(
+            var exception = Assert.Throws<StorageException>(
+                () => CloudTable.ExecuteBatch(
                     new TableBatchOperation
                     {
                         TableOperation.InsertOrReplace(new TableEntity("partition-key", "row-key")),
@@ -120,13 +119,13 @@ namespace CloudStub.Tests.TableBatchOperationTests
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_FailingBatchOperation_DoesNotExecutePartially()
+        public void ExecuteBatch_FailingBatchOperation_DoesNotExecutePartially()
         {
-            await CloudTable.CreateAsync();
-            await CloudTable.ExecuteAsync(TableOperation.Insert(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key", StringProp = "string prop" }));
+            CloudTable.Create();
+            CloudTable.Execute(TableOperation.Insert(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key", StringProp = "string prop" }));
 
-            await Assert.ThrowsAsync<StorageException>(
-                () => CloudTable.ExecuteBatchAsync(
+            Assert.Throws<StorageException>(
+                () => CloudTable.ExecuteBatch(
                     new TableBatchOperation
                     {
                         TableOperation.Replace(new TestEntity{ PartitionKey = "partition-key", RowKey = "row-key", ETag = "*", Int32Prop = 4 }),
@@ -134,7 +133,7 @@ namespace CloudStub.Tests.TableBatchOperationTests
                     }
                 )
             );
-            var result = await CloudTable.ExecuteAsync(TableOperation.Retrieve<TestEntity>("partition-key", "row-key"));
+            var result = CloudTable.Execute(TableOperation.Retrieve<TestEntity>("partition-key", "row-key"));
             var existingEntity = (TestEntity)result.Result;
 
             Assert.Equal("partition-key", existingEntity.PartitionKey);
@@ -145,27 +144,27 @@ namespace CloudStub.Tests.TableBatchOperationTests
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchHasMoreThan100Operations_ThrowsException()
+        public void ExecuteBatch_WhenBatchHasMoreThan100Operations_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
             var batchOperation = new TableBatchOperation();
             for (var operationIndex = 0; operationIndex < 101; operationIndex++)
                 batchOperation.Add(TableOperation.Insert(new TableEntity("partition-key", $"row-key-{operationIndex}")));
 
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => CloudTable.ExecuteBatchAsync(batchOperation));
+            var exception = Assert.Throws<InvalidOperationException>(() => CloudTable.ExecuteBatch(batchOperation));
 
             Assert.Equal(new InvalidOperationException("The maximum number of operations allowed in one batch has been exceeded.").Message, exception.Message);
         }
 
         [Fact]
-        public async Task ExecuteBatchAsync_WhenBatchHas100Operations_ExecutesSuccessfully()
+        public void ExecuteBatch_WhenBatchHas100Operations_ExecutesSuccessfully()
         {
-            await CloudTable.CreateAsync();
+            CloudTable.Create();
             var batchOperation = new TableBatchOperation();
             for (var operationIndex = 0; operationIndex < 100; operationIndex++)
                 batchOperation.Add(TableOperation.Insert(new TableEntity("partition-key", $"row-key-{operationIndex}")));
 
-            var tableResults = await CloudTable.ExecuteBatchAsync(batchOperation);
+            var tableResults = CloudTable.ExecuteBatch(batchOperation);
 
             for (var operationIndex = 0; operationIndex < 100; operationIndex++)
             {

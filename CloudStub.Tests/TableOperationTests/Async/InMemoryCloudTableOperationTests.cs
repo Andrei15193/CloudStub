@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Xunit;
 
-namespace CloudStub.Tests.TableOperationTests
+namespace CloudStub.Tests.TableOperationTests.Async
 {
     public class InMemoryCloudTableOperationTests : BaseInMemoryCloudTableTests
     {

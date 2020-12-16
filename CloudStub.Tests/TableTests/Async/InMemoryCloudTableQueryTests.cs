@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
-namespace CloudStub.Tests
+namespace CloudStub.Tests.TableTests.Async
 {
     public class InMemoryCloudTableQueryTests : BaseInMemoryCloudTableTests
     {
