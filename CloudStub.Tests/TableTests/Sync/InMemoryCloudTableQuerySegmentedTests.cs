@@ -6,15 +6,15 @@ using Xunit;
 
 namespace CloudStub.Tests.TableTests.Sync
 {
-    public class InMemoryCloudTableQueryTests : BaseInMemoryCloudTableTests
+    public class InMemoryCloudTableQuerySegmentedTests : BaseInMemoryCloudTableTests
     {
         [Fact]
-        public void ExecuteQuery_WhenThereAreNoFilters_ReturnsAllItems()
+        public void ExecuteQuerySegmented_WhenThereAreNoFilters_ReturnsAllItems()
         {
             _AddTestData();
             var query = new TableQuery();
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             _AssertResult(
                 entities,
@@ -32,7 +32,7 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenThereAreFiltersWithOr_ReturnsMatchingEntitiesWithDefinedRelatedProperties()
+        public void ExecuteQuerySegmented_WhenThereAreFiltersWithOr_ReturnsMatchingEntitiesWithDefinedRelatedProperties()
         {
             _AddTestData();
             var query = new TableQuery()
@@ -54,7 +54,7 @@ namespace CloudStub.Tests.TableTests.Sync
                     .Replace(")", "")
                 );
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             _AssertResult(
                 entities,
@@ -71,7 +71,7 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenUsingInvertedOrFilter_ReturnsMatchingEntitiesAndTheOnesWithoutDefinedRelatedProperties()
+        public void ExecuteQuerySegmented_WhenUsingInvertedOrFilter_ReturnsMatchingEntitiesAndTheOnesWithoutDefinedRelatedProperties()
         {
             _AddTestData();
             var query = new TableQuery()
@@ -95,7 +95,7 @@ namespace CloudStub.Tests.TableTests.Sync
                     + ")"
                 );
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             _AssertResult(
                 entities,
@@ -113,7 +113,7 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenUsingOrFilterFollowedByAndFilter_ReturnsEntitiesWhereEitherSideOfTheOrOperandsAreTrue()
+        public void ExecuteQuerySegmented_WhenUsingOrFilterFollowedByAndFilter_ReturnsEntitiesWhereEitherSideOfTheOrOperandsAreTrue()
         {
             _AddTestData();
             var query = new TableQuery()
@@ -131,7 +131,7 @@ namespace CloudStub.Tests.TableTests.Sync
                     .Replace(")", "")
                 );
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             _AssertResult(
                 entities,
@@ -140,7 +140,7 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenUsingAndFilterFollowedByOrFilter_ReturnsEntitiesWhereEitherSidedOfTheOrOperandsAreTrue()
+        public void ExecuteQuerySegmented_WhenUsingAndFilterFollowedByOrFilter_ReturnsEntitiesWhereEitherSidedOfTheOrOperandsAreTrue()
         {
             _AddTestData();
             var query = new TableQuery()
@@ -158,7 +158,7 @@ namespace CloudStub.Tests.TableTests.Sync
                     .Replace(")", "")
                 );
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             _AssertResult(
                 entities,
@@ -236,7 +236,7 @@ namespace CloudStub.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThanOrEqual, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThan, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThanOrEqual, "3")]
-        public void ExecuteQuery_WhenUsingFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        public void ExecuteQuerySegmented_WhenUsingFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -246,7 +246,7 @@ namespace CloudStub.Tests.TableTests.Sync
             }));
             var query = new TableQuery().Where(_GetFilter(propertyName, filterOperator, filterValue));
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             Assert.Empty(entities);
         }
@@ -261,7 +261,7 @@ namespace CloudStub.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void ExecuteQuery_WhenUsingPropertyNameFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName)
+        public void ExecuteQuerySegmented_WhenUsingPropertyNameFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -271,7 +271,7 @@ namespace CloudStub.Tests.TableTests.Sync
             }));
             var query = new TableQuery().Where(propertyName);
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             Assert.Empty(entities);
         }
@@ -286,7 +286,7 @@ namespace CloudStub.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void ExecuteQuery_WhenUsingPropertyNameFilterOnExistantProperty_ReturnsNotEntities(string propertyName)
+        public void ExecuteQuerySegmented_WhenUsingPropertyNameFilterOnExistantProperty_ReturnsNotEntities(string propertyName)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -305,14 +305,14 @@ namespace CloudStub.Tests.TableTests.Sync
             }));
             var query = new TableQuery().Where(propertyName);
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             Assert.Empty(entities);
         }
 
         [Theory]
         [ClassData(typeof(InMemoryCloudTableQueryComparisonTestData))]
-        public void ExecuteQuery_WhenUsingComparisonFilteOperator_MayReturnEntities(string propertyName, object propertyValue, string filterOperator, object filterValue, bool returnsEntity)
+        public void ExecuteQuerySegmented_WhenUsingComparisonFilteOperator_MayReturnEntities(string propertyName, object propertyValue, string filterOperator, object filterValue, bool returnsEntity)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new DynamicTableEntity
@@ -326,7 +326,7 @@ namespace CloudStub.Tests.TableTests.Sync
             }));
             var query = new TableQuery().Where(_GetFilter(propertyName, filterOperator, filterValue));
 
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             if (returnsEntity)
                 _AssertResult(entities, ("partition", "row"));
@@ -335,87 +335,12 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenUsingTakeCount_ReturnsOnlyFirstPage()
+        public void ExecuteQuerySegmented_WhenUsingTakeCount_ReturnsAllEntities()
         {
             _AddTestData();
             var query = new TableQuery().Take(5);
 
-            var entities = CloudTable.ExecuteQuery(query);
-
-            _AssertResult(
-                entities,
-                ("partition-1", "row-1"),
-                ("partition-10", "row-10"),
-                ("partition-2", "row-2"),
-                ("partition-3", "row-3"),
-                ("partition-4", "row-4")
-            );
-        }
-
-        [Fact]
-        public void ExecuteQuery_WhenUsingZeroTakeCount_ThrowsException()
-        {
-            var exception = Assert.Throws<ArgumentException>(() => CloudTable.ExecuteQuery(new TableQuery().Take(0)));
-
-            Assert.Equal(new ArgumentException("Take count must be positive and greater than 0.").Message, exception.Message);
-        }
-
-        [Fact]
-        public void ExecuteQuery_TakeCountGreaterThan1000_ReturnsSpecifiedNumberOfEntities()
-        {
-            CloudTable.Create();
-            for (var batchIndex = 0; batchIndex < 20; batchIndex++)
-            {
-                var batchOperation = new TableBatchOperation();
-                for (var index = 1; index <= 100; index++)
-                    batchOperation.Add(TableOperation.Insert(new TableEntity("partition", $"row-{index + batchIndex * 100}")));
-
-                CloudTable.ExecuteBatch(batchOperation);
-            }
-
-            var query = new TableQuery().Take(1001);
-            var result = CloudTable.ExecuteQuery(query);
-            Assert.Equal(1001, result.Count());
-        }
-
-        [Fact]
-        public void ExecuteQuery_WhenUsingSelectColumns_ReturnsEntitiesWithSpecifiedColumns()
-        {
-            _AddTestData();
-            var query = new TableQuery()
-                .Where(
-                    TableQuery.CombineFilters(
-                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-1"),
-                        TableOperators.Or,
-                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-2")
-                    )
-                )
-                .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
-
-            var entities = CloudTable.ExecuteQuery(query);
-
-            _AssertResult(entities, ("partition-1", "row-1"), ("partition-2", "row-2"));
-            {
-                var firstEntity = entities.Cast<DynamicTableEntity>().ElementAt(0);
-                Assert.Equal(EdmType.String, firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
-                Assert.Null(firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
-                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), firstEntity.Properties);
-            }
-            {
-                var secondEntity = entities.Cast<DynamicTableEntity>().ElementAt(1);
-                Assert.Equal(EdmType.Int32, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
-                Assert.Equal(3, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
-                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), secondEntity.Properties);
-            }
-        }
-
-        [Fact]
-        public void ExecuteQuery_WhenUsingStronglyTypedEntities_ReturnsAllEntities()
-        {
-            _AddTestData();
-            var query = new TableQuery<TestQueryEntity>();
-
-            var entities = CloudTable.ExecuteQuery(query);
+            var entities = _GetAll(query);
 
             _AssertResult(
                 entities,
@@ -433,7 +358,76 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenUsingEntityResolverWithProjection_ReturnsEntitiesWithSelectedProperties()
+        public void ExecuteQuerySegmented_WhenUsingZeroTakeCount_ThrowsException()
+        {
+            var exception = Assert.Throws<ArgumentException>(() => _GetAll(new TableQuery().Take(0)));
+
+            Assert.Equal(new ArgumentException("Take count must be positive and greater than 0.").Message, exception.Message);
+        }
+
+        [Fact]
+        public void ExecuteQuerySegmented_TakeCountGreaterThan1000_ReturnsEntitiesInPagesOf1000()
+        {
+            CloudTable.Create();
+            for (var batchIndex = 0; batchIndex < 20; batchIndex++)
+            {
+                var batchOperation = new TableBatchOperation();
+                for (var index = 1; index <= 100; index++)
+                    batchOperation.Add(TableOperation.Insert(new TableEntity("partition", $"row-{index + batchIndex * 100}")));
+
+                CloudTable.ExecuteBatch(batchOperation);
+            }
+
+            var continuationToken = default(TableContinuationToken);
+            var query = new TableQuery().Take(1001);
+            do
+            {
+                var result = CloudTable.ExecuteQuerySegmented(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                Assert.Equal(1000, result.Count());
+            } while (continuationToken != null);
+        }
+
+        [Theory]
+        [InlineData(5)]
+        [InlineData(10)]
+        [InlineData(15)]
+        [InlineData(20)]
+        [InlineData(25)]
+        public void ExecuteQuerySegmented_TakeLessThan1000_ReturnsEntitiesInSpecifiedPageSizes(int takeCount)
+        {
+            CloudTable.Create();
+            var batchOperation = new TableBatchOperation();
+            for (var index = 0; index < takeCount * 4; index++)
+                batchOperation.Add(TableOperation.Insert(new TableEntity("partition", $"row-{index:000}")));
+
+            CloudTable.ExecuteBatch(batchOperation);
+
+            var pageIndex = 0;
+            var continuationToken = default(TableContinuationToken);
+            var query = new TableQuery().Take(takeCount);
+            do
+            {
+                var result = CloudTable.ExecuteQuerySegmented(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                Assert.Equal(takeCount, result.Count());
+
+                for (var index = 0; index < takeCount; index++)
+                    Assert.Equal($"row-{index + pageIndex * takeCount:000}", result.ElementAt(index).RowKey);
+                pageIndex++;
+
+                if (continuationToken != null)
+                {
+                    Assert.NotNull(continuationToken.NextPartitionKey);
+                    Assert.NotNull(continuationToken.NextRowKey);
+                    Assert.Null(continuationToken.NextTableName);
+                    Assert.NotNull(continuationToken.TargetLocation);
+                }
+            } while (continuationToken != null);
+        }
+
+        [Fact]
+        public void ExecuteQuerySegmented_WhenUsingSelectColumns_ReturnsEntitiesWithSpecifiedColumns()
         {
             _AddTestData();
             var query = new TableQuery()
@@ -446,7 +440,61 @@ namespace CloudStub.Tests.TableTests.Sync
                 )
                 .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
 
-            var entities = CloudTable.ExecuteQuery(
+            var entities = _GetAll(query);
+
+            _AssertResult(entities, ("partition-1", "row-1"), ("partition-2", "row-2"));
+            {
+                var firstEntity = entities.Cast<DynamicTableEntity>().ElementAt(0);
+                Assert.Equal(EdmType.String, firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Null(firstEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), firstEntity.Properties);
+            }
+            {
+                var secondEntity = entities.Cast<DynamicTableEntity>().ElementAt(1);
+                Assert.Equal(EdmType.Int32, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].PropertyType);
+                Assert.Equal(3, secondEntity.Properties[nameof(TestQueryEntity.Int32Prop)].Int32Value);
+                Assert.DoesNotContain(nameof(TestQueryEntity.StringProp), secondEntity.Properties);
+            }
+        }
+
+        [Fact]
+        public void ExecuteQuerySegmented_WhenUsingStronglyTypedEntities_ReturnsAllEntities()
+        {
+            _AddTestData();
+            var query = new TableQuery<TestQueryEntity>();
+
+            var entities = _GetAll(query);
+
+            _AssertResult(
+                entities,
+                ("partition-1", "row-1"),
+                ("partition-10", "row-10"),
+                ("partition-2", "row-2"),
+                ("partition-3", "row-3"),
+                ("partition-4", "row-4"),
+                ("partition-5", "row-5"),
+                ("partition-6", "row-6"),
+                ("partition-7", "row-7"),
+                ("partition-8", "row-8"),
+                ("partition-9", "row-9")
+            );
+        }
+
+        [Fact]
+        public void ExecuteQuerySegmented_WhenUsingEntityResolverWithProjection_ReturnsEntitiesWithSelectedProperties()
+        {
+            _AddTestData();
+            var query = new TableQuery()
+                .Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-1"),
+                        TableOperators.Or,
+                        TableQuery.GenerateFilterCondition(nameof(TestQueryEntity.PartitionKey), QueryComparisons.Equal, "partition-2")
+                    )
+                )
+                .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
+
+            var entities = _GetAll(
                 query,
                 (partitionKey, rowKey, timestamp, properties, etag) => new DynamicTableEntity(partitionKey, rowKey, etag, properties)
                 {
@@ -470,7 +518,7 @@ namespace CloudStub.Tests.TableTests.Sync
         }
 
         [Fact]
-        public void ExecuteQuery_WhenUsingStronglyTypedQueryWithEntityResolverAndProjection_ReturnsEntitiesWithSelectedProperties()
+        public void ExecuteQuerySegmented_WhenUsingStronglyTypedQueryWithEntityResolverAndProjection_ReturnsEntitiesWithSelectedProperties()
         {
             _AddTestData();
             var query = new TableQuery<TableEntity>()
@@ -483,7 +531,7 @@ namespace CloudStub.Tests.TableTests.Sync
                 )
                 .Select(new[] { nameof(TestQueryEntity.Int32Prop) });
 
-            var entities = CloudTable.ExecuteQuery(
+            var entities = _GetAll(
                 query,
                 (partitionKey, rowKey, timestamp, properties, etag) => new DynamicTableEntity(partitionKey, rowKey, etag, properties)
                 {
@@ -574,6 +622,68 @@ namespace CloudStub.Tests.TableTests.Sync
 
         private void _AssertResult(IEnumerable<ITableEntity> entities, params (string, string)[] expectedItems)
             => Assert.Equal(expectedItems, entities.Select(entity => (entity.PartitionKey, entity.RowKey)));
+
+        private IEnumerable<ITableEntity> _GetAll(TableQuery query)
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<ITableEntity>();
+
+            do
+            {
+                var result = CloudTable.ExecuteQuerySegmented(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
+        private IEnumerable<TResult> _GetAll<TResult>(TableQuery query, EntityResolver<TResult> entityResolver)
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<TResult>();
+
+            do
+            {
+                var result = CloudTable.ExecuteQuerySegmented(query, entityResolver, continuationToken, null, null);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
+        private IEnumerable<TEntity> _GetAll<TEntity>(TableQuery<TEntity> query)
+            where TEntity : ITableEntity, new()
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<TEntity>();
+
+            do
+            {
+                var result = CloudTable.ExecuteQuerySegmented(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
+
+        private IEnumerable<TResult> _GetAll<TEntity, TResult>(TableQuery<TEntity> query, EntityResolver<TResult> entityResolver)
+            where TEntity : ITableEntity, new()
+        {
+            var continuationToken = default(TableContinuationToken);
+            var entities = new List<TResult>();
+
+            do
+            {
+                var result = CloudTable.ExecuteQuerySegmented(query, entityResolver, continuationToken, null, null);
+                continuationToken = result.ContinuationToken;
+                entities.AddRange(result);
+            } while (continuationToken != null);
+
+            return entities;
+        }
 
         private void _AddTestData()
         {

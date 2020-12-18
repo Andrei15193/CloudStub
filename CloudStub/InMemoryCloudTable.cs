@@ -423,7 +423,7 @@ namespace CloudStub
         {
             lock (_locker)
             {
-                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                var result = _QueryEntitiesSegmented(query.FilterString, query.TakeCount, query.SelectColumns, token);
                 return _CreateTableQuerySegment(result);
             }
         }
@@ -450,7 +450,7 @@ namespace CloudStub
 
             lock (_locker)
             {
-                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                var result = _QueryEntitiesSegmented(query.FilterString, query.TakeCount, query.SelectColumns, token);
                 var typedResult = new QueryResult<TResult>(result.Entities.Select(GetConcreteEntity).ToList(), result.ContinuationToken);
                 return _CreateTableQuerySegment(typedResult);
             }
@@ -478,7 +478,7 @@ namespace CloudStub
         {
             lock (_locker)
             {
-                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                var result = _QueryEntitiesSegmented(query.FilterString, query.TakeCount, query.SelectColumns, token);
                 return Task.FromResult(_CreateTableQuerySegment(result));
             }
         }
@@ -524,7 +524,7 @@ namespace CloudStub
 
             lock (_locker)
             {
-                var result = _QueryEntities(query.FilterString, query.TakeCount, query.SelectColumns, token);
+                var result = _QueryEntitiesSegmented(query.FilterString, query.TakeCount, query.SelectColumns, token);
                 var typedResult = new QueryResult<TResult>(result.Entities.Select(GetConcreteEntity).ToList(), result.ContinuationToken);
                 return Task.FromResult(_CreateTableQuerySegment(typedResult));
             }
@@ -579,7 +579,7 @@ namespace CloudStub
         public override Task SetPermissionsAsync(TablePermissions permissions, TableRequestOptions requestOptions, OperationContext operationContext, CancellationToken cancellationToken)
             => throw new NotImplementedException();
 
-        private QueryResult<DynamicTableEntity> _QueryEntities(string filterString, int? takeCount, IEnumerable<string> selectColumns, TableContinuationToken continuationToken)
+        private QueryResult<DynamicTableEntity> _QueryEntitiesSegmented(string filterString, int? takeCount, IEnumerable<string> selectColumns, TableContinuationToken continuationToken)
         {
             const int defaultPageSize = 1000;
 
@@ -625,8 +625,9 @@ namespace CloudStub
 
             var allEntities = _entitiesByPartitionKey.Values.SelectMany(partitionedEntities => partitionedEntities.Values);
             var filteredEntities = _ApplyFilter(allEntities, filterString).Select(projection);
+            var entitiesPage = takeCount.HasValue ? filteredEntities.Take(takeCount.Value) : filteredEntities;
 
-            return filteredEntities;
+            return entitiesPage;
         }
 
         private IEnumerable<DynamicTableEntity> _ApplyFilter(IEnumerable<DynamicTableEntity> entities, string filterString)
