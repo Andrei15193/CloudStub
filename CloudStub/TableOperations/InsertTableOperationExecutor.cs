@@ -75,7 +75,7 @@ namespace CloudStub.TableOperations
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
-            var dynamicEntity = GetDynamicEntity(tableOperation.Entity, operationContext);
+            var dynamicEntity = GetDynamicEntity(tableOperation.Entity);
             var partition = _GetPartition(dynamicEntity);
             partition.Add(dynamicEntity.RowKey, dynamicEntity);
 

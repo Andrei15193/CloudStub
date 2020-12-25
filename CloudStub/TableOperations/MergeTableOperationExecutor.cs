@@ -78,7 +78,7 @@ namespace CloudStub.TableOperations
             var partition = Context.Entities[tableOperation.Entity.PartitionKey];
             var existingEntity = partition[tableOperation.Entity.RowKey];
 
-            var dynamicEntity = GetDynamicEntity(tableOperation.Entity, operationContext);
+            var dynamicEntity = GetDynamicEntity(tableOperation.Entity);
             foreach (var property in existingEntity.Properties)
                 if (!dynamicEntity.Properties.ContainsKey(property.Key))
                     dynamicEntity.Properties.Add(property);

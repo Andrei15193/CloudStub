@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using Microsoft.Azure.Cosmos.Table;
 using Xunit;
 
@@ -153,6 +154,65 @@ namespace CloudStub.Tests.TableOperationTests.Sync
             Assert.Equal(new EntityProperty(testEntity.DateTimeProp), actualProps[nameof(TestEntity.DateTimeProp)]);
             Assert.Equal(new EntityProperty(testEntity.GuidProp), actualProps[nameof(TestEntity.GuidProp)]);
             Assert.False(actualProps.ContainsKey(nameof(TestEntity.DecimalProp)));
+        }
+
+        [Fact]
+        public void Execute_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
+        {
+            CloudTable.Create();
+
+            CloudTable.Execute(TableOperation.InsertOrReplace(new DynamicTableEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, EntityProperty>(StringComparer.Ordinal)
+                {
+                    { nameof(TestEntity.Int32Prop), EntityProperty.CreateEntityPropertyFromObject(null) }
+                }
+            }));
+
+            var entities = GetAllEntities();
+            var entity = Assert.Single(entities);
+            var actualProps = entity.WriteEntity(null);
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.PartitionKey)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.RowKey)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.Timestamp)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.ETag)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.Int32Prop)));
+        }
+
+        [Fact]
+        public void Execute_WhenDynamicEntityHasNullProperties_TheyAreRemovedWhenEntityAlreadyExists()
+        {
+            CloudTable.Create();
+            CloudTable.Execute(TableOperation.Insert(new DynamicTableEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, EntityProperty>(StringComparer.Ordinal)
+                {
+                    { nameof(TestEntity.Int32Prop), EntityProperty.GeneratePropertyForInt(1) }
+                }
+            }));
+
+            CloudTable.Execute(TableOperation.InsertOrReplace(new DynamicTableEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, EntityProperty>(StringComparer.Ordinal)
+                {
+                    { nameof(TestEntity.Int32Prop), EntityProperty.CreateEntityPropertyFromObject(null) }
+                }
+            }));
+
+            var entities = GetAllEntities();
+            var entity = Assert.Single(entities);
+            var actualProps = entity.WriteEntity(null);
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.PartitionKey)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.RowKey)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.Timestamp)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.ETag)));
+            Assert.False(actualProps.ContainsKey(nameof(TestEntity.Int32Prop)));
         }
 
         [Fact]

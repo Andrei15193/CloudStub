@@ -19,11 +19,11 @@ namespace CloudStub.TableOperations
 
         public abstract TableResult Execute(TableOperation tableOperation, OperationContext operationContext);
 
-        protected static DynamicTableEntity GetDynamicEntity(ITableEntity entity, OperationContext operationContext)
+        protected static DynamicTableEntity GetDynamicEntity(ITableEntity entity)
         {
             var timestamp = DateTimeOffset.UtcNow;
             var properties = entity is DynamicTableEntity dynamicTableEntity
-                ? dynamicTableEntity.Clone().Properties
+                ? dynamicTableEntity.Properties.Where(pair => pair.Value.PropertyAsObject != null).ToDictionary(pair => pair.Key, pair => EntityProperty.CreateEntityPropertyFromObject(pair.Value.PropertyAsObject), StringComparer.Ordinal)
                 : _GetProperties(entity);
             properties.Remove(nameof(TableEntity.PartitionKey));
             properties.Remove(nameof(TableEntity.RowKey));
@@ -56,6 +56,7 @@ namespace CloudStub.TableOperations
                     && property.Key != nameof(TableEntity.RowKey)
                     && property.Key != nameof(TableEntity.Timestamp)
                     && property.Key != nameof(TableEntity.ETag)
+                    && property.Value.PropertyAsObject != null
                 let exception = _ValidateEntityProperty(property.Key, property.Value)
                 where exception != null
                 select exception
@@ -130,6 +131,7 @@ namespace CloudStub.TableOperations
                     && property.Key != nameof(TableEntity.RowKey)
                     && property.Key != nameof(TableEntity.Timestamp)
                     && property.Key != nameof(TableEntity.ETag)
+                    && property.Value.PropertyAsObject != null
                 let exception = _ValidateEntityPropertyForBatch(property.Key, property.Value, operationIndex)
                 where exception != null
                 select exception

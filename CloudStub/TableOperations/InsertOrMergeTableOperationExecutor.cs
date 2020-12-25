@@ -43,7 +43,6 @@ namespace CloudStub.TableOperations
         public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
         {
             if (!Context.TableExists)
-
                 return TableDoesNotExistForBatchException(operationIndex);
 
             if (tableOperation.Entity.PartitionKey == null)
@@ -71,7 +70,7 @@ namespace CloudStub.TableOperations
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
-            var dynamicEntity = GetDynamicEntity(tableOperation.Entity, operationContext);
+            var dynamicEntity = GetDynamicEntity(tableOperation.Entity);
             var partition = _GetPartition(dynamicEntity);
 
             if (partition.TryGetValue(dynamicEntity.RowKey, out var existingEntity))
