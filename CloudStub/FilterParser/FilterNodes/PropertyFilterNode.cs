@@ -24,7 +24,7 @@ namespace CloudStub.FilterParser.FilterNodes
             if (string.Equals(PropertyName, nameof(entity.PartitionKey), StringComparison.Ordinal))
                 entityProperty = EntityProperty.GeneratePropertyForString(entity.PartitionKey);
             else if (string.Equals(PropertyName, nameof(entity.RowKey), StringComparison.Ordinal))
-                entityProperty = EntityProperty.GeneratePropertyForString(entity.PartitionKey);
+                entityProperty = EntityProperty.GeneratePropertyForString(entity.RowKey);
             else if (string.Equals(PropertyName, nameof(entity.ETag), StringComparison.Ordinal))
                 entityProperty = EntityProperty.GeneratePropertyForString(entity.ETag);
             else if (string.Equals(PropertyName, nameof(entity.Timestamp), StringComparison.Ordinal))
