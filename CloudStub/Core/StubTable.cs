@@ -9,13 +9,13 @@ namespace CloudStub.Core
     {
         private static StubEntityJsonSerializer _entityJsonSerializer = new StubEntityJsonSerializer();
         private readonly object _tableLock = new object();
-        private readonly ITableStorageHandler _tablePartitionStreamProvider;
+        private readonly TableStorageHandler _tableStorageHandler;
 
-        public StubTable(string name, ITableStorageHandler tablePartitionStreamProvider)
+        public StubTable(string name, TableStorageHandler tableStorageHandler)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
-            _tablePartitionStreamProvider = tablePartitionStreamProvider ?? throw new ArgumentNullException(nameof(tablePartitionStreamProvider));
-            Exists = _tablePartitionStreamProvider.Exists(Name);
+            _tableStorageHandler = tableStorageHandler ?? throw new ArgumentNullException(nameof(tableStorageHandler));
+            Exists = _tableStorageHandler.Exists(Name);
         }
 
         public string Name { get; }
@@ -47,7 +47,7 @@ namespace CloudStub.Core
                     result = StubTableDeleteResult.TableDoesNotExist;
                 else
                 {
-                    _tablePartitionStreamProvider.Delete(Name);
+                    _tableStorageHandler.Delete(Name);
                     Exists = false;
                     result = StubTableDeleteResult.Success;
                 }
@@ -67,24 +67,25 @@ namespace CloudStub.Core
                 if (!Exists)
                     result = StubTableInsertResult.TableDoesNotExist;
                 else
-                {
-                    var entities = _ReadEntities();
-                    var insertIndex = _FindInsertIndex(entity, entities, out var found);
-
-                    if (found)
-                        result = StubTableInsertResult.EntityAlreadyExists;
-                    else
+                    using (var reader = _tableStorageHandler.GetTextReader(Name, entity.PartitionKey))
                     {
-                        var now = DateTime.UtcNow;
-                        var updatedEntities = entities
-                            .Take(insertIndex)
-                            .Concat(Enumerable.Repeat(new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) }, 1))
-                            .Concat(entities.Skip(insertIndex));
-                        _WriteEntities(updatedEntities);
+                        var entities = _entityJsonSerializer.Deserialize(reader);
+                        var insertIndex = _FindInsertIndex(entity, entities, out var found);
 
-                        result = StubTableInsertResult.Success;
+                        if (found)
+                            result = StubTableInsertResult.EntityAlreadyExists;
+                        else
+                        {
+                            var now = DateTime.UtcNow;
+                            var updatedEntities = entities
+                                .Take(insertIndex)
+                                .Concat(Enumerable.Repeat(new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) }, 1))
+                                .Concat(entities.Skip(insertIndex));
+                            _WriteEntities(entity.PartitionKey, updatedEntities);
+
+                            result = StubTableInsertResult.Success;
+                        }
                     }
-                }
             }
 
             return result;
@@ -188,14 +189,26 @@ namespace CloudStub.Core
 
         private List<StubEntity> _ReadEntities()
         {
-            using (var reader = _tablePartitionStreamProvider.GetTextReader(Name))
-                return _entityJsonSerializer.Serialize(reader);
+            var partitionsResults = new List<IEnumerable<StubEntity>>();
+            foreach (var reader in _tableStorageHandler.GetPartitionTextReaders(Name))
+                using (reader)
+                {
+                    var entities = _entityJsonSerializer.Deserialize(reader);
+                    if (entities.Count > 0)
+                        partitionsResults.Add(entities);
+                }
+
+            return partitionsResults
+                .OrderBy(partitionResults => partitionResults.First().PartitionKey, StringComparer.Ordinal)
+                .ThenBy(partitionResults => partitionResults.First().RowKey, StringComparer.Ordinal)
+                .SelectMany(Enumerable.AsEnumerable)
+                .ToList();
         }
 
-        private void _WriteEntities(IEnumerable<StubEntity> entities)
+        private void _WriteEntities(string partitionKey, IEnumerable<StubEntity> entities)
         {
-            using (var writer = _tablePartitionStreamProvider.GetTextWriter(Name))
-                _entityJsonSerializer.Deserialize(writer, entities);
+            using (var writer = _tableStorageHandler.GetTextWriter(Name, partitionKey))
+                _entityJsonSerializer.Serialize(writer, entities);
         }
     }
 }

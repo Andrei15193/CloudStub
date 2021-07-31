@@ -16,10 +16,10 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
-        public void NewTable_WhenTablePartitionStreamProviderIsNull_ThrowsException()
+        public void NewTable_WhenTableStorageHandlerIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("tablePartitionStreamProvider", () => new StubTable("", null));
-            Assert.Equal(new ArgumentNullException("tablePartitionStreamProvider").Message, exception.Message);
+            var exception = Assert.Throws<ArgumentNullException>("tableStorageHandler", () => new StubTable("", null));
+            Assert.Equal(new ArgumentNullException("tableStorageHandler").Message, exception.Message);
         }
 
         [Fact]
@@ -39,11 +39,22 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
-        public void NewTable_WithPreviouslyCreatedStream_Exists()
+        public void NewTable_WithPreviouslyRequestedWriterButWithoutContent_DoesNotExist()
         {
             var tableDataHandler = new InMemoryTableStorageHandler();
-            using (var writeStream = tableDataHandler.GetTextWriter("table-name"))
+            using (var writer = tableDataHandler.GetTextWriter("table-name", "partition-key"))
             { }
+            var stubTable = new StubTable("table-name", tableDataHandler);
+
+            Assert.False(stubTable.Exists);
+        }
+
+        [Fact]
+        public void NewTable_WithPreviouslyRequestedWriterAndWithContent_Exist()
+        {
+            var tableDataHandler = new InMemoryTableStorageHandler();
+            using (var writer = tableDataHandler.GetTextWriter("table-name", "partition-key"))
+                writer.Write("test");
             var stubTable = new StubTable("table-name", tableDataHandler);
 
             Assert.True(stubTable.Exists);

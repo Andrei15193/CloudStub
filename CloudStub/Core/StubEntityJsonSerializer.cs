@@ -8,7 +8,7 @@ namespace CloudStub.Core
 {
     internal class StubEntityJsonSerializer
     {
-        public List<StubEntity> Serialize(TextReader textReader)
+        public List<StubEntity> Deserialize(TextReader textReader)
         {
             var entites = new List<StubEntity>();
 
@@ -44,7 +44,7 @@ namespace CloudStub.Core
             return entites;
         }
 
-        public void Deserialize(TextWriter textWriter, IEnumerable<StubEntity> entities)
+        public void Serialize(TextWriter textWriter, IEnumerable<StubEntity> entities)
         {
             using (var writer = new JsonTextWriter(textWriter)
             {
