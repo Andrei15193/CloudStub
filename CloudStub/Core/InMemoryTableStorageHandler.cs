@@ -1,84 +1,134 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace CloudStub.Core
 {
-    public class InMemoryTableStorageHandler : TableStorageHandler
+    public class InMemoryTableStorageHandler : ITableStorageHandler
     {
-        private readonly IDictionary<(string TableName, string PartitionKey), (object SyncObject, MemoryStream Content)> _tablePartitionStreams;
+        private readonly Dictionary<string, IDictionary<string, MemoryStream>> _tables;
 
         public InMemoryTableStorageHandler()
-            => _tablePartitionStreams = new Dictionary<(string TableName, string PartitionKey), (object SyncObject, MemoryStream Content)>();
+            => _tables = new Dictionary<string, IDictionary<string, MemoryStream>>();
 
-        public override bool Exists(string tableName)
+        public IDisposable AquireTableLock(string tableName)
         {
-            lock (_tablePartitionStreams)
-                return _tablePartitionStreams.Keys.Any(key =>
+            lock (_tables)
+            {
+                var table = _tables[tableName];
+
+                var lockTaken = false;
+                try
                 {
-                    if (key.TableName == tableName)
-                        using (var reader = GetTextReader(tableName, key.PartitionKey))
-                            return reader.Read() != -1;
-                    else
-                        return false;
-                });
+                    Monitor.Enter(table, ref lockTaken);
+                    return new CallbackDisposable(() => Monitor.Exit(table));
+                }
+                catch
+                {
+                    if (lockTaken)
+                        Monitor.Exit(table);
+                    throw;
+                }
+            }
         }
 
-        public override void Delete(string tableName)
+        public IDisposable AquirePartitionClusterLock(string tableName, string partitionKey)
         {
-            lock (_tablePartitionStreams)
-                foreach (var keyToRemove in _tablePartitionStreams.Keys.Where(key => key.TableName == tableName).ToList())
-                    _tablePartitionStreams.Remove(keyToRemove);
+            lock (_tables)
+            {
+                var table = _tables[tableName];
+                if (!table.TryGetValue(partitionKey, out var partition))
+                {
+                    partition = new MemoryStream();
+                    table.Add(partitionKey, partition);
+                }
+
+                var lockTaken = false;
+                try
+                {
+                    Monitor.Enter(partition, ref lockTaken);
+                    return new CallbackDisposable(() => Monitor.Exit(partition));
+                }
+                catch
+                {
+                    if (lockTaken)
+                        Monitor.Exit(partition);
+                    throw;
+                }
+            }
         }
 
-        public override IEnumerable<TextReader> GetPartitionTextReaders(string tableName)
+        public bool Create(string tableName)
         {
-            lock (_tablePartitionStreams)
-                return _tablePartitionStreams
-                    .Where(pair => pair.Key.TableName == tableName)
-                    .Select(pair =>
+            lock (_tables)
+                if (!_tables.ContainsKey(tableName))
+                {
+                    _tables.Add(tableName, new Dictionary<string, MemoryStream>());
+                    return true;
+                }
+                else
+                    return false;
+        }
+
+        public bool Exists(string tableName)
+        {
+            lock (_tables)
+                return _tables.ContainsKey(tableName);
+        }
+
+        public bool Delete(string tableName)
+        {
+            lock (_tables)
+                return _tables.Remove(tableName);
+        }
+
+        public IEnumerable<Func<TextReader>> GetPartitionClustersTextReaderProviders(string tableName)
+        {
+            lock (_tables)
+                return _tables[tableName]
+                    .Values
+                    .Select(partition => new Func<TextReader>(() =>
                     {
-                        var partition = pair.Value;
-                        partition.Content.Seek(0, SeekOrigin.Begin);
-                        return Synchronize(
-                            new StreamReader(partition.Content, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 11, leaveOpen: true),
-                            partition.SyncObject
-                        );
-                    })
+                        partition.Seek(0, SeekOrigin.Begin);
+                        return new StreamReader(partition, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 11, leaveOpen: true);
+                    }))
                     .ToList();
         }
 
-        public override TextReader GetTextReader(string tableName, string partitionKey)
+        public TextReader GetPartitionClusterTextReader(string tableName, string partitionKey)
         {
-            lock (_tablePartitionStreams)
-                if (_tablePartitionStreams.TryGetValue((tableName, partitionKey), out var partition))
+            lock (_tables)
+            {
+                var table = _tables[tableName];
+                if (table.TryGetValue(partitionKey, out var partition))
                 {
-                    partition.Content.Seek(0, SeekOrigin.Begin);
-                    return Synchronize(
-                        new StreamReader(partition.Content, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 11, leaveOpen: true),
-                        partition.SyncObject
-                    );
+                    partition.Seek(0, SeekOrigin.Begin);
+                    return new StreamReader(partition, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1 << 11, leaveOpen: true);
                 }
                 else
                     return new StringReader(string.Empty);
+            }
         }
 
-        public override TextWriter GetTextWriter(string tableName, string partitionKey)
+        public TextWriter GetPartitionClusterTextWriter(string tableName, string partitionKey)
         {
-            lock (_tablePartitionStreams)
+            lock (_tables)
             {
-                if (!_tablePartitionStreams.TryGetValue((tableName, partitionKey), out var partition))
+                var table = _tables[tableName];
+                if (!table.TryGetValue(partitionKey, out var partition))
                 {
-                    partition = (new object(), new MemoryStream());
-                    _tablePartitionStreams.Add((tableName, partitionKey), partition);
+                    partition = new MemoryStream();
+                    table.Add(partitionKey, partition);
                 }
-                partition.Content.Seek(0, SeekOrigin.Begin);
-                partition.Content.SetLength(0);
-                return Synchronize(
-                    new StreamWriter(partition.Content, Encoding.UTF8, bufferSize: 1 << 11, leaveOpen: true),
-                    partition.SyncObject
-                );
+                else
+                {
+                    partition.Seek(0, SeekOrigin.Begin);
+                    partition.SetLength(0);
+                }
+                return new StreamWriter(partition, Encoding.UTF8, bufferSize: 1 << 11, leaveOpen: true);
             }
         }
     }

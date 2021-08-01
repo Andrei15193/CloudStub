@@ -39,22 +39,11 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
-        public void NewTable_WithPreviouslyRequestedWriterButWithoutContent_DoesNotExist()
+        public void NewTable_WithPreviouslyCreatedTable_Exist()
         {
             var tableDataHandler = new InMemoryTableStorageHandler();
-            using (var writer = tableDataHandler.GetTextWriter("table-name", "partition-key"))
-            { }
-            var stubTable = new StubTable("table-name", tableDataHandler);
+            tableDataHandler.Create("table-name");
 
-            Assert.False(stubTable.Exists);
-        }
-
-        [Fact]
-        public void NewTable_WithPreviouslyRequestedWriterAndWithContent_Exist()
-        {
-            var tableDataHandler = new InMemoryTableStorageHandler();
-            using (var writer = tableDataHandler.GetTextWriter("table-name", "partition-key"))
-                writer.Write("test");
             var stubTable = new StubTable("table-name", tableDataHandler);
 
             Assert.True(stubTable.Exists);
