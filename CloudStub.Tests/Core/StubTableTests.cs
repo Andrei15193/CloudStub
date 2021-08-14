@@ -684,5 +684,106 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", remainingEntity.PartitionKey);
             Assert.Equal("row-key-2", remainingEntity.RowKey);
         }
+
+        [Fact]
+        public void Retrieve_WhenTableDoesNotExist_ReturnsTableDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var result = stubTable.Retrieve("partition-key", "row-key");
+
+            Assert.Equal(StubTableRetrieveResult.TableDoesNotExist, result.RetrieveResult);
+            Assert.Null(result.Entity);
+        }
+
+        [Fact]
+        public void Retrieve_WhenEntityDoesNotExist_ReturnsEntityDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var result = stubTable.Retrieve("partition-key", "row-key");
+
+            Assert.Equal(StubTableRetrieveResult.EntityDoesNotExists, result.RetrieveResult);
+            Assert.Null(result.Entity);
+        }
+
+        [Fact]
+        public void Retrieve_WhenEntityExists_ReturnsMatchedEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var result = stubTable.Retrieve("partition-key", "row-key");
+
+            Assert.Equal(StubTableRetrieveResult.Success, result.RetrieveResult);
+            Assert.NotNull(result.Entity);
+            Assert.Equal("partition-key", result.Entity.PartitionKey);
+            Assert.Equal("row-key", result.Entity.RowKey);
+            Assert.Equal("property-1", result.Entity.Properties["property1"].Value);
+            Assert.Equal("property-2", result.Entity.Properties["property2"].Value);
+        }
+
+        [Fact]
+        public void Retrieve_WhenEntityExists_ReturnsMatchedEntityOnlyWithSelectedProperties()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var result = stubTable.Retrieve("partition-key", "row-key", new[] { "property2" });
+
+            Assert.Equal(StubTableRetrieveResult.Success, result.RetrieveResult);
+            Assert.NotNull(result.Entity);
+            Assert.Equal("partition-key", result.Entity.PartitionKey);
+            Assert.Equal("row-key", result.Entity.RowKey);
+            Assert.False(result.Entity.Properties.ContainsKey("property1"));
+            Assert.Equal("property-2", result.Entity.Properties["property2"].Value);
+        }
+
+        [Fact]
+        public void Retrieve_WhenEntityExists_ReturnsMatchedEntityWithCorePropertiesWhenNoneAreSelected()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var result = stubTable.Retrieve("partition-key", "row-key", Enumerable.Empty<string>());
+
+            Assert.Equal(StubTableRetrieveResult.Success, result.RetrieveResult);
+            Assert.NotNull(result.Entity);
+            Assert.Equal("partition-key", result.Entity.PartitionKey);
+            Assert.Equal("row-key", result.Entity.RowKey);
+            Assert.False(result.Entity.Properties.ContainsKey("property1"));
+            Assert.False(result.Entity.Properties.ContainsKey("property2"));
+        }
     }
 }

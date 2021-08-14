@@ -46,7 +46,7 @@ namespace CloudStub.Core
                     using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
                         entities = _entityJsonSerializer.Deserialize(reader);
 
-                    var insertIndex = _FindInsertIndex(entity, entities, out var found);
+                    var insertIndex = _FindEntityIndex(entity, entities, out var found);
 
                     if (found)
                         result = StubTableInsertResult.EntityAlreadyExists;
@@ -86,7 +86,7 @@ namespace CloudStub.Core
                     using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
                         entities = _entityJsonSerializer.Deserialize(reader);
 
-                    var entityIndex = _FindInsertIndex(entity, entities, out var found);
+                    var entityIndex = _FindEntityIndex(entity, entities, out var found);
 
                     if (!found)
                         result = StubTableMergeResult.EntityDoesNotExists;
@@ -135,7 +135,7 @@ namespace CloudStub.Core
                     using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
                         entities = _entityJsonSerializer.Deserialize(reader);
 
-                    var entityIndex = _FindInsertIndex(entity, entities, out var found);
+                    var entityIndex = _FindEntityIndex(entity, entities, out var found);
 
                     if (!found)
                         result = StubTableReplaceResult.EntityDoesNotExists;
@@ -177,7 +177,7 @@ namespace CloudStub.Core
                     using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
                         entities = _entityJsonSerializer.Deserialize(reader);
 
-                    var entityIndex = _FindInsertIndex(entity, entities, out var found);
+                    var entityIndex = _FindEntityIndex(entity, entities, out var found);
 
                     if (!found)
                         result = StubTablDeleteResult.EntityDoesNotExists;
@@ -198,6 +198,59 @@ namespace CloudStub.Core
             catch (KeyNotFoundException)
             {
                 result = StubTablDeleteResult.TableDoesNotExist;
+            }
+
+            return result;
+        }
+
+        public StubTableRetrieveDataResult Retrieve(string partitionKey, string rowKey)
+            => Retrieve(partitionKey, rowKey, default);
+
+        public StubTableRetrieveDataResult Retrieve(string partitionKey, string rowKey, IEnumerable<string> selectedProperties)
+        {
+            if (partitionKey is null)
+                throw new ArgumentNullException(nameof(partitionKey));
+            if (rowKey is null)
+                throw new ArgumentNullException(nameof(rowKey));
+
+            StubTableRetrieveDataResult result;
+
+            try
+            {
+                using (_tableStorageHandler.AquirePartitionClusterLock(Name, partitionKey))
+                {
+                    IReadOnlyList<StubEntity> entities;
+                    using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, partitionKey))
+                        entities = _entityJsonSerializer.Deserialize(reader);
+
+                    var entityIndex = _FindEntityIndex(partitionKey, rowKey, entities, out var found);
+
+                    if (!found)
+                        result = new StubTableRetrieveDataResult(null);
+                    else
+                    {
+                        var entity = entities[entityIndex];
+                        var resultEntity = new StubEntity(entity);
+                        if (selectedProperties is object)
+                            if (selectedProperties.Any())
+                                resultEntity.Properties = resultEntity
+                                    .Properties
+                                    .Where(property => selectedProperties.Contains(property.Key))
+                                    .ToDictionary(
+                                        property => property.Key,
+                                        property => property.Value,
+                                        StringComparer.Ordinal
+                                    );
+                            else
+                                resultEntity.Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal);
+
+                        result = new StubTableRetrieveDataResult(resultEntity);
+                    }
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                result = new StubTableRetrieveDataResult();
             }
 
             return result;
@@ -270,7 +323,10 @@ namespace CloudStub.Core
             return result;
         }
 
-        private static int _FindInsertIndex(StubEntity entity, IReadOnlyList<StubEntity> entities, out bool found)
+        private static int _FindEntityIndex(StubEntity entity, IReadOnlyList<StubEntity> entities, out bool found)
+            => _FindEntityIndex(entity.PartitionKey, entity.RowKey, entities, out found);
+
+        private static int _FindEntityIndex(string partitionKey, string rowKey, IReadOnlyList<StubEntity> entities, out bool found)
         {
             var startIndex = 0;
             var endIndex = entities.Count;
@@ -279,10 +335,10 @@ namespace CloudStub.Core
             while (!found && startIndex < endIndex)
             {
                 insertIndex = (startIndex + endIndex) / 2;
-                var partitionKeyComparison = string.CompareOrdinal(entity.PartitionKey, entities[insertIndex].PartitionKey);
+                var partitionKeyComparison = string.CompareOrdinal(partitionKey, entities[insertIndex].PartitionKey);
                 if (partitionKeyComparison == 0)
                 {
-                    var rowKeyCompartison = string.CompareOrdinal(entity.RowKey, entities[insertIndex].RowKey);
+                    var rowKeyCompartison = string.CompareOrdinal(rowKey, entities[insertIndex].RowKey);
                     if (rowKeyCompartison == 0)
                         found = true;
                     else if (rowKeyCompartison < 0)
@@ -297,12 +353,12 @@ namespace CloudStub.Core
             }
             if (!found && insertIndex < entities.Count)
             {
-                var partitionKeyComparison = string.CompareOrdinal(entity.PartitionKey, entities[insertIndex].PartitionKey);
+                var partitionKeyComparison = string.CompareOrdinal(partitionKey, entities[insertIndex].PartitionKey);
                 if (partitionKeyComparison > 0)
                     insertIndex++;
                 else if (partitionKeyComparison == 0)
                 {
-                    var rowKeyCompartison = string.CompareOrdinal(entity.RowKey, entities[insertIndex].RowKey);
+                    var rowKeyCompartison = string.CompareOrdinal(rowKey, entities[insertIndex].RowKey);
                     if (rowKeyCompartison > 0)
                         insertIndex++;
                 }

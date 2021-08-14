@@ -6,18 +6,10 @@ namespace CloudStub.Core
     public class StubTableQueryDataResult
     {
         internal StubTableQueryDataResult()
-        {
-            OperationResult = StubTableQueryResult.TableDoesNotExist;
-            Entities = null;
-            ContinuationToken = null;
-        }
+            => (OperationResult, Entities, ContinuationToken) = (StubTableQueryResult.TableDoesNotExist, null, null);
 
         internal StubTableQueryDataResult(IReadOnlyCollection<StubEntity> entities, StubTableQueryContinuationToken continuationToken)
-        {
-            OperationResult = StubTableQueryResult.Success;
-            Entities = entities ?? Array.Empty<StubEntity>();
-            ContinuationToken = continuationToken;
-        }
+            => (OperationResult, Entities, ContinuationToken) = (StubTableQueryResult.Success, entities ?? Array.Empty<StubEntity>(), continuationToken);
 
         public StubTableQueryResult OperationResult { get; }
 
