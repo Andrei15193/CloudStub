@@ -46,7 +46,7 @@ namespace CloudStub.Core
                     using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
                         entities = _entityJsonSerializer.Deserialize(reader);
 
-                    var insertIndex = _FindEntityIndex(entity, entities, out var found);
+                    var entityIndex = _FindEntityIndex(entity, entities, out var found);
 
                     if (found)
                         result = StubTableInsertResult.EntityAlreadyExists;
@@ -54,9 +54,9 @@ namespace CloudStub.Core
                     {
                         var now = DateTime.UtcNow;
                         var updatedEntities = entities
-                            .Take(insertIndex)
+                            .Take(entityIndex)
                             .Concat(Enumerable.Repeat(new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) }, 1))
-                            .Concat(entities.Skip(insertIndex));
+                            .Concat(entities.Skip(entityIndex));
                         _WriteEntities(entity.PartitionKey, updatedEntities);
 
                         result = StubTableInsertResult.Success;
@@ -66,6 +66,58 @@ namespace CloudStub.Core
             catch (KeyNotFoundException)
             {
                 result = StubTableInsertResult.TableDoesNotExist;
+            }
+
+            return result;
+        }
+
+        public StubTableInsertOrMergeResult InsertOrMerge(StubEntity entity)
+        {
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
+
+            StubTableInsertOrMergeResult result;
+
+            try
+            {
+                using (_tableStorageHandler.AquirePartitionClusterLock(Name, entity.PartitionKey))
+                {
+                    IReadOnlyList<StubEntity> entities;
+                    using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
+                        entities = _entityJsonSerializer.Deserialize(reader);
+
+                    var entityIndex = _FindEntityIndex(entity, entities, out var found);
+
+                    var now = DateTime.UtcNow;
+                    var etag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture);
+                    IEnumerable<StubEntity> updatedEntities;
+                    if (found)
+                    {
+                        var updatedEntity = new StubEntity(entities[entityIndex])
+                        {
+                            Timestamp = now,
+                            ETag = etag
+                        };
+                        updatedEntity.Properties = _Merge(updatedEntity.Properties, entity.Properties);
+
+                        updatedEntities = entities
+                           .Take(entityIndex)
+                           .Concat(Enumerable.Repeat(updatedEntity, 1))
+                           .Concat(entities.Skip(entityIndex + 1));
+                    }
+                    else
+                        updatedEntities = entities
+                           .Take(entityIndex)
+                           .Concat(Enumerable.Repeat(new StubEntity(entity) { Timestamp = now, ETag = etag }, 1))
+                           .Concat(entities.Skip(entityIndex));
+
+                    _WriteEntities(entity.PartitionKey, updatedEntities);
+                    result = StubTableInsertOrMergeResult.Success;
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                result = StubTableInsertOrMergeResult.TableDoesNotExist;
             }
 
             return result;

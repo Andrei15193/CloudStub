@@ -5,6 +5,9 @@ namespace CloudStub.Core
 {
     public class StubEntity
     {
+        private static readonly IReadOnlyDictionary<string, StubEntityProperty> _emptyProperties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal);
+        private IReadOnlyDictionary<string, StubEntityProperty> _properties = _emptyProperties;
+
         public StubEntity()
         {
         }
@@ -26,6 +29,10 @@ namespace CloudStub.Core
 
         public string ETag { get; set; }
 
-        public IReadOnlyDictionary<string, StubEntityProperty> Properties { get; set; }
+        public IReadOnlyDictionary<string, StubEntityProperty> Properties
+        {
+            get => _properties;
+            set => _properties = value ?? _emptyProperties;
+        }
     }
 }

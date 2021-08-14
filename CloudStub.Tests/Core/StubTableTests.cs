@@ -141,6 +141,73 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
+        public void InsertOrMerge_WhenTableDoesNotExist_ReturnsTableDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var result = stubTable.InsertOrMerge(new StubEntity());
+
+            Assert.Equal(StubTableInsertOrMergeResult.TableDoesNotExist, result);
+        }
+
+        [Fact]
+        public void InsertOrMerge_WhenEntityDoesNotExist_InsertsEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var result = stubTable.InsertOrMerge(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            Assert.Equal(StubTableInsertOrMergeResult.Success, result);
+            var insertedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("property-1", insertedEntity.Properties["property1"].Value);
+            Assert.Equal("property-2", insertedEntity.Properties["property2"].Value);
+        }
+
+        [Fact]
+        public void InsertOrMerge_WhenEntityExists_MergesTheEntities()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var result = stubTable.InsertOrMerge(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property2", new StubEntityProperty("property-2-merge") },
+                    { "property3", new StubEntityProperty("property-3-merge") }
+                }
+            });
+
+            Assert.Equal(StubTableInsertOrMergeResult.Success, result);
+            var insertedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("property-1", insertedEntity.Properties["property1"].Value);
+            Assert.Equal("property-2-merge", insertedEntity.Properties["property2"].Value);
+            Assert.Equal("property-3-merge", insertedEntity.Properties["property3"].Value);
+        }
+
+        [Fact]
         public void Query_WhenTableDoesNotExist_ReturnsTableDoesNotExists()
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
