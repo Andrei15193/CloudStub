@@ -120,6 +120,48 @@ namespace CloudStub.Core
             return result;
         }
 
+        public StubTableReplaceResult Replace(StubEntity entity)
+        {
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
+
+            StubTableReplaceResult result;
+
+            try
+            {
+                using (_tableStorageHandler.AquirePartitionClusterLock(Name, entity.PartitionKey))
+                {
+                    IReadOnlyList<StubEntity> entities;
+                    using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
+                        entities = _entityJsonSerializer.Deserialize(reader);
+
+                    var entityIndex = _FindInsertIndex(entity, entities, out var found);
+
+                    if (!found)
+                        result = StubTableReplaceResult.EntityDoesNotExists;
+                    else if (entity.ETag == "*" || entity.ETag == entities[entityIndex].ETag)
+                    {
+                        var now = DateTime.UtcNow;
+                        var updatedEntities = entities
+                            .Take(entityIndex)
+                            .Concat(Enumerable.Repeat(new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) }, 1))
+                            .Concat(entities.Skip(entityIndex + 1));
+                        _WriteEntities(entity.PartitionKey, updatedEntities);
+
+                        result = StubTableReplaceResult.Success;
+                    }
+                    else
+                        result = StubTableReplaceResult.EtagsDoNotMatch;
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                result = StubTableReplaceResult.TableDoesNotExist;
+            }
+
+            return result;
+        }
+
         public StubTableQueryDataResult Query(StubTableQuery query, StubTableQueryContinuationToken continuationToken)
         {
             StubTableQueryDataResult result;

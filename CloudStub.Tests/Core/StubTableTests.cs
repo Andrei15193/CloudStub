@@ -465,5 +465,117 @@ namespace CloudStub.Tests.Core
             Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
         }
+
+        [Fact]
+        public void Replace_WhenTableDoesNotExist_ReturnsTableDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var result = stubTable.Replace(new StubEntity());
+
+            Assert.Equal(StubTableReplaceResult.TableDoesNotExist, result);
+        }
+
+        [Fact]
+        public void Replace_WhenEntityDoesNotExist_ReturnsEntityDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var result = stubTable.Replace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            Assert.Equal(StubTableReplaceResult.EntityDoesNotExists, result);
+        }
+
+        [Fact]
+        public void Replace_WhenEntityDoesNotHaveMatchingEtag_ReturnsEtagsDoNotMatch()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            var result = stubTable.Replace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key", ETag = "unmatching-etag" });
+
+            Assert.Equal(StubTableReplaceResult.EtagsDoNotMatch, result);
+        }
+
+        [Fact]
+        public void Replace_WhenEntityUsesGenericEtag_ReplacesTheEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var result = stubTable.Replace(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = "*",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property2", new StubEntityProperty("property-2-replace") },
+                    { "property3", new StubEntityProperty("property-3-replace") }
+                }
+            });
+
+            Assert.Equal(StubTableReplaceResult.Success, result);
+            var replacedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("partition-key", replacedEntity.PartitionKey);
+            Assert.Equal("row-key", replacedEntity.RowKey);
+            Assert.NotEmpty(replacedEntity.ETag);
+            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= replacedEntity.Timestamp && replacedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.False(replacedEntity.Properties.ContainsKey("property1"));
+            Assert.Equal("property-2-replace", (string)replacedEntity.Properties["property2"].Value);
+            Assert.Equal("property-3-replace", (string)replacedEntity.Properties["property3"].Value);
+        }
+
+        [Fact]
+        public void Replace_WhenEntityUsesMatchingEtag_ReplacesTheEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+            var etag = stubTable.Query(new StubTableQuery(), default).Entities.Single().ETag;
+
+            var result = stubTable.Replace(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = etag,
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property2", new StubEntityProperty("property-2-replace") },
+                    { "property3", new StubEntityProperty("property-3-replace") }
+                }
+            });
+
+            Assert.Equal(StubTableReplaceResult.Success, result);
+            var replacedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("partition-key", replacedEntity.PartitionKey);
+            Assert.Equal("row-key", replacedEntity.RowKey);
+            Assert.NotEmpty(replacedEntity.ETag);
+            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= replacedEntity.Timestamp && replacedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.False(replacedEntity.Properties.ContainsKey("property1"));
+            Assert.Equal("property-2-replace", (string)replacedEntity.Properties["property2"].Value);
+            Assert.Equal("property-3-replace", (string)replacedEntity.Properties["property3"].Value);
+        }
     }
 }
