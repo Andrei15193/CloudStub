@@ -123,6 +123,41 @@ namespace CloudStub.Core
             return result;
         }
 
+        public StubTableInsertOrReplaceResult InsertOrReplace(StubEntity entity)
+        {
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
+
+            StubTableInsertOrReplaceResult result;
+
+            try
+            {
+                using (_tableStorageHandler.AquirePartitionClusterLock(Name, entity.PartitionKey))
+                {
+                    IReadOnlyList<StubEntity> entities;
+                    using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
+                        entities = _entityJsonSerializer.Deserialize(reader);
+
+                    var entityIndex = _FindEntityIndex(entity, entities, out var found);
+
+                    var now = DateTime.UtcNow;
+                    IEnumerable<StubEntity> updatedEntities = entities
+                        .Take(entityIndex)
+                        .Concat(Enumerable.Repeat(new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) }, 1))
+                        .Concat(entities.Skip(found ? entityIndex + 1 : entityIndex));
+                    _WriteEntities(entity.PartitionKey, updatedEntities);
+
+                    result = StubTableInsertOrReplaceResult.Success;
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                result = StubTableInsertOrReplaceResult.TableDoesNotExist;
+            }
+
+            return result;
+        }
+
         public StubTableMergeResult Merge(StubEntity entity)
         {
             if (entity is null)
