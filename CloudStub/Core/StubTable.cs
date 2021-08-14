@@ -162,6 +162,47 @@ namespace CloudStub.Core
             return result;
         }
 
+        public StubTablDeleteResult Delete(StubEntity entity)
+        {
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
+
+            StubTablDeleteResult result;
+
+            try
+            {
+                using (_tableStorageHandler.AquirePartitionClusterLock(Name, entity.PartitionKey))
+                {
+                    IReadOnlyList<StubEntity> entities;
+                    using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
+                        entities = _entityJsonSerializer.Deserialize(reader);
+
+                    var entityIndex = _FindInsertIndex(entity, entities, out var found);
+
+                    if (!found)
+                        result = StubTablDeleteResult.EntityDoesNotExists;
+                    else if (entity.ETag == "*" || entity.ETag == entities[entityIndex].ETag)
+                    {
+                        var now = DateTime.UtcNow;
+                        var updatedEntities = entities
+                            .Take(entityIndex)
+                            .Concat(entities.Skip(entityIndex + 1));
+                        _WriteEntities(entity.PartitionKey, updatedEntities);
+
+                        result = StubTablDeleteResult.Success;
+                    }
+                    else
+                        result = StubTablDeleteResult.EtagsDoNotMatch;
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                result = StubTablDeleteResult.TableDoesNotExist;
+            }
+
+            return result;
+        }
+
         public StubTableQueryDataResult Query(StubTableQuery query, StubTableQueryContinuationToken continuationToken)
         {
             StubTableQueryDataResult result;

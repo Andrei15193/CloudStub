@@ -577,5 +577,112 @@ namespace CloudStub.Tests.Core
             Assert.Equal("property-2-replace", (string)replacedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-replace", (string)replacedEntity.Properties["property3"].Value);
         }
+
+        [Fact]
+        public void Delete_WhenTableDoesNotExist_ReturnsTableDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var result = stubTable.Delete(new StubEntity());
+
+            Assert.Equal(StubTablDeleteResult.TableDoesNotExist, result);
+        }
+
+        [Fact]
+        public void Delete_WhenEntityDoesNotExist_ReturnsEntityDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var result = stubTable.Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            Assert.Equal(StubTablDeleteResult.EntityDoesNotExists, result);
+        }
+
+        [Fact]
+        public void Delete_WhenEntityDoesNotHaveMatchingEtag_ReturnsEtagsDoNotMatch()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            var result = stubTable.Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key", ETag = "unmatching-etag" });
+
+            Assert.Equal(StubTablDeleteResult.EtagsDoNotMatch, result);
+        }
+
+        [Fact]
+        public void Delete_WhenEntityUsesGenericEtag_DeletesTheEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            });
+
+            var result = stubTable.Delete(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = "*"
+            });
+
+            Assert.Equal(StubTablDeleteResult.Success, result);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
+
+        [Fact]
+        public void Delete_WhenEntityUsesMatchingEtag_DeletesTheEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            });
+            var etag = stubTable.Query(new StubTableQuery(), default).Entities.Single().ETag;
+
+            var result = stubTable.Delete(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = etag
+            });
+
+            Assert.Equal(StubTablDeleteResult.Success, result);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
+
+        [Fact]
+        public void Delete_WhenEntityUsesMatchingEtag_DeletesJustThatEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key-1"
+            });
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key-2"
+            });
+
+            var result = stubTable.Delete(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key-1",
+                ETag = "*"
+            });
+
+            Assert.Equal(StubTablDeleteResult.Success, result);
+            var remainingEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("partition-key", remainingEntity.PartitionKey);
+            Assert.Equal("row-key-2", remainingEntity.RowKey);
+        }
     }
 }
