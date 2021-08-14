@@ -42,7 +42,7 @@ namespace CloudStub.Core
             {
                 using (_tableStorageHandler.AquirePartitionClusterLock(Name, entity.PartitionKey))
                 {
-                    List<StubEntity> entities;
+                    IReadOnlyList<StubEntity> entities;
                     using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
                         entities = _entityJsonSerializer.Deserialize(reader);
 
@@ -66,6 +66,55 @@ namespace CloudStub.Core
             catch (KeyNotFoundException)
             {
                 result = StubTableInsertResult.TableDoesNotExist;
+            }
+
+            return result;
+        }
+
+        public StubTableMergeResult Merge(StubEntity entity)
+        {
+            if (entity is null)
+                throw new ArgumentNullException(nameof(entity));
+
+            StubTableMergeResult result;
+
+            try
+            {
+                using (_tableStorageHandler.AquirePartitionClusterLock(Name, entity.PartitionKey))
+                {
+                    IReadOnlyList<StubEntity> entities;
+                    using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(Name, entity.PartitionKey))
+                        entities = _entityJsonSerializer.Deserialize(reader);
+
+                    var entityIndex = _FindInsertIndex(entity, entities, out var found);
+
+                    if (!found)
+                        result = StubTableMergeResult.EntityDoesNotExists;
+                    else if (entity.ETag == "*" || entity.ETag == entities[entityIndex].ETag)
+                    {
+                        var now = DateTime.UtcNow;
+                        var updatedEntity = new StubEntity(entities[entityIndex])
+                        {
+                            Timestamp = now,
+                            ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture)
+                        };
+                        updatedEntity.Properties = _Merge(updatedEntity.Properties, entity.Properties);
+
+                        var updatedEntities = entities
+                            .Take(entityIndex)
+                            .Concat(Enumerable.Repeat(updatedEntity, 1))
+                            .Concat(entities.Skip(entityIndex + 1));
+                        _WriteEntities(entity.PartitionKey, updatedEntities);
+
+                        result = StubTableMergeResult.Success;
+                    }
+                    else
+                        result = StubTableMergeResult.EtagsDoNotMatch;
+                }
+            }
+            catch (KeyNotFoundException)
+            {
+                result = StubTableMergeResult.TableDoesNotExist;
             }
 
             return result;
@@ -128,6 +177,14 @@ namespace CloudStub.Core
                     Properties = selectedProperties
                 };
             }
+        }
+
+        private static IReadOnlyDictionary<string, StubEntityProperty> _Merge(IReadOnlyDictionary<string, StubEntityProperty> left, IReadOnlyDictionary<string, StubEntityProperty> right)
+        {
+            var result = new Dictionary<string, StubEntityProperty>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in left.Concat(right))
+                result[pair.Key] = pair.Value;
+            return result;
         }
 
         private static int _FindInsertIndex(StubEntity entity, IReadOnlyList<StubEntity> entities, out bool found)

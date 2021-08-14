@@ -353,5 +353,117 @@ namespace CloudStub.Tests.Core
                     .ToArray()
             );
         }
+
+        [Fact]
+        public void Merge_WhenTableDoesNotExist_ReturnsTableDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var result = stubTable.Merge(new StubEntity());
+
+            Assert.Equal(StubTableMergeResult.TableDoesNotExist, result);
+        }
+
+        [Fact]
+        public void Merge_WhenEntityDoesNotExist_ReturnsEntityDoesNotExist()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var result = stubTable.Merge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            Assert.Equal(StubTableMergeResult.EntityDoesNotExists, result);
+        }
+
+        [Fact]
+        public void Merge_WhenEntityDoesNotHaveMatchingEtag_ReturnsEtagsDoNotMatch()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            var result = stubTable.Merge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key", ETag = "unmatching-etag" });
+
+            Assert.Equal(StubTableMergeResult.EtagsDoNotMatch, result);
+        }
+
+        [Fact]
+        public void Merge_WhenEntityUsesGenericEtag_MergesTheEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var result = stubTable.Merge(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = "*",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property2", new StubEntityProperty("property-2-merge") },
+                    { "property3", new StubEntityProperty("property-3-merge") }
+                }
+            });
+
+            Assert.Equal(StubTableMergeResult.Success, result);
+            var mergedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("partition-key", mergedEntity.PartitionKey);
+            Assert.Equal("row-key", mergedEntity.RowKey);
+            Assert.NotEmpty(mergedEntity.ETag);
+            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= mergedEntity.Timestamp && mergedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.Equal("property-1", (string)mergedEntity.Properties["property1"].Value);
+            Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
+            Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
+        }
+
+        [Fact]
+        public void Merge_WhenEntityUsesMatchingEtag_MergesTheEntity()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+            var etag = stubTable.Query(new StubTableQuery(), default).Entities.Single().ETag;
+
+            var result = stubTable.Merge(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = etag,
+                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                {
+                    { "property2", new StubEntityProperty("property-2-merge") },
+                    { "property3", new StubEntityProperty("property-3-merge") }
+                }
+            });
+
+            Assert.Equal(StubTableMergeResult.Success, result);
+            var mergedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+            Assert.Equal("partition-key", mergedEntity.PartitionKey);
+            Assert.Equal("row-key", mergedEntity.RowKey);
+            Assert.NotEmpty(mergedEntity.ETag);
+            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= mergedEntity.Timestamp && mergedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.Equal("property-1", (string)mergedEntity.Properties["property1"].Value);
+            Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
+            Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
+        }
     }
 }

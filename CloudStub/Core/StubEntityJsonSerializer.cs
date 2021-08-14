@@ -8,7 +8,7 @@ namespace CloudStub.Core
 {
     internal class StubEntityJsonSerializer
     {
-        public List<StubEntity> Deserialize(TextReader textReader)
+        public IReadOnlyList<StubEntity> Deserialize(TextReader textReader)
         {
             var entites = new List<StubEntity>();
 
