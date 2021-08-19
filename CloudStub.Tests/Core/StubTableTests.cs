@@ -919,5 +919,382 @@ namespace CloudStub.Tests.Core
                     .ToArray()
             );
         }
+
+        [Fact]
+        public void BatchOperation_WhenHavingNoOperations_IsSuccessful()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var bulkOperationResult = stubTable.BulkOperation().Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenTableDoesNotExist_ReturnsTableDoesNotExistResult()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var bulkOperationResult = stubTable.BulkOperation().Insert(new StubEntity()).Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenTwoOperationsHaveTwoDifferentPartitionKeys_ThrowsException()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+
+            var exception = Assert.Throws<ArgumentException>(() => stubTable
+                .BulkOperation()
+                .Insert(new StubEntity { PartitionKey = "partition-key-1" })
+                .Insert(new StubEntity { PartitionKey = "partition-key-2" })
+                .Execute()
+            );
+
+            Assert.Equal(new ArgumentException("Bulk operations can be carried out only on the same partition.", "entity").Message, exception.Message);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenOneOperationFails_TheEntireBatchOperationFails()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-2" })
+                .Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-1" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
+            Assert.Equal(1, bulkOperationResult.Index);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenAllOperationsSucceed_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-1" })
+                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-2" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            Assert.Equal(2, entities.Count);
+            Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key-1");
+            Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key-2");
+        }
+
+        [Fact]
+        public void BatchOperation_WhenInsertingEntity_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+        }
+
+        [Fact]
+        public void BatchOperation_WhenInsertingExistingEntity_TheBatchOperationFails()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.EntityAlreadyExist, bulkOperationResult.BulkOperationResult);
+            Assert.Equal(0, bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+        }
+
+        [Fact]
+        public void BatchOperation_WhenInsertingOrMergingEntityThatDoesNotExists_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .InsertOrMerge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+        }
+
+        [Fact]
+        public void BatchOperation_WhenInsertingOrMergingEntityThatExists_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .InsertOrMerge(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    Properties = new Dictionary<string, StubEntityProperty>
+                    {
+                        { "property2", new StubEntityProperty("property-2-merge") },
+                        { "property3", new StubEntityProperty("property-3-merge") }
+                    }
+                })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            var entity = Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+            Assert.Equal("property-1", entity.Properties["property1"].Value);
+            Assert.Equal("property-2-merge", entity.Properties["property2"].Value);
+            Assert.Equal("property-3-merge", entity.Properties["property3"].Value);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenInsertingOrReplacingEntityThatDoesNotExists_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .InsertOrReplace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+        }
+
+        [Fact]
+        public void BatchOperation_WhenInsertingOrReplacingEntityThatExists_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Properties = new Dictionary<string, StubEntityProperty>
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .InsertOrReplace(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    Properties = new Dictionary<string, StubEntityProperty>
+                    {
+                        { "property2", new StubEntityProperty("property-2-replace") },
+                        { "property3", new StubEntityProperty("property-3-replace") }
+                    }
+                })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            var entity = Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+            Assert.False(entity.Properties.ContainsKey("property1"));
+            Assert.Equal("property-2-replace", entity.Properties["property2"].Value);
+            Assert.Equal("property-3-replace", entity.Properties["property3"].Value);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenMergingEntityThatDoesNotExist_TheBatchOperationFails()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Merge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
+            Assert.Equal(0, bulkOperationResult.Index);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenMergingExistingEntity_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    Properties = new Dictionary<string, StubEntityProperty>
+                    {
+                        { "property1", new StubEntityProperty("property-1") },
+                        { "property2", new StubEntityProperty("property-2") }
+                    }
+                })
+                .Merge(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    ETag = "*",
+                    Properties = new Dictionary<string, StubEntityProperty>
+                    {
+                        { "property2", new StubEntityProperty("property-2-merge") },
+                        { "property3", new StubEntityProperty("property-3-merge") }
+                    }
+                })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            var entity = Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+            Assert.Equal("property-1", entity.Properties["property1"].Value);
+            Assert.Equal("property-2-merge", entity.Properties["property2"].Value);
+            Assert.Equal("property-3-merge", entity.Properties["property3"].Value);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenReplacingEntityThatDoesNotExist_TheBatchOperationFails()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Replace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
+            Assert.Equal(0, bulkOperationResult.Index);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenReplacingExistingEntity_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    Properties = new Dictionary<string, StubEntityProperty>
+                    {
+                        { "property1", new StubEntityProperty("property-1") },
+                        { "property2", new StubEntityProperty("property-2") }
+                    }
+                })
+                .Replace(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    ETag = "*",
+                    Properties = new Dictionary<string, StubEntityProperty>
+                    {
+                        { "property2", new StubEntityProperty("property-2-replace") },
+                        { "property3", new StubEntityProperty("property-3-replace") }
+                    }
+                })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            var entities = stubTable.Query(new StubTableQuery(), default).Entities;
+            var entity = Assert.Single(entities, entity => entity.PartitionKey == "partition-key" && entity.RowKey == "row-key");
+            Assert.False(entity.Properties.ContainsKey("property1"));
+            Assert.Equal("property-2-replace", entity.Properties["property2"].Value);
+            Assert.Equal("property-3-replace", entity.Properties["property3"].Value);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenDeletingEntityThatDoesNotExist_TheBatchOperationFails()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
+            Assert.Equal(0, bulkOperationResult.Index);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenDeletingExistingEntity_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var bulkOperationResult = stubTable
+                .BulkOperation()
+                .Insert(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key"
+                })
+                .Delete(new StubEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    ETag = "*"
+                })
+                .Execute();
+
+            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Null(bulkOperationResult.Index);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+        }
     }
 }
