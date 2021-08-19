@@ -5,34 +5,37 @@ namespace CloudStub.Core
 {
     public class StubEntity
     {
-        private static readonly IReadOnlyDictionary<string, StubEntityProperty> _emptyProperties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal);
-        private IReadOnlyDictionary<string, StubEntityProperty> _properties = _emptyProperties;
-
-        public StubEntity()
+        public StubEntity(string partitionKey, string rowKey)
+            : this(partitionKey, rowKey, default, default)
         {
         }
 
-        internal StubEntity(StubEntity source)
+        public StubEntity(string partitionKey, string rowKey, string etag)
+            : this(partitionKey, rowKey, default, etag)
         {
-            PartitionKey = source.PartitionKey;
-            RowKey = source.RowKey;
-            Timestamp = source.Timestamp;
-            ETag = source.ETag;
-            Properties = source.Properties;
         }
 
-        public string PartitionKey { get; set; }
-
-        public string RowKey { get; set; }
-
-        public DateTime Timestamp { get; set; }
-
-        public string ETag { get; set; }
-
-        public IReadOnlyDictionary<string, StubEntityProperty> Properties
+        internal StubEntity(string partitionKey, string rowKey, DateTime timestamp, string etag)
         {
-            get => _properties;
-            set => _properties = value ?? _emptyProperties;
+            if (string.IsNullOrWhiteSpace(partitionKey))
+                throw new ArgumentException("The partition key cannot be null, empty or white space.", nameof(partitionKey));
+            if (string.IsNullOrWhiteSpace(rowKey))
+                throw new ArgumentException("The row key cannot be null, empty or white space.", nameof(rowKey));
+
+            PartitionKey = partitionKey;
+            RowKey = rowKey;
+            Timestamp = timestamp;
+            ETag = etag;
         }
+
+        public string PartitionKey { get; }
+
+        public string RowKey { get; }
+
+        public DateTime? Timestamp { get; }
+
+        public string ETag { get; }
+
+        public IDictionary<string, StubEntityProperty> Properties { get; } = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal);
     }
 }

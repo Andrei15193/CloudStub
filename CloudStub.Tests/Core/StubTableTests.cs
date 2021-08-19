@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using CloudStub.Core;
 using Xunit;
@@ -108,7 +107,7 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var insertResult = stubTable.Insert(new StubEntity());
+            var insertResult = stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableInsertResult.TableDoesNotExist, insertResult);
         }
@@ -119,7 +118,7 @@ namespace CloudStub.Tests.Core
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
 
-            var insertResult = stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            var insertResult = stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableInsertResult.Success, insertResult);
             var queryResult = stubTable.Query(null, null);
@@ -133,9 +132,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            var insertResult = stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            var insertResult = stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableInsertResult.EntityAlreadyExists, insertResult);
         }
@@ -145,7 +144,7 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var result = stubTable.InsertOrMerge(new StubEntity());
+            var result = stubTable.InsertOrMerge(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableInsertOrMergeResult.TableDoesNotExist, result);
         }
@@ -156,11 +155,9 @@ namespace CloudStub.Tests.Core
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
 
-            var result = stubTable.InsertOrMerge(new StubEntity
+            var result = stubTable.InsertOrMerge(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -178,22 +175,18 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
                 }
             });
 
-            var result = stubTable.InsertOrMerge(new StubEntity
+            var result = stubTable.InsertOrMerge(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property2", new StubEntityProperty("property-2-merge") },
                     { "property3", new StubEntityProperty("property-3-merge") }
@@ -212,7 +205,7 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var result = stubTable.InsertOrReplace(new StubEntity());
+            var result = stubTable.InsertOrReplace(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableInsertOrReplaceResult.TableDoesNotExist, result);
         }
@@ -223,11 +216,9 @@ namespace CloudStub.Tests.Core
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
 
-            var result = stubTable.InsertOrReplace(new StubEntity
+            var result = stubTable.InsertOrReplace(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -245,22 +236,18 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
                 }
             });
 
-            var result = stubTable.InsertOrReplace(new StubEntity
+            var result = stubTable.InsertOrReplace(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property2", new StubEntityProperty("property-2-replaced") },
                     { "property3", new StubEntityProperty("property-3-replaced") }
@@ -279,7 +266,7 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var result = stubTable.Merge(new StubEntity());
+            var result = stubTable.Merge(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableMergeResult.TableDoesNotExist, result);
         }
@@ -290,7 +277,7 @@ namespace CloudStub.Tests.Core
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
 
-            var result = stubTable.Merge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            var result = stubTable.Merge(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableMergeResult.EntityDoesNotExists, result);
         }
@@ -300,9 +287,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            var result = stubTable.Merge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key", ETag = "unmatching-etag" });
+            var result = stubTable.Merge(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
             Assert.Equal(StubTableMergeResult.EtagsDoNotMatch, result);
         }
@@ -312,23 +299,18 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
                 }
             });
 
-            var result = stubTable.Merge(new StubEntity
+            var result = stubTable.Merge(new StubEntity("partition-key", "row-key", "*")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                ETag = "*",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property2", new StubEntityProperty("property-2-merge") },
                     { "property3", new StubEntityProperty("property-3-merge") }
@@ -351,11 +333,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -363,12 +343,9 @@ namespace CloudStub.Tests.Core
             });
             var etag = stubTable.Query(new StubTableQuery(), default).Entities.Single().ETag;
 
-            var result = stubTable.Merge(new StubEntity
+            var result = stubTable.Merge(new StubEntity("partition-key", "row-key", etag)
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                ETag = etag,
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property2", new StubEntityProperty("property-2-merge") },
                     { "property3", new StubEntityProperty("property-3-merge") }
@@ -391,7 +368,7 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var result = stubTable.Replace(new StubEntity());
+            var result = stubTable.Replace(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableReplaceResult.TableDoesNotExist, result);
         }
@@ -402,7 +379,7 @@ namespace CloudStub.Tests.Core
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
 
-            var result = stubTable.Replace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            var result = stubTable.Replace(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTableReplaceResult.EntityDoesNotExists, result);
         }
@@ -412,9 +389,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            var result = stubTable.Replace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key", ETag = "unmatching-etag" });
+            var result = stubTable.Replace(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
             Assert.Equal(StubTableReplaceResult.EtagsDoNotMatch, result);
         }
@@ -424,23 +401,18 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
                 }
             });
 
-            var result = stubTable.Replace(new StubEntity
+            var result = stubTable.Replace(new StubEntity("partition-key", "row-key", "*")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                ETag = "*",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property2", new StubEntityProperty("property-2-replaced") },
                     { "property3", new StubEntityProperty("property-3-replaced") }
@@ -463,11 +435,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -475,12 +445,9 @@ namespace CloudStub.Tests.Core
             });
             var etag = stubTable.Query(new StubTableQuery(), default).Entities.Single().ETag;
 
-            var result = stubTable.Replace(new StubEntity
+            var result = stubTable.Replace(new StubEntity("partition-key", "row-key", etag)
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                ETag = etag,
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property2", new StubEntityProperty("property-2-replaced") },
                     { "property3", new StubEntityProperty("property-3-replaced") }
@@ -503,7 +470,7 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var result = stubTable.Delete(new StubEntity());
+            var result = stubTable.Delete(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTablDeleteResult.TableDoesNotExist, result);
         }
@@ -514,7 +481,7 @@ namespace CloudStub.Tests.Core
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
 
-            var result = stubTable.Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            var result = stubTable.Delete(new StubEntity("partition-key", "row-key"));
 
             Assert.Equal(StubTablDeleteResult.EntityDoesNotExists, result);
         }
@@ -524,9 +491,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            var result = stubTable.Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key", ETag = "unmatching-etag" });
+            var result = stubTable.Delete(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
             Assert.Equal(StubTablDeleteResult.EtagsDoNotMatch, result);
         }
@@ -536,18 +503,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key"
-            });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            var result = stubTable.Delete(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                ETag = "*"
-            });
+            var result = stubTable.Delete(new StubEntity("partition-key", "row-key", "*"));
 
             Assert.Equal(StubTablDeleteResult.Success, result);
             Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
@@ -558,19 +516,10 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key"
-            });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
             var etag = stubTable.Query(new StubTableQuery(), default).Entities.Single().ETag;
 
-            var result = stubTable.Delete(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                ETag = etag
-            });
+            var result = stubTable.Delete(new StubEntity("partition-key", "row-key", etag));
 
             Assert.Equal(StubTablDeleteResult.Success, result);
             Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
@@ -581,23 +530,10 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key-1"
-            });
-            stubTable.Insert(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key-2"
-            });
+            stubTable.Insert(new StubEntity("partition-key", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key", "row-key-2"));
 
-            var result = stubTable.Delete(new StubEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key-1",
-                ETag = "*"
-            });
+            var result = stubTable.Delete(new StubEntity("partition-key", "row-key-1", "*"));
 
             Assert.Equal(StubTablDeleteResult.Success, result);
             var remainingEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
@@ -633,11 +569,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -659,11 +593,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -685,11 +617,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal)
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -736,11 +666,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>
+                Properties =
                 {
                     { "byte-property", new StubEntityProperty(new byte[] { 0x00, 0x01, 0x02 }) },
                     { "boolean-property", new StubEntityProperty(true) },
@@ -777,16 +705,16 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-5", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-5", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-3", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-3", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-1", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-1", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-2", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-2", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-4", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-4", RowKey = "row-key-2" });
+            stubTable.Insert(new StubEntity("partition-key-5", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-5", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-3", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-3", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-1", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-1", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-2", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-2", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-4", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-4", "row-key-2"));
 
             var queryResult = stubTable.Query(null, null);
 
@@ -816,11 +744,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>
+                Properties =
                 {
                     { "byte-property", new StubEntityProperty(new byte[] { 0x00, 0x01, 0x02 }) },
                     { "boolean-property", new StubEntityProperty(true) },
@@ -850,16 +776,16 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-5", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-5", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-3", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-3", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-1", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-1", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-2", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-2", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-4", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-4", RowKey = "row-key-2" });
+            stubTable.Insert(new StubEntity("partition-key-5", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-5", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-3", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-3", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-1", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-1", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-2", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-2", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-4", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-4", "row-key-2"));
 
             var iterationCount = 0;
             var query = new StubTableQuery { PageSize = 2 };
@@ -893,16 +819,16 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-5", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-5", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-3", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-3", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-1", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-1", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-2", RowKey = "row-key-2" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-2", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-4", RowKey = "row-key-1" });
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key-4", RowKey = "row-key-2" });
+            stubTable.Insert(new StubEntity("partition-key-5", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-5", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-3", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-3", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-1", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-1", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-2", "row-key-2"));
+            stubTable.Insert(new StubEntity("partition-key-2", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-4", "row-key-1"));
+            stubTable.Insert(new StubEntity("partition-key-4", "row-key-2"));
 
             var queryResult = stubTable.Query(new StubTableQuery { Filter = entity => entity.RowKey == "row-key-1" }, null);
 
@@ -936,9 +862,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
-            var bulkOperationResult = stubTable.BulkOperation().Insert(new StubEntity()).Execute();
+            var bulkOperationResult = stubTable.BulkOperation().Insert(new StubEntity("partition-key", "row-key")).Execute();
 
-            Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
+            Assert.Equal(StubTableBulkOperationResult.TableDoesNotExist, bulkOperationResult.BulkOperationResult);
             Assert.Null(bulkOperationResult.Index);
         }
 
@@ -949,8 +875,8 @@ namespace CloudStub.Tests.Core
 
             var exception = Assert.Throws<ArgumentException>(() => stubTable
                 .BulkOperation()
-                .Insert(new StubEntity { PartitionKey = "partition-key-1" })
-                .Insert(new StubEntity { PartitionKey = "partition-key-2" })
+                .Insert(new StubEntity("partition-key-1", "row-key"))
+                .Insert(new StubEntity("partition-key-2", "row-key"))
                 .Execute()
             );
 
@@ -965,8 +891,8 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-2" })
-                .Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-1" })
+                .Insert(new StubEntity("partition-key", "row-key-2"))
+                .Delete(new StubEntity("partition-key", "row-key-1"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
@@ -982,8 +908,8 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-1" })
-                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key-2" })
+                .Insert(new StubEntity("partition-key", "row-key-1"))
+                .Insert(new StubEntity("partition-key", "row-key-2"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
@@ -1002,7 +928,7 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Insert(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
@@ -1016,11 +942,11 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Insert(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.EntityAlreadyExist, bulkOperationResult.BulkOperationResult);
@@ -1034,11 +960,11 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .InsertOrMerge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .InsertOrMerge(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
@@ -1052,11 +978,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -1065,11 +989,9 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .InsertOrMerge(new StubEntity
+                .InsertOrMerge(new StubEntity("partition-key", "row-key")
                 {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    Properties = new Dictionary<string, StubEntityProperty>
+                    Properties =
                     {
                         { "property2", new StubEntityProperty("property-2-merge") },
                         { "property3", new StubEntityProperty("property-3-merge") }
@@ -1091,11 +1013,11 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .InsertOrReplace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .InsertOrReplace(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);
@@ -1109,11 +1031,9 @@ namespace CloudStub.Tests.Core
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
             stubTable.Create();
-            stubTable.Insert(new StubEntity
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
             {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Properties = new Dictionary<string, StubEntityProperty>
+                Properties =
                 {
                     { "property1", new StubEntityProperty("property-1") },
                     { "property2", new StubEntityProperty("property-2") }
@@ -1122,11 +1042,9 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .InsertOrReplace(new StubEntity
+                .InsertOrReplace(new StubEntity("partition-key", "row-key")
                 {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    Properties = new Dictionary<string, StubEntityProperty>
+                    Properties =
                     {
                         { "property2", new StubEntityProperty("property-2-replace") },
                         { "property3", new StubEntityProperty("property-3-replace") }
@@ -1151,7 +1069,7 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Merge(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Merge(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
@@ -1167,22 +1085,17 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity
+                .Insert(new StubEntity("partition-key", "row-key")
                 {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    Properties = new Dictionary<string, StubEntityProperty>
+                    Properties =
                     {
                         { "property1", new StubEntityProperty("property-1") },
                         { "property2", new StubEntityProperty("property-2") }
                     }
                 })
-                .Merge(new StubEntity
+                .Merge(new StubEntity("partition-key", "row-key", "*")
                 {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    ETag = "*",
-                    Properties = new Dictionary<string, StubEntityProperty>
+                    Properties =
                     {
                         { "property2", new StubEntityProperty("property-2-merge") },
                         { "property3", new StubEntityProperty("property-3-merge") }
@@ -1207,7 +1120,7 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Replace(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Replace(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
@@ -1223,22 +1136,17 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity
+                .Insert(new StubEntity("partition-key", "row-key")
                 {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    Properties = new Dictionary<string, StubEntityProperty>
+                    Properties =
                     {
                         { "property1", new StubEntityProperty("property-1") },
                         { "property2", new StubEntityProperty("property-2") }
                     }
                 })
-                .Replace(new StubEntity
+                .Replace(new StubEntity("partition-key", "row-key", "*")
                 {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    ETag = "*",
-                    Properties = new Dictionary<string, StubEntityProperty>
+                    Properties =
                     {
                         { "property2", new StubEntityProperty("property-2-replace") },
                         { "property3", new StubEntityProperty("property-3-replace") }
@@ -1263,7 +1171,7 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Delete(new StubEntity { PartitionKey = "partition-key", RowKey = "row-key" })
+                .Delete(new StubEntity("partition-key", "row-key"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.EntityDoesNotExist, bulkOperationResult.BulkOperationResult);
@@ -1279,17 +1187,8 @@ namespace CloudStub.Tests.Core
 
             var bulkOperationResult = stubTable
                 .BulkOperation()
-                .Insert(new StubEntity
-                {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key"
-                })
-                .Delete(new StubEntity
-                {
-                    PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    ETag = "*"
-                })
+                .Insert(new StubEntity("partition-key", "row-key"))
+                .Delete(new StubEntity("partition-key", "row-key", "*"))
                 .Execute();
 
             Assert.Equal(StubTableBulkOperationResult.Success, bulkOperationResult.BulkOperationResult);

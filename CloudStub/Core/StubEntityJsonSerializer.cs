@@ -26,7 +26,9 @@ namespace CloudStub.Core
                                 switch (reader.TokenType)
                                 {
                                     case JsonToken.StartObject:
-                                        entites.Add(_ReadEntity(reader));
+                                        var entity = _TryReadEntity(reader);
+                                        if (entity is object)
+                                            entites.Add(entity);
                                         break;
 
                                     case JsonToken.EndArray:
@@ -62,9 +64,12 @@ namespace CloudStub.Core
             }
         }
 
-        private StubEntity _ReadEntity(JsonReader reader)
+        private StubEntity _TryReadEntity(JsonReader reader)
         {
-            var entity = new StubEntity();
+            var partitionKey = default(string);
+            var rowKey = default(string);
+            var etag = default(string);
+            var timestamp = default(DateTime?);
             var entityProperties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal);
 
             while (reader.Read() && reader.TokenType != JsonToken.EndObject)
@@ -76,19 +81,19 @@ namespace CloudStub.Core
                         switch (propertyName)
                         {
                             case "partitionKey":
-                                entity.PartitionKey = _ReadEntityKeyProperty(reader);
+                                partitionKey = _ReadEntityKeyProperty(reader);
                                 break;
 
                             case "rowKey":
-                                entity.RowKey = _ReadEntityKeyProperty(reader);
+                                rowKey = _ReadEntityKeyProperty(reader);
                                 break;
 
                             case "etag":
-                                entity.ETag = _ReadEntityETagProperty(reader);
+                                etag = _ReadEntityETagProperty(reader);
                                 break;
 
                             case "timestamp":
-                                entity.Timestamp = _ReadEntityTimestampProperty(reader);
+                                timestamp = _ReadEntityTimestampProperty(reader);
                                 break;
 
                             default:
@@ -102,8 +107,15 @@ namespace CloudStub.Core
                 }
             }
 
-            entity.Properties = entityProperties;
-            return entity;
+            if (partitionKey is object && rowKey is object && timestamp is object && etag is object)
+            {
+                var entity = new StubEntity(partitionKey, rowKey, timestamp.Value, etag);
+                foreach (var property in entityProperties)
+                    entity.Properties.Add(property);
+                return entity;
+            }
+            else
+                return null;
         }
 
         private string _ReadEntityKeyProperty(JsonReader reader)
@@ -222,7 +234,7 @@ namespace CloudStub.Core
             writer.WritePropertyName("etag");
             writer.WriteValue(entity.ETag);
             writer.WritePropertyName("timestamp");
-            writer.WriteValue(entity.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+            writer.WriteValue(entity.Timestamp?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
 
             if (entity.Properties is object)
                 foreach (var pair in entity.Properties)

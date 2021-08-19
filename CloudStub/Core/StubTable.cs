@@ -227,7 +227,7 @@ namespace CloudStub.Core
             {
                 using (_tableStorageHandler.AquireTableLock(Name))
                 {
-                    var entites = _ReadEntities();
+                    var entites = _ReadEntities().Where(entity => entity.Timestamp is object || entity.ETag is object);
 
                     var remainingEntities = continuationToken is object
                         ? entites.SkipWhile(entity => string.CompareOrdinal(entity.PartitionKey, continuationToken.LastPartitionKey) <= 0 && string.CompareOrdinal(entity.RowKey, continuationToken.LastRowKey) <= 0)
@@ -266,19 +266,16 @@ namespace CloudStub.Core
 
         private StubEntity _SelectPropertiesFromEntity(StubEntity entity, IReadOnlyCollection<string> selectedPropertyNames)
         {
+            var projectEntity = new StubEntity(entity.PartitionKey, entity.RowKey, entity.Timestamp.Value, entity.ETag);
             if (selectedPropertyNames is null)
-                return entity;
+                foreach (var property in entity.Properties)
+                    projectEntity.Properties.Add(property);
             else
-            {
-                var selectedProperties = new Dictionary<string, StubEntityProperty>(selectedPropertyNames.Count, StringComparer.Ordinal);
                 foreach (var propertyName in selectedPropertyNames)
                     if (entity.Properties.TryGetValue(propertyName, out var propertyValue))
-                        selectedProperties.Add(propertyName, propertyValue);
-                return new StubEntity(entity)
-                {
-                    Properties = selectedProperties
-                };
-            }
+                        projectEntity.Properties.Add(propertyName, propertyValue);
+
+            return projectEntity;
         }
 
         private IEnumerable<StubEntity> _ReadEntities()

@@ -16,7 +16,11 @@ namespace CloudStub.Core
             else
             {
                 var now = DateTime.UtcNow;
-                partitionCluster.Insert(entityIndex, new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) });
+                var insertEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}");
+                foreach (var property in entity.Properties)
+                    insertEntity.Properties.Add(property);
+
+                partitionCluster.Insert(entityIndex, insertEntity);
                 return StubTableInsertResult.Success;
             }
         }
@@ -28,17 +32,20 @@ namespace CloudStub.Core
             var now = DateTime.UtcNow;
             if (found)
             {
-                var updatedEntity = new StubEntity(partitionCluster[entityIndex])
-                {
-                    Timestamp = now,
-                    ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture),
-                    Properties = _Merge(partitionCluster[entityIndex].Properties, entity.Properties)
-                };
+                var mergeEntity = new StubEntity(partitionCluster[entityIndex].PartitionKey, partitionCluster[entityIndex].RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+                foreach (var property in partitionCluster[entityIndex].Properties.Concat(entity.Properties))
+                    mergeEntity.Properties[property.Key] = property.Value;
 
-                partitionCluster[entityIndex] = updatedEntity;
+                partitionCluster[entityIndex] = mergeEntity;
             }
             else
-                partitionCluster.Insert(entityIndex, new StubEntity(entity) { Timestamp = now, ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture) });
+            {
+                var insertEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+                foreach (var property in entity.Properties)
+                    insertEntity.Properties.Add(property);
+
+                partitionCluster.Insert(entityIndex, insertEntity);
+            }
 
             return StubTableInsertOrMergeResult.Success;
         }
@@ -48,18 +55,14 @@ namespace CloudStub.Core
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             var now = DateTime.UtcNow;
+            var insertOrReplaceEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+            foreach (var property in entity.Properties)
+                insertOrReplaceEntity.Properties.Add(property);
+
             if (found)
-                partitionCluster[entityIndex] = new StubEntity(entity)
-                {
-                    Timestamp = now,
-                    ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture)
-                };
+                partitionCluster[entityIndex] = insertOrReplaceEntity;
             else
-                partitionCluster.Insert(entityIndex, new StubEntity(entity)
-                {
-                    Timestamp = now,
-                    ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture)
-                });
+                partitionCluster.Insert(entityIndex, insertOrReplaceEntity);
 
             return StubTableInsertOrReplaceResult.Success;
         }
@@ -73,14 +76,11 @@ namespace CloudStub.Core
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 var now = DateTime.UtcNow;
-                var updatedEntity = new StubEntity(partitionCluster[entityIndex])
-                {
-                    Timestamp = now,
-                    ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture),
-                    Properties = _Merge(partitionCluster[entityIndex].Properties, entity.Properties)
-                };
+                var mergeEntity = new StubEntity(partitionCluster[entityIndex].PartitionKey, partitionCluster[entityIndex].RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+                foreach (var property in partitionCluster[entityIndex].Properties.Concat(entity.Properties))
+                    mergeEntity.Properties[property.Key] = property.Value;
 
-                partitionCluster[entityIndex] = updatedEntity;
+                partitionCluster[entityIndex] = mergeEntity;
 
                 return StubTableMergeResult.Success;
             }
@@ -97,11 +97,11 @@ namespace CloudStub.Core
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 var now = DateTime.UtcNow;
-                partitionCluster[entityIndex] = new StubEntity(entity)
-                {
-                    Timestamp = now,
-                    ETag = $"etag/{now:o}".ToString(CultureInfo.InvariantCulture)
-                };
+                var replaceEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+                foreach (var property in entity.Properties)
+                    replaceEntity.Properties.Add(property);
+
+                partitionCluster[entityIndex] = replaceEntity;
 
                 return StubTableReplaceResult.Success;
             }
@@ -129,31 +129,22 @@ namespace CloudStub.Core
         {
             var entityIndex = _FindEntityIndex(partitionKey, rowKey, partitionCluster, out var found);
 
-            if (!found)
+            if (!found || partitionCluster[entityIndex].Timestamp is null || partitionCluster[entityIndex].ETag is null)
                 return new StubTableRetrieveDataResult(null);
             else
             {
                 var entity = partitionCluster[entityIndex];
-                var resultEntity = new StubEntity
-                {
-                    PartitionKey = entity.PartitionKey,
-                    RowKey = entity.RowKey,
-                    ETag = entity.ETag,
-                    Timestamp = entity.Timestamp
-                };
-                if (selectedProperties is null)
-                    resultEntity.Properties = entity.Properties;
-                else if (selectedProperties.Any())
-                    resultEntity.Properties = entity
-                        .Properties
-                        .Where(property => selectedProperties.Contains(property.Key))
-                        .ToDictionary(
-                            property => property.Key,
-                            property => property.Value,
-                            StringComparer.Ordinal
-                        );
 
-                return new StubTableRetrieveDataResult(resultEntity);
+                var retrieveEntity = new StubEntity(entity.PartitionKey, entity.RowKey, entity.Timestamp.Value, entity.ETag);
+                if (selectedProperties is null)
+                    foreach (var property in entity.Properties)
+                        retrieveEntity.Properties.Add(property);
+                else if (selectedProperties.Any())
+                    foreach (var propertyName in selectedProperties)
+                        if (entity.Properties.TryGetValue(propertyName, out var propertyValue))
+                            retrieveEntity.Properties.Add(propertyName, propertyValue);
+
+                return new StubTableRetrieveDataResult(retrieveEntity);
             }
         }
 
@@ -201,8 +192,8 @@ namespace CloudStub.Core
         private static IReadOnlyDictionary<string, StubEntityProperty> _Merge(IReadOnlyDictionary<string, StubEntityProperty> left, IReadOnlyDictionary<string, StubEntityProperty> right)
         {
             var result = new Dictionary<string, StubEntityProperty>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pair in left.Concat(right))
-                result[pair.Key] = pair.Value;
+            foreach (var property in left.Concat(right))
+                result[property.Key] = property.Value;
             return result;
         }
     }
