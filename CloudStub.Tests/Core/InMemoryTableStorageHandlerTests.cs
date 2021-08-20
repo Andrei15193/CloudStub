@@ -65,118 +65,108 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
-        public void GetPartitionClusterTextReader_WhenTableDoesNotExist_ThrowsException()
-            => Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"));
+        public void GetPartitionClusterStorageHandler_WhenTableDoesNotExist_ThrowsException()
+            => Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key"));
 
         [Fact]
-        public void GetPartitionClusterTextReader_WhenOnlyOtherTableExists_ThrowsException()
+        public void GetPartitionClusterStorageHandler_WhenOnlyOtherTableExists_ThrowsException()
         {
             _tableStorageHandler.Create("other-table-name");
 
-            Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"));
+            Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key"));
         }
 
         [Fact]
-        public void GetPartitionClusterTextReader_WhenTableContainsNoData_ReturnsEmptyReader()
+        public void GetPartitionClusterStorageHandler_WhenTableContainsNoData_ReturnsEmptyReader()
         {
             _tableStorageHandler.Create("table-name");
 
-            using (var reader = _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"))
+            var partitionClusterStorageHandler = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key");
+            using (var reader = partitionClusterStorageHandler.OpenRead())
+                Assert.Empty(reader.ReadToEnd());
+            Assert.False(string.IsNullOrWhiteSpace(partitionClusterStorageHandler.Key));
+        }
+
+        [Fact]
+        public void GetPartitionClusterStorageHandler_WhenPartitionClusterContainsData_ReturnsReaderWithData()
+        {
+            _tableStorageHandler.Create("table-name");
+            using (var writer = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenWrite())
+                writer.Write("content");
+
+            using (var reader = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenRead())
+                Assert.Equal("content", reader.ReadToEnd());
+        }
+
+        [Fact]
+        public void GetPartitionClusterStorageHandler_WhenOnlyOtherTableContainsData_ReturnsEmptyReader()
+        {
+            _tableStorageHandler.Create("table-name");
+            _tableStorageHandler.Create("other-table-name");
+            using (var writer = _tableStorageHandler.GetPartitionClusterStorageHandler("other-table-name", "partition-key").OpenWrite())
+                writer.Write("content");
+
+            using (var reader = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenRead())
                 Assert.Empty(reader.ReadToEnd());
         }
 
         [Fact]
-        public void GetPartitionClusterTextReader_WhenPartitionClusterContainsData_ReturnsReaderWithData()
+        public void GetPartitionClusterStorageHandler_WhenPartitionClusterContainsData_ReturnsReaderWithSameDataOnMultipleReads()
         {
             _tableStorageHandler.Create("table-name");
-            using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter("table-name", "partition-key"))
+            using (var writer = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenWrite())
                 writer.Write("content");
 
-            using (var reader = _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"))
+            using (var reader = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenRead())
+                Assert.Equal("content", reader.ReadToEnd());
+            using (var reader = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenRead())
                 Assert.Equal("content", reader.ReadToEnd());
         }
 
         [Fact]
-        public void GetPartitionClusterTextReader_WhenOnlyOtherTableContainsData_ReturnsEmptyReader()
+        public void GetPartitionClusterStorageHandler_WhenTableHasData_OverwritesExistingData()
         {
             _tableStorageHandler.Create("table-name");
-            _tableStorageHandler.Create("other-table-name");
-            using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter("other-table-name", "partition-key"))
+            using (var writer = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenWrite())
                 writer.Write("content");
 
-            using (var reader = _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"))
-                Assert.Empty(reader.ReadToEnd());
-        }
-
-        [Fact]
-        public void GetPartitionClusterTextReader_WhenPartitionClusterContainsData_ReturnsReaderWithSameDataOnMultipleReads()
-        {
-            _tableStorageHandler.Create("table-name");
-            using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter("table-name", "partition-key"))
-                writer.Write("content");
-
-            using (var reader = _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"))
-                Assert.Equal("content", reader.ReadToEnd());
-            using (var reader = _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"))
-                Assert.Equal("content", reader.ReadToEnd());
-        }
-
-        [Fact]
-        public void GetPartitionClusterTextWriter_WhenTableDoesNotExist_ThrowsException()
-            => Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterTextWriter("table-name", "partition-key"));
-
-        [Fact]
-        public void GetPartitionClusterTextWriter_WhenOnlyOtherTableExists_ThrowsException()
-        {
-            _tableStorageHandler.Create("other-table-name");
-
-            Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterTextWriter("table-name", "partition-key"));
-        }
-
-        [Fact]
-        public void GetPartitionClusterTextWriter_WhenTableHasData_OverwritesExistingData()
-        {
-            _tableStorageHandler.Create("table-name");
-            using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter("table-name", "partition-key"))
-                writer.Write("content");
-
-            using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter("table-name", "partition-key"))
+            using (var writer = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenWrite())
                 writer.Write("new");
 
-            using (var reader = _tableStorageHandler.GetPartitionClusterTextReader("table-name", "partition-key"))
+            using (var reader = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", "partition-key").OpenRead())
                 Assert.Equal("new", reader.ReadToEnd());
         }
 
         [Fact]
-        public void GetPartitionClustersTextReaders_WhenTableDoesNotExist_ThrowsException()
-            => Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClustersTextReaderProviders("table-name"));
+        public void GetPartitionClusterStorageHandlers_WhenTableDoesNotExist_ThrowsException()
+            => Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterStorageHandlers("table-name"));
 
         [Fact]
-        public void GetPartitionClustersTextReaders_WhenOnlyOtherTableExists_ThrowsException()
+        public void GetPartitionClusterStorageHandlers_WhenOnlyOtherTableExists_ThrowsException()
         {
             _tableStorageHandler.Create("other-table-name");
 
-            Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClustersTextReaderProviders("table-name"));
+            Assert.Throws<KeyNotFoundException>(() => _tableStorageHandler.GetPartitionClusterStorageHandlers("table-name"));
         }
 
         [Fact]
-        public void GetPartitionClustersTextReaders_WhenTableContainsMultiplePartitions_ReturnsReadersForAll()
+        public void GetPartitionClusterStorageHandlers_WhenTableContainsMultiplePartitions_ReturnsReadersForAll()
         {
             _tableStorageHandler.Create("table-name");
 
             foreach (var partitionNumber in Enumerable.Range(1, 5))
-                using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter("table-name", $"partition-key-{partitionNumber}"))
+                using (var writer = _tableStorageHandler.GetPartitionClusterStorageHandler("table-name", $"partition-key-{partitionNumber}").OpenWrite())
                     writer.Write("content");
 
             Assert.Equal(
                 string.Join(string.Empty, Enumerable.Repeat("content", 5)),
                 _tableStorageHandler
-                    .GetPartitionClustersTextReaderProviders("table-name")
+                    .GetPartitionClusterStorageHandlers("table-name")
                     .Aggregate(
                         new StringBuilder(),
-                        (builder, readerProvider) =>
+                        (builder, partitonClusterStorageHandler) =>
                         {
-                            using (var reader = readerProvider())
+                            using (var reader = partitonClusterStorageHandler.OpenRead())
                                 return builder.Append(reader.ReadToEnd());
                         }
                     )

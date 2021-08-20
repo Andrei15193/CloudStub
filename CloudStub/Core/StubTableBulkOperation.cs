@@ -5,14 +5,12 @@ namespace CloudStub.Core
 {
     public class StubTableBulkOperation
     {
-        private static readonly StubEntityJsonSerializer _entityJsonSerializer = new StubEntityJsonSerializer();
         private string _partitionKey;
-        private readonly string _tableName;
-        private readonly ITableStorageHandler _tableStorageHandler;
+        private readonly Func<string, IEnumerable<Func<List<StubEntity>, StubTableBulkOperationResult>>, StubTableBulkOperationDataResult> _executeCallback;
         private readonly ICollection<Func<List<StubEntity>, StubTableBulkOperationResult>> _operations = new List<Func<List<StubEntity>, StubTableBulkOperationResult>>();
 
-        internal StubTableBulkOperation(string tableName, ITableStorageHandler tableStorageHandler)
-            => (_tableName, _tableStorageHandler) = (tableName, tableStorageHandler);
+        internal StubTableBulkOperation(Func<string, IEnumerable<Func<List<StubEntity>, StubTableBulkOperationResult>>, StubTableBulkOperationDataResult> executeCallback)
+            => _executeCallback = executeCallback;
 
         public StubTableBulkOperation Insert(StubEntity entity)
         {
@@ -180,38 +178,6 @@ namespace CloudStub.Core
         }
 
         public StubTableBulkOperationDataResult Execute()
-        {
-            var result = new StubTableBulkOperationDataResult(StubTableBulkOperationResult.Success);
-            if (_partitionKey is object)
-                try
-                {
-                    using (_tableStorageHandler.AquirePartitionClusterLock(_tableName, _partitionKey))
-                    {
-                        List<StubEntity> partitionCluster;
-                        using (var reader = _tableStorageHandler.GetPartitionClusterTextReader(_tableName, _partitionKey))
-                            partitionCluster = _entityJsonSerializer.Deserialize(reader);
-
-                        var index = 0;
-                        using (var operation = _operations.GetEnumerator())
-                            while (result.BulkOperationResult == StubTableBulkOperationResult.Success && operation.MoveNext())
-                            {
-                                var operationResult = operation.Current(partitionCluster);
-                                if (operationResult != StubTableBulkOperationResult.Success)
-                                    result = new StubTableBulkOperationDataResult(operationResult, index);
-                                index++;
-                            }
-
-                        if (result.BulkOperationResult == StubTableBulkOperationResult.Success)
-                            using (var writer = _tableStorageHandler.GetPartitionClusterTextWriter(_tableName, _partitionKey))
-                                _entityJsonSerializer.Serialize(writer, partitionCluster);
-                    }
-                }
-                catch (KeyNotFoundException)
-                {
-                    result = new StubTableBulkOperationDataResult(StubTableBulkOperationResult.TableDoesNotExist);
-                }
-
-            return result;
-        }
+            => _executeCallback(_partitionKey, _operations);
     }
 }
