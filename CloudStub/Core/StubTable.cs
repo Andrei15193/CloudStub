@@ -15,7 +15,10 @@ namespace CloudStub.Core
 
         public StubTable(string name, ITableStorageHandler tableStorageHandler)
         {
-            Name = name ?? throw new ArgumentNullException(nameof(name));
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("The table name cannot be null, empty or white space.", nameof(name));
+
+            Name = name;
             _tableStorageHandler = tableStorageHandler ?? throw new ArgumentNullException(nameof(tableStorageHandler));
         }
 

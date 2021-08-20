@@ -7,22 +7,28 @@ namespace CloudStub.Tests.Core
 {
     public class StubTableTests
     {
-        [Fact]
-        public void NewTable_WhenNameIsNull_ThrowsException()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        [InlineData("\t")]
+        [InlineData("\n")]
+        [InlineData("\r")]
+        public void Initialize_WhenNameIsNullEmptyOrWhiteSpace_ThrowsException(string tableName)
         {
-            var exception = Assert.Throws<ArgumentNullException>("name", () => new StubTable(null, null));
-            Assert.Equal(new ArgumentNullException("name").Message, exception.Message);
+            var exception = Assert.Throws<ArgumentException>("name", () => new StubTable(tableName, null));
+            Assert.Equal(new ArgumentException("The table name cannot be null, empty or white space.", "name").Message, exception.Message);
         }
 
         [Fact]
-        public void NewTable_WhenTableStorageHandlerIsNull_ThrowsException()
+        public void Initialize_WhenTableStorageHandlerIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("tableStorageHandler", () => new StubTable("", null));
+            var exception = Assert.Throws<ArgumentNullException>("tableStorageHandler", () => new StubTable("table-name", null));
             Assert.Equal(new ArgumentNullException("tableStorageHandler").Message, exception.Message);
         }
 
         [Fact]
-        public void NewTable_InitializesName_HasNameSet()
+        public void Initialize_InitializesName_HasNameSet()
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
@@ -30,7 +36,7 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
-        public void NewTable_WithoutRunningAnyOperations_DoesNotExist()
+        public void Initialize_WithoutRunningAnyOperations_DoesNotExist()
         {
             var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
 
@@ -38,7 +44,7 @@ namespace CloudStub.Tests.Core
         }
 
         [Fact]
-        public void NewTable_WithPreviouslyCreatedTable_Exist()
+        public void Initialize_WithPreviouslyCreatedTable_Exist()
         {
             var tableDataHandler = new InMemoryTableStorageHandler();
             tableDataHandler.Create("table-name");
