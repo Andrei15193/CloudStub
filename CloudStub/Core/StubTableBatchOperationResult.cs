@@ -1,6 +1,6 @@
 ﻿namespace CloudStub.Core
 {
-    public enum StubTableBulkOperationResult
+    public enum StubTableBatchOperationResult
     {
         Success,
         TableDoesNotExist,

@@ -385,13 +385,13 @@ namespace CloudStub.Core
             return result;
         }
 
-        public StubTableBulkOperation BulkOperation()
+        public StubTableBatchOperation BatchOperation()
         {
-            return new StubTableBulkOperation(_ExecuteBulkOperation);
+            return new StubTableBatchOperation(_ExecuteBatchOperation);
 
-            StubTableBulkOperationDataResult _ExecuteBulkOperation(string partitionKey, IEnumerable<Func<List<StubEntity>, StubTableBulkOperationResult>> applyOperationCallbacks)
+            StubTableBatchOperationDataResult _ExecuteBatchOperation(string partitionKey, IEnumerable<Func<List<StubEntity>, StubTableBatchOperationResult>> applyOperationCallbacks)
             {
-                var result = new StubTableBulkOperationDataResult(StubTableBulkOperationResult.Success);
+                var result = new StubTableBatchOperationDataResult(StubTableBatchOperationResult.Success);
 
                 if (partitionKey is object && applyOperationCallbacks.Any())
                 {
@@ -408,15 +408,15 @@ namespace CloudStub.Core
 
                             var operationIndex = 0;
                             using (var applyOperationCallback = applyOperationCallbacks.GetEnumerator())
-                                while (result.BulkOperationResult == StubTableBulkOperationResult.Success && applyOperationCallback.MoveNext())
+                                while (result.BatchOperationResult == StubTableBatchOperationResult.Success && applyOperationCallback.MoveNext())
                                 {
                                     var operationResult = applyOperationCallback.Current(partitionCluster);
-                                    if (operationResult != StubTableBulkOperationResult.Success)
-                                        result = new StubTableBulkOperationDataResult(operationResult, operationIndex);
+                                    if (operationResult != StubTableBatchOperationResult.Success)
+                                        result = new StubTableBatchOperationDataResult(operationResult, operationIndex);
                                     operationIndex++;
                                 }
 
-                            if (result.BulkOperationResult == StubTableBulkOperationResult.Success)
+                            if (result.BatchOperationResult == StubTableBatchOperationResult.Success)
                                 _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
                         }
                         finally
@@ -426,7 +426,7 @@ namespace CloudStub.Core
                     }
                     catch (KeyNotFoundException)
                     {
-                        result = new StubTableBulkOperationDataResult(StubTableBulkOperationResult.TableDoesNotExist);
+                        result = new StubTableBatchOperationDataResult(StubTableBatchOperationResult.TableDoesNotExist);
                     }
                     finally
                     {
