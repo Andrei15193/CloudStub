@@ -126,7 +126,7 @@ namespace CloudStub.Core
 
             _operations.Add(partitionCluster =>
             {
-                switch (StubTableOperation.Replace(entity, partitionCluster))
+                switch (StubTableOperation.Replace(entity, partitionCluster).OperationResult)
                 {
                     case StubTableReplaceOperationResult.Success:
                         return StubTableBatchOperationResult.Success;

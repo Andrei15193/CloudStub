@@ -453,7 +453,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Replace(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableReplaceOperationResult.TableDoesNotExist, result);
+            Assert.Equal(StubTableReplaceOperationResult.TableDoesNotExist, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -464,7 +465,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Replace(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableReplaceOperationResult.EntityDoesNotExists, result);
+            Assert.Equal(StubTableReplaceOperationResult.EntityDoesNotExists, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -476,7 +478,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Replace(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
-            Assert.Equal(StubTableReplaceOperationResult.EtagsDoNotMatch, result);
+            Assert.Equal(StubTableReplaceOperationResult.EtagsDoNotMatch, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -502,7 +505,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableReplaceOperationResult.Success, result);
+            Assert.Equal(StubTableReplaceOperationResult.Success, result.OperationResult);
             var replacedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", replacedEntity.PartitionKey);
             Assert.Equal("row-key", replacedEntity.RowKey);
@@ -511,6 +514,16 @@ namespace CloudStub.Tests.Core
             Assert.False(replacedEntity.Properties.ContainsKey("property1"));
             Assert.Equal("property-2-replaced", (string)replacedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-replaced", (string)replacedEntity.Properties["property3"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(replacedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(replacedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(replacedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(replacedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(replacedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(replacedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
+            Assert.Equal(replacedEntity.Properties["property3"].Value, result.Entity.Properties["property3"].Value);
         }
 
         [Fact]
@@ -537,7 +550,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableReplaceOperationResult.Success, result);
+            Assert.Equal(StubTableReplaceOperationResult.Success, result.OperationResult);
             var replacedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", replacedEntity.PartitionKey);
             Assert.Equal("row-key", replacedEntity.RowKey);
@@ -546,6 +559,16 @@ namespace CloudStub.Tests.Core
             Assert.False(replacedEntity.Properties.ContainsKey("property1"));
             Assert.Equal("property-2-replaced", (string)replacedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-replaced", (string)replacedEntity.Properties["property3"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(replacedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(replacedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(replacedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(replacedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(replacedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(replacedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
+            Assert.Equal(replacedEntity.Properties["property3"].Value, result.Entity.Properties["property3"].Value);
         }
 
         [Fact]
