@@ -326,7 +326,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Merge(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableMergeOperationResult.TableDoesNotExist, result);
+            Assert.Equal(StubTableMergeOperationResult.TableDoesNotExist, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -337,7 +338,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Merge(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableMergeOperationResult.EntityDoesNotExists, result);
+            Assert.Equal(StubTableMergeOperationResult.EntityDoesNotExists, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -349,7 +351,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Merge(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
-            Assert.Equal(StubTableMergeOperationResult.EtagsDoNotMatch, result);
+            Assert.Equal(StubTableMergeOperationResult.EtagsDoNotMatch, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -375,7 +378,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableMergeOperationResult.Success, result);
+            Assert.Equal(StubTableMergeOperationResult.Success, result.OperationResult);
             var mergedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", mergedEntity.PartitionKey);
             Assert.Equal("row-key", mergedEntity.RowKey);
@@ -384,6 +387,17 @@ namespace CloudStub.Tests.Core
             Assert.Equal("property-1", (string)mergedEntity.Properties["property1"].Value);
             Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(mergedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(mergedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(mergedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(mergedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(mergedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(mergedEntity.Properties["property1"].Value, result.Entity.Properties["property1"].Value);
+            Assert.Equal(mergedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
+            Assert.Equal(mergedEntity.Properties["property3"].Value, result.Entity.Properties["property3"].Value);
         }
 
         [Fact]
@@ -410,7 +424,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableMergeOperationResult.Success, result);
+            Assert.Equal(StubTableMergeOperationResult.Success, result.OperationResult);
             var mergedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", mergedEntity.PartitionKey);
             Assert.Equal("row-key", mergedEntity.RowKey);
@@ -419,6 +433,17 @@ namespace CloudStub.Tests.Core
             Assert.Equal("property-1", (string)mergedEntity.Properties["property1"].Value);
             Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(mergedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(mergedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(mergedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(mergedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(mergedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(mergedEntity.Properties["property1"].Value, result.Entity.Properties["property1"].Value);
+            Assert.Equal(mergedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
+            Assert.Equal(mergedEntity.Properties["property3"].Value, result.Entity.Properties["property3"].Value);
         }
 
         [Fact]

@@ -68,12 +68,12 @@ namespace CloudStub.Core
             return new StubTableInsertOrReplaceOperationDataResult(StubTableInsertOrReplaceOperationResult.Success, insertOrReplaceEntity);
         }
 
-        internal static StubTableMergeOperationResult Merge(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableMergeOperationDataResult Merge(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (!found)
-                return StubTableMergeOperationResult.EntityDoesNotExists;
+                return new StubTableMergeOperationDataResult(StubTableMergeOperationResult.EntityDoesNotExists);
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 var now = DateTime.UtcNow;
@@ -83,10 +83,10 @@ namespace CloudStub.Core
 
                 partitionCluster[entityIndex] = mergeEntity;
 
-                return StubTableMergeOperationResult.Success;
+                return new StubTableMergeOperationDataResult(StubTableMergeOperationResult.Success, mergeEntity);
             }
             else
-                return StubTableMergeOperationResult.EtagsDoNotMatch;
+                return new StubTableMergeOperationDataResult(StubTableMergeOperationResult.EtagsDoNotMatch);
         }
 
         internal static StubTableReplaceOperationResult Replace(StubEntity entity, List<StubEntity> partitionCluster)

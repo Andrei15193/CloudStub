@@ -180,12 +180,12 @@ namespace CloudStub.Core
             return result;
         }
 
-        public StubTableMergeOperationResult Merge(StubEntity entity)
+        public StubTableMergeOperationDataResult Merge(StubEntity entity)
         {
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            StubTableMergeOperationResult result;
+            StubTableMergeOperationDataResult result;
             _tableReaderWriterLock.EnterReadLock();
             try
             {
@@ -199,7 +199,7 @@ namespace CloudStub.Core
 
                     result = StubTableOperation.Merge(entity, partitionCluster);
 
-                    if (result == StubTableMergeOperationResult.Success)
+                    if (result.OperationResult == StubTableMergeOperationResult.Success)
                         _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
                 }
                 finally
@@ -209,7 +209,7 @@ namespace CloudStub.Core
             }
             catch (KeyNotFoundException)
             {
-                result = StubTableMergeOperationResult.TableDoesNotExist;
+                result = new StubTableMergeOperationDataResult(StubTableMergeOperationResult.TableDoesNotExist);
             }
             finally
             {
