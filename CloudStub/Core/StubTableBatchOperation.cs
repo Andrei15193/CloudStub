@@ -21,7 +21,7 @@ namespace CloudStub.Core
 
             _operations.Add(partitionCluster =>
             {
-                switch (StubTableOperation.Insert(entity, partitionCluster))
+                switch (StubTableOperation.Insert(entity, partitionCluster).OperationResult)
                 {
                     case StubTableInsertResult.Success:
                         return StubTableBatchOperationResult.Success;
@@ -158,16 +158,16 @@ namespace CloudStub.Core
             {
                 switch (StubTableOperation.Delete(entity, partitionCluster))
                 {
-                    case StubTablDeleteResult.Success:
+                    case StubTableDeleteResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTablDeleteResult.TableDoesNotExist:
+                    case StubTableDeleteResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
-                    case StubTablDeleteResult.EntityDoesNotExists:
+                    case StubTableDeleteResult.EntityDoesNotExists:
                         return StubTableBatchOperationResult.EntityDoesNotExist;
 
-                    case StubTablDeleteResult.EtagsDoNotMatch:
+                    case StubTableDeleteResult.EtagsDoNotMatch:
                         return StubTableBatchOperationResult.EtagsDoNotMatch;
 
                     default:

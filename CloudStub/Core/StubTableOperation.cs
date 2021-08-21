@@ -7,12 +7,12 @@ namespace CloudStub.Core
 {
     internal static class StubTableOperation
     {
-        internal static StubTableInsertResult Insert(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableInsertDataResult Insert(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (found)
-                return StubTableInsertResult.EntityAlreadyExists;
+                return new StubTableInsertDataResult(StubTableInsertResult.EntityAlreadyExists);
             else
             {
                 var now = DateTime.UtcNow;
@@ -21,7 +21,7 @@ namespace CloudStub.Core
                     insertEntity.Properties.Add(property);
 
                 partitionCluster.Insert(entityIndex, insertEntity);
-                return StubTableInsertResult.Success;
+                return new StubTableInsertDataResult(StubTableInsertResult.Success, insertEntity);
             }
         }
 
@@ -109,20 +109,20 @@ namespace CloudStub.Core
                 return StubTableReplaceResult.EtagsDoNotMatch;
         }
 
-        internal static StubTablDeleteResult Delete(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableDeleteResult Delete(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (!found)
-                return StubTablDeleteResult.EntityDoesNotExists;
+                return StubTableDeleteResult.EntityDoesNotExists;
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 partitionCluster.RemoveAt(entityIndex);
 
-                return StubTablDeleteResult.Success;
+                return StubTableDeleteResult.Success;
             }
             else
-                return StubTablDeleteResult.EtagsDoNotMatch;
+                return StubTableDeleteResult.EtagsDoNotMatch;
         }
 
         internal static StubTableRetrieveDataResult Retrieve(string partitionKey, string rowKey, IEnumerable<string> selectedProperties, IReadOnlyList<StubEntity> partitionCluster)

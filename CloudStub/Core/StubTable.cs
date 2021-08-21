@@ -66,12 +66,12 @@ namespace CloudStub.Core
             }
         }
 
-        public StubTableInsertResult Insert(StubEntity entity)
+        public StubTableInsertDataResult Insert(StubEntity entity)
         {
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            StubTableInsertResult result;
+            StubTableInsertDataResult result;
             _tableReaderWriterLock.EnterReadLock();
             try
             {
@@ -85,7 +85,7 @@ namespace CloudStub.Core
 
                     result = StubTableOperation.Insert(entity, partitionCluster);
 
-                    if (result == StubTableInsertResult.Success)
+                    if (result.OperationResult == StubTableInsertResult.Success)
                         _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
                 }
                 finally
@@ -95,7 +95,7 @@ namespace CloudStub.Core
             }
             catch (KeyNotFoundException)
             {
-                result = StubTableInsertResult.TableDoesNotExist;
+                result = new StubTableInsertDataResult(StubTableInsertResult.TableDoesNotExist);
             }
             finally
             {
@@ -261,12 +261,12 @@ namespace CloudStub.Core
             return result;
         }
 
-        public StubTablDeleteResult Delete(StubEntity entity)
+        public StubTableDeleteResult Delete(StubEntity entity)
         {
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            StubTablDeleteResult result;
+            StubTableDeleteResult result;
             _tableReaderWriterLock.EnterReadLock();
             try
             {
@@ -280,7 +280,7 @@ namespace CloudStub.Core
 
                     result = StubTableOperation.Delete(entity, partitionCluster);
 
-                    if (result == StubTablDeleteResult.Success)
+                    if (result == StubTableDeleteResult.Success)
                         _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
                 }
                 finally
@@ -290,7 +290,7 @@ namespace CloudStub.Core
             }
             catch (KeyNotFoundException)
             {
-                result = StubTablDeleteResult.TableDoesNotExist;
+                result = StubTableDeleteResult.TableDoesNotExist;
             }
             finally
             {
@@ -408,7 +408,7 @@ namespace CloudStub.Core
 
                             var operationIndex = 0;
                             using (var applyOperationCallback = applyOperationCallbacks.GetEnumerator())
-                                while (result.BatchOperationResult == StubTableBatchOperationResult.Success && applyOperationCallback.MoveNext())
+                                while (result.OperationResult == StubTableBatchOperationResult.Success && applyOperationCallback.MoveNext())
                                 {
                                     var operationResult = applyOperationCallback.Current(partitionCluster);
                                     if (operationResult != StubTableBatchOperationResult.Success)
@@ -416,7 +416,7 @@ namespace CloudStub.Core
                                     operationIndex++;
                                 }
 
-                            if (result.BatchOperationResult == StubTableBatchOperationResult.Success)
+                            if (result.OperationResult == StubTableBatchOperationResult.Success)
                                 _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
                         }
                         finally
