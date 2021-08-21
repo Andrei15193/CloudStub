@@ -110,20 +110,21 @@ namespace CloudStub.Core
                 return new StubTableReplaceOperationDataResult(StubTableReplaceOperationResult.EtagsDoNotMatch);
         }
 
-        internal static StubTableDeleteOperationResult Delete(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableDeleteOperationDataResult Delete(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (!found)
-                return StubTableDeleteOperationResult.EntityDoesNotExists;
+                return new StubTableDeleteOperationDataResult(StubTableDeleteOperationResult.EntityDoesNotExists);
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
+                var deleteEntity = partitionCluster[entityIndex];
                 partitionCluster.RemoveAt(entityIndex);
 
-                return StubTableDeleteOperationResult.Success;
+                return new StubTableDeleteOperationDataResult(StubTableDeleteOperationResult.Success, deleteEntity);
             }
             else
-                return StubTableDeleteOperationResult.EtagsDoNotMatch;
+                return new StubTableDeleteOperationDataResult(StubTableDeleteOperationResult.EtagsDoNotMatch);
         }
 
         internal static StubTableRetrieveOperationDataResult Retrieve(string partitionKey, string rowKey, IEnumerable<string> selectedProperties, IReadOnlyList<StubEntity> partitionCluster)

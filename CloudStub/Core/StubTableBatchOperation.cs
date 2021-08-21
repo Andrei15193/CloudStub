@@ -156,7 +156,7 @@ namespace CloudStub.Core
 
             _operations.Add(partitionCluster =>
             {
-                switch (StubTableOperation.Delete(entity, partitionCluster))
+                switch (StubTableOperation.Delete(entity, partitionCluster).OperationResult)
                 {
                     case StubTableDeleteOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
