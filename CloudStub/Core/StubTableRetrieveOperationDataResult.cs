@@ -1,14 +1,20 @@
 ﻿namespace CloudStub.Core
 {
-    public class StubTableRetrieveOperationDataResult
+    public class StubTableRetrieveOperationDataResult : IStubTableOperationDataResult<StubTableRetrieveOperationResult>
     {
         internal StubTableRetrieveOperationDataResult()
-            => (RetrieveResult, Entity) = (StubTableRetrieveOperationResult.TableDoesNotExist, null);
+            => (OperationResult, Entity) = (StubTableRetrieveOperationResult.TableDoesNotExist, null);
 
         internal StubTableRetrieveOperationDataResult(StubEntity stubEntity)
-            => (RetrieveResult, Entity) = (stubEntity is object ? StubTableRetrieveOperationResult.Success : StubTableRetrieveOperationResult.EntityDoesNotExists, stubEntity);
+            => (OperationResult, Entity) = (stubEntity is object ? StubTableRetrieveOperationResult.Success : StubTableRetrieveOperationResult.EntityDoesNotExists, stubEntity);
 
-        public StubTableRetrieveOperationResult RetrieveResult { get; }
+        public StubTableOperationType OperationType
+            => StubTableOperationType.Retrieve;
+
+        public StubTableRetrieveOperationResult OperationResult { get; }
+
+        int IStubTableOperationDataResult.OperationResult
+            => (int)OperationResult;
 
         public StubEntity Entity { get; }
     }
