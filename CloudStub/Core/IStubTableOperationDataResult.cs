@@ -6,6 +6,8 @@
 
         int OperationResult { get; }
 
+        bool IsSuccessful { get; }
+
         StubEntity Entity { get; }
     }
 

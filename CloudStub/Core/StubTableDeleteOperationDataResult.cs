@@ -16,6 +16,9 @@
         int IStubTableOperationDataResult.OperationResult
             => (int)OperationResult;
 
+        public bool IsSuccessful
+            => OperationResult == StubTableDeleteOperationResult.Success;
+
         public StubEntity Entity { get; }
     }
 }
