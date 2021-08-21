@@ -25,29 +25,30 @@ namespace CloudStub.Core
             }
         }
 
-        internal static StubTableInsertOrMergeResult InsertOrMerge(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableInsertOrMergeDataResult InsertOrMerge(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             var now = DateTime.UtcNow;
+            StubEntity insertOrMergeEntity;
             if (found)
             {
-                var mergeEntity = new StubEntity(partitionCluster[entityIndex].PartitionKey, partitionCluster[entityIndex].RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+                insertOrMergeEntity = new StubEntity(partitionCluster[entityIndex].PartitionKey, partitionCluster[entityIndex].RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
                 foreach (var property in partitionCluster[entityIndex].Properties.Concat(entity.Properties))
-                    mergeEntity.Properties[property.Key] = property.Value;
+                    insertOrMergeEntity.Properties[property.Key] = property.Value;
 
-                partitionCluster[entityIndex] = mergeEntity;
+                partitionCluster[entityIndex] = insertOrMergeEntity;
             }
             else
             {
-                var insertEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
+                insertOrMergeEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
                 foreach (var property in entity.Properties)
-                    insertEntity.Properties.Add(property);
+                    insertOrMergeEntity.Properties.Add(property);
 
-                partitionCluster.Insert(entityIndex, insertEntity);
+                partitionCluster.Insert(entityIndex, insertOrMergeEntity);
             }
 
-            return StubTableInsertOrMergeResult.Success;
+            return new StubTableInsertOrMergeDataResult(StubTableInsertOrMergeResult.Success, insertOrMergeEntity);
         }
 
         internal static StubTableInsertOrReplaceResult InsertOrReplace(StubEntity entity, List<StubEntity> partitionCluster)

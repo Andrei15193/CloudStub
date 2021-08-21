@@ -24,22 +24,6 @@ namespace CloudStub.Core
 
         public string Name { get; }
 
-        public bool Exists
-        {
-            get
-            {
-                _tableReaderWriterLock.EnterReadLock();
-                try
-                {
-                    return _tableStorageHandler.Exists(Name);
-                }
-                finally
-                {
-                    _tableReaderWriterLock.ExitReadLock();
-                }
-            }
-        }
-
         public StubTableCreateResult Create()
         {
             _tableReaderWriterLock.EnterWriteLock();
@@ -50,6 +34,19 @@ namespace CloudStub.Core
             finally
             {
                 _tableReaderWriterLock.ExitWriteLock();
+            }
+        }
+
+        public bool Exists()
+        {
+            _tableReaderWriterLock.EnterReadLock();
+            try
+            {
+                return _tableStorageHandler.Exists(Name);
+            }
+            finally
+            {
+                _tableReaderWriterLock.ExitReadLock();
             }
         }
 
@@ -105,12 +102,12 @@ namespace CloudStub.Core
             return result;
         }
 
-        public StubTableInsertOrMergeResult InsertOrMerge(StubEntity entity)
+        public StubTableInsertOrMergeDataResult InsertOrMerge(StubEntity entity)
         {
             if (entity is null)
                 throw new ArgumentNullException(nameof(entity));
 
-            StubTableInsertOrMergeResult result;
+            StubTableInsertOrMergeDataResult result;
             _tableReaderWriterLock.EnterReadLock();
             try
             {
@@ -124,7 +121,7 @@ namespace CloudStub.Core
 
                     result = StubTableOperation.InsertOrMerge(entity, partitionCluster);
 
-                    if (result == StubTableInsertOrMergeResult.Success)
+                    if (result.OperationResult == StubTableInsertOrMergeResult.Success)
                         _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
                 }
                 finally
@@ -134,7 +131,7 @@ namespace CloudStub.Core
             }
             catch (KeyNotFoundException)
             {
-                result = StubTableInsertOrMergeResult.TableDoesNotExist;
+                result = new StubTableInsertOrMergeDataResult(StubTableInsertOrMergeResult.TableDoesNotExist);
             }
             finally
             {

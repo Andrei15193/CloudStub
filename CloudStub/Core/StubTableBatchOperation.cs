@@ -48,7 +48,7 @@ namespace CloudStub.Core
 
             _operations.Add(partitionCluster =>
             {
-                switch (StubTableOperation.InsertOrMerge(entity, partitionCluster))
+                switch (StubTableOperation.InsertOrMerge(entity, partitionCluster).OperationResult)
                 {
                     case StubTableInsertOrMergeResult.Success:
                         return StubTableBatchOperationResult.Success;
