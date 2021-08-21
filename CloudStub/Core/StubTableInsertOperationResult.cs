@@ -1,6 +1,6 @@
 namespace CloudStub.Core
 {
-    public enum StubTableInsertResult
+    public enum StubTableInsertOperationResult
     {
         Success,
         TableDoesNotExist,

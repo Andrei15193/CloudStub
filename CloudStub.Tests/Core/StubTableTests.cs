@@ -115,7 +115,7 @@ namespace CloudStub.Tests.Core
 
             var insertResult = stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableInsertResult.TableDoesNotExist, insertResult.OperationResult);
+            Assert.Equal(StubTableInsertOperationResult.TableDoesNotExist, insertResult.OperationResult);
             Assert.Null(insertResult.Entity);
         }
 
@@ -127,7 +127,7 @@ namespace CloudStub.Tests.Core
 
             var insertResult = stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableInsertResult.Success, insertResult.OperationResult);
+            Assert.Equal(StubTableInsertOperationResult.Success, insertResult.OperationResult);
             var queryResult = stubTable.Query(null, null);
             var entity = Assert.Single(queryResult.Entities);
             Assert.Equal("partition-key", entity.PartitionKey);
@@ -150,7 +150,7 @@ namespace CloudStub.Tests.Core
 
             var insertResult = stubTable.Insert(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableInsertResult.EntityAlreadyExists, insertResult.OperationResult);
+            Assert.Equal(StubTableInsertOperationResult.EntityAlreadyExists, insertResult.OperationResult);
             Assert.Null(insertResult.Entity);
         }
 
@@ -161,7 +161,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.InsertOrMerge(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableInsertOrMergeResult.TableDoesNotExist, result.OperationResult);
+            Assert.Equal(StubTableInsertOrMergeOperationResult.TableDoesNotExist, result.OperationResult);
             Assert.Null(result.Entity);
         }
 
@@ -180,7 +180,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableInsertOrMergeResult.Success, result.OperationResult);
+            Assert.Equal(StubTableInsertOrMergeOperationResult.Success, result.OperationResult);
             var insertedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("property-1", insertedEntity.Properties["property1"].Value);
             Assert.Equal("property-2", insertedEntity.Properties["property2"].Value);
@@ -190,6 +190,8 @@ namespace CloudStub.Tests.Core
             Assert.Equal(insertedEntity.RowKey, result.Entity.RowKey);
             Assert.Equal(insertedEntity.ETag, result.Entity.ETag);
             Assert.Equal(insertedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(insertedEntity.Properties.Count, result.Entity.Properties.Count);
             Assert.Equal(insertedEntity.Properties["property1"].Value, result.Entity.Properties["property1"].Value);
             Assert.Equal(insertedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
         }
@@ -217,11 +219,22 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableInsertOrMergeResult.Success, result.OperationResult);
+            Assert.Equal(StubTableInsertOrMergeOperationResult.Success, result.OperationResult);
             var insertedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("property-1", insertedEntity.Properties["property1"].Value);
             Assert.Equal("property-2-merge", insertedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-merge", insertedEntity.Properties["property3"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(insertedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(insertedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(insertedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(insertedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(insertedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(insertedEntity.Properties["property1"].Value, result.Entity.Properties["property1"].Value);
+            Assert.Equal(insertedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
+            Assert.Equal(insertedEntity.Properties["property3"].Value, result.Entity.Properties["property3"].Value);
         }
 
         [Fact]
@@ -231,7 +244,8 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.InsertOrReplace(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableInsertOrReplaceResult.TableDoesNotExist, result);
+            Assert.Equal(StubTableInsertOrReplaceOperationResult.TableDoesNotExist, result.OperationResult);
+            Assert.Null(result.Entity);
         }
 
         [Fact]
@@ -249,10 +263,20 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableInsertOrReplaceResult.Success, result);
+            Assert.Equal(StubTableInsertOrReplaceOperationResult.Success, result.OperationResult);
             var insertedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("property-1", insertedEntity.Properties["property1"].Value);
             Assert.Equal("property-2", insertedEntity.Properties["property2"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(insertedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(insertedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(insertedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(insertedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(insertedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(insertedEntity.Properties["property1"].Value, result.Entity.Properties["property1"].Value);
+            Assert.Equal(insertedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
         }
 
         [Fact]
@@ -278,11 +302,21 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableInsertOrReplaceResult.Success, result);
+            Assert.Equal(StubTableInsertOrReplaceOperationResult.Success, result.OperationResult);
             var insertedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.False(insertedEntity.Properties.ContainsKey("property1"));
             Assert.Equal("property-2-replaced", insertedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-replaced", insertedEntity.Properties["property3"].Value);
+
+            Assert.NotNull(result.Entity);
+            Assert.Equal(insertedEntity.PartitionKey, result.Entity.PartitionKey);
+            Assert.Equal(insertedEntity.RowKey, result.Entity.RowKey);
+            Assert.Equal(insertedEntity.ETag, result.Entity.ETag);
+            Assert.Equal(insertedEntity.Timestamp, result.Entity.Timestamp);
+
+            Assert.Equal(insertedEntity.Properties.Count, result.Entity.Properties.Count);
+            Assert.Equal(insertedEntity.Properties["property2"].Value, result.Entity.Properties["property2"].Value);
+            Assert.Equal(insertedEntity.Properties["property3"].Value, result.Entity.Properties["property3"].Value);
         }
 
         [Fact]
@@ -292,7 +326,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Merge(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableMergeResult.TableDoesNotExist, result);
+            Assert.Equal(StubTableMergeOperationResult.TableDoesNotExist, result);
         }
 
         [Fact]
@@ -303,7 +337,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Merge(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableMergeResult.EntityDoesNotExists, result);
+            Assert.Equal(StubTableMergeOperationResult.EntityDoesNotExists, result);
         }
 
         [Fact]
@@ -315,7 +349,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Merge(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
-            Assert.Equal(StubTableMergeResult.EtagsDoNotMatch, result);
+            Assert.Equal(StubTableMergeOperationResult.EtagsDoNotMatch, result);
         }
 
         [Fact]
@@ -341,7 +375,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableMergeResult.Success, result);
+            Assert.Equal(StubTableMergeOperationResult.Success, result);
             var mergedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", mergedEntity.PartitionKey);
             Assert.Equal("row-key", mergedEntity.RowKey);
@@ -376,7 +410,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableMergeResult.Success, result);
+            Assert.Equal(StubTableMergeOperationResult.Success, result);
             var mergedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", mergedEntity.PartitionKey);
             Assert.Equal("row-key", mergedEntity.RowKey);
@@ -394,7 +428,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Replace(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableReplaceResult.TableDoesNotExist, result);
+            Assert.Equal(StubTableReplaceOperationResult.TableDoesNotExist, result);
         }
 
         [Fact]
@@ -405,7 +439,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Replace(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableReplaceResult.EntityDoesNotExists, result);
+            Assert.Equal(StubTableReplaceOperationResult.EntityDoesNotExists, result);
         }
 
         [Fact]
@@ -417,7 +451,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Replace(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
-            Assert.Equal(StubTableReplaceResult.EtagsDoNotMatch, result);
+            Assert.Equal(StubTableReplaceOperationResult.EtagsDoNotMatch, result);
         }
 
         [Fact]
@@ -443,7 +477,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableReplaceResult.Success, result);
+            Assert.Equal(StubTableReplaceOperationResult.Success, result);
             var replacedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", replacedEntity.PartitionKey);
             Assert.Equal("row-key", replacedEntity.RowKey);
@@ -478,7 +512,7 @@ namespace CloudStub.Tests.Core
                 }
             });
 
-            Assert.Equal(StubTableReplaceResult.Success, result);
+            Assert.Equal(StubTableReplaceOperationResult.Success, result);
             var replacedEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", replacedEntity.PartitionKey);
             Assert.Equal("row-key", replacedEntity.RowKey);
@@ -496,7 +530,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Delete(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableDeleteResult.TableDoesNotExist, result);
+            Assert.Equal(StubTableDeleteOperationResult.TableDoesNotExist, result);
         }
 
         [Fact]
@@ -507,7 +541,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Delete(new StubEntity("partition-key", "row-key"));
 
-            Assert.Equal(StubTableDeleteResult.EntityDoesNotExists, result);
+            Assert.Equal(StubTableDeleteOperationResult.EntityDoesNotExists, result);
         }
 
         [Fact]
@@ -519,7 +553,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Delete(new StubEntity("partition-key", "row-key", "unmatching-etag"));
 
-            Assert.Equal(StubTableDeleteResult.EtagsDoNotMatch, result);
+            Assert.Equal(StubTableDeleteOperationResult.EtagsDoNotMatch, result);
         }
 
         [Fact]
@@ -531,7 +565,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Delete(new StubEntity("partition-key", "row-key", "*"));
 
-            Assert.Equal(StubTableDeleteResult.Success, result);
+            Assert.Equal(StubTableDeleteOperationResult.Success, result);
             Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
         }
 
@@ -545,7 +579,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Delete(new StubEntity("partition-key", "row-key", etag));
 
-            Assert.Equal(StubTableDeleteResult.Success, result);
+            Assert.Equal(StubTableDeleteOperationResult.Success, result);
             Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
         }
 
@@ -559,7 +593,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Delete(new StubEntity("partition-key", "row-key-1", "*"));
 
-            Assert.Equal(StubTableDeleteResult.Success, result);
+            Assert.Equal(StubTableDeleteOperationResult.Success, result);
             var remainingEntity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
             Assert.Equal("partition-key", remainingEntity.PartitionKey);
             Assert.Equal("row-key-2", remainingEntity.RowKey);
@@ -572,7 +606,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Retrieve("partition-key", "row-key");
 
-            Assert.Equal(StubTableRetrieveResult.TableDoesNotExist, result.RetrieveResult);
+            Assert.Equal(StubTableRetrieveOperationResult.TableDoesNotExist, result.RetrieveResult);
             Assert.Null(result.Entity);
         }
 
@@ -584,7 +618,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Retrieve("partition-key", "row-key");
 
-            Assert.Equal(StubTableRetrieveResult.EntityDoesNotExists, result.RetrieveResult);
+            Assert.Equal(StubTableRetrieveOperationResult.EntityDoesNotExists, result.RetrieveResult);
             Assert.Null(result.Entity);
         }
 
@@ -604,7 +638,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Retrieve("partition-key", "row-key");
 
-            Assert.Equal(StubTableRetrieveResult.Success, result.RetrieveResult);
+            Assert.Equal(StubTableRetrieveOperationResult.Success, result.RetrieveResult);
             Assert.NotNull(result.Entity);
             Assert.Equal("partition-key", result.Entity.PartitionKey);
             Assert.Equal("row-key", result.Entity.RowKey);
@@ -628,7 +662,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Retrieve("partition-key", "row-key", new[] { "property2" });
 
-            Assert.Equal(StubTableRetrieveResult.Success, result.RetrieveResult);
+            Assert.Equal(StubTableRetrieveOperationResult.Success, result.RetrieveResult);
             Assert.NotNull(result.Entity);
             Assert.Equal("partition-key", result.Entity.PartitionKey);
             Assert.Equal("row-key", result.Entity.RowKey);
@@ -652,7 +686,7 @@ namespace CloudStub.Tests.Core
 
             var result = stubTable.Retrieve("partition-key", "row-key", Enumerable.Empty<string>());
 
-            Assert.Equal(StubTableRetrieveResult.Success, result.RetrieveResult);
+            Assert.Equal(StubTableRetrieveOperationResult.Success, result.RetrieveResult);
             Assert.NotNull(result.Entity);
             Assert.Equal("partition-key", result.Entity.PartitionKey);
             Assert.Equal("row-key", result.Entity.RowKey);

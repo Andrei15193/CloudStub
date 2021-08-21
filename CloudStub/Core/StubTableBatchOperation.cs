@@ -23,13 +23,13 @@ namespace CloudStub.Core
             {
                 switch (StubTableOperation.Insert(entity, partitionCluster).OperationResult)
                 {
-                    case StubTableInsertResult.Success:
+                    case StubTableInsertOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTableInsertResult.TableDoesNotExist:
+                    case StubTableInsertOperationResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
-                    case StubTableInsertResult.EntityAlreadyExists:
+                    case StubTableInsertOperationResult.EntityAlreadyExists:
                         return StubTableBatchOperationResult.EntityAlreadyExist;
 
                     default:
@@ -50,10 +50,10 @@ namespace CloudStub.Core
             {
                 switch (StubTableOperation.InsertOrMerge(entity, partitionCluster).OperationResult)
                 {
-                    case StubTableInsertOrMergeResult.Success:
+                    case StubTableInsertOrMergeOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTableInsertOrMergeResult.TableDoesNotExist:
+                    case StubTableInsertOrMergeOperationResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
                     default:
@@ -72,12 +72,12 @@ namespace CloudStub.Core
 
             _operations.Add(partitionCluster =>
             {
-                switch (StubTableOperation.InsertOrReplace(entity, partitionCluster))
+                switch (StubTableOperation.InsertOrReplace(entity, partitionCluster).OperationResult)
                 {
-                    case StubTableInsertOrReplaceResult.Success:
+                    case StubTableInsertOrReplaceOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTableInsertOrReplaceResult.TableDoesNotExist:
+                    case StubTableInsertOrReplaceOperationResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
                     default:
@@ -98,16 +98,16 @@ namespace CloudStub.Core
             {
                 switch (StubTableOperation.Merge(entity, partitionCluster))
                 {
-                    case StubTableMergeResult.Success:
+                    case StubTableMergeOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTableMergeResult.TableDoesNotExist:
+                    case StubTableMergeOperationResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
-                    case StubTableMergeResult.EntityDoesNotExists:
+                    case StubTableMergeOperationResult.EntityDoesNotExists:
                         return StubTableBatchOperationResult.EntityDoesNotExist;
 
-                    case StubTableMergeResult.EtagsDoNotMatch:
+                    case StubTableMergeOperationResult.EtagsDoNotMatch:
                         return StubTableBatchOperationResult.EtagsDoNotMatch;
 
                     default:
@@ -128,16 +128,16 @@ namespace CloudStub.Core
             {
                 switch (StubTableOperation.Replace(entity, partitionCluster))
                 {
-                    case StubTableReplaceResult.Success:
+                    case StubTableReplaceOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTableReplaceResult.TableDoesNotExist:
+                    case StubTableReplaceOperationResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
-                    case StubTableReplaceResult.EntityDoesNotExists:
+                    case StubTableReplaceOperationResult.EntityDoesNotExists:
                         return StubTableBatchOperationResult.EntityDoesNotExist;
 
-                    case StubTableReplaceResult.EtagsDoNotMatch:
+                    case StubTableReplaceOperationResult.EtagsDoNotMatch:
                         return StubTableBatchOperationResult.EtagsDoNotMatch;
 
                     default:
@@ -158,16 +158,16 @@ namespace CloudStub.Core
             {
                 switch (StubTableOperation.Delete(entity, partitionCluster))
                 {
-                    case StubTableDeleteResult.Success:
+                    case StubTableDeleteOperationResult.Success:
                         return StubTableBatchOperationResult.Success;
 
-                    case StubTableDeleteResult.TableDoesNotExist:
+                    case StubTableDeleteOperationResult.TableDoesNotExist:
                         return StubTableBatchOperationResult.TableDoesNotExist;
 
-                    case StubTableDeleteResult.EntityDoesNotExists:
+                    case StubTableDeleteOperationResult.EntityDoesNotExists:
                         return StubTableBatchOperationResult.EntityDoesNotExist;
 
-                    case StubTableDeleteResult.EtagsDoNotMatch:
+                    case StubTableDeleteOperationResult.EtagsDoNotMatch:
                         return StubTableBatchOperationResult.EtagsDoNotMatch;
 
                     default:

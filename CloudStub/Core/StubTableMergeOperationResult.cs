@@ -1,6 +1,6 @@
 ﻿namespace CloudStub.Core
 {
-    public enum StubTableReplaceResult
+    public enum StubTableMergeOperationResult
     {
         Success,
         TableDoesNotExist,

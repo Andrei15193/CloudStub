@@ -1,6 +1,6 @@
 ﻿namespace CloudStub.Core
 {
-    public enum StubTableRetrieveResult
+    public enum StubTableRetrieveOperationResult
     {
         Success,
         TableDoesNotExist,

@@ -7,12 +7,12 @@ namespace CloudStub.Core
 {
     internal static class StubTableOperation
     {
-        internal static StubTableInsertDataResult Insert(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableInsertOperationDataResult Insert(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (found)
-                return new StubTableInsertDataResult(StubTableInsertResult.EntityAlreadyExists);
+                return new StubTableInsertOperationDataResult(StubTableInsertOperationResult.EntityAlreadyExists);
             else
             {
                 var now = DateTime.UtcNow;
@@ -21,11 +21,11 @@ namespace CloudStub.Core
                     insertEntity.Properties.Add(property);
 
                 partitionCluster.Insert(entityIndex, insertEntity);
-                return new StubTableInsertDataResult(StubTableInsertResult.Success, insertEntity);
+                return new StubTableInsertOperationDataResult(StubTableInsertOperationResult.Success, insertEntity);
             }
         }
 
-        internal static StubTableInsertOrMergeDataResult InsertOrMerge(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableInsertOrMergeOperationDataResult InsertOrMerge(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
@@ -48,10 +48,10 @@ namespace CloudStub.Core
                 partitionCluster.Insert(entityIndex, insertOrMergeEntity);
             }
 
-            return new StubTableInsertOrMergeDataResult(StubTableInsertOrMergeResult.Success, insertOrMergeEntity);
+            return new StubTableInsertOrMergeOperationDataResult(StubTableInsertOrMergeOperationResult.Success, insertOrMergeEntity);
         }
 
-        internal static StubTableInsertOrReplaceResult InsertOrReplace(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableInsertOrReplaceOperationDataResult InsertOrReplace(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
@@ -65,15 +65,15 @@ namespace CloudStub.Core
             else
                 partitionCluster.Insert(entityIndex, insertOrReplaceEntity);
 
-            return StubTableInsertOrReplaceResult.Success;
+            return new StubTableInsertOrReplaceOperationDataResult(StubTableInsertOrReplaceOperationResult.Success, insertOrReplaceEntity);
         }
 
-        internal static StubTableMergeResult Merge(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableMergeOperationResult Merge(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (!found)
-                return StubTableMergeResult.EntityDoesNotExists;
+                return StubTableMergeOperationResult.EntityDoesNotExists;
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 var now = DateTime.UtcNow;
@@ -83,18 +83,18 @@ namespace CloudStub.Core
 
                 partitionCluster[entityIndex] = mergeEntity;
 
-                return StubTableMergeResult.Success;
+                return StubTableMergeOperationResult.Success;
             }
             else
-                return StubTableMergeResult.EtagsDoNotMatch;
+                return StubTableMergeOperationResult.EtagsDoNotMatch;
         }
 
-        internal static StubTableReplaceResult Replace(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableReplaceOperationResult Replace(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (!found)
-                return StubTableReplaceResult.EntityDoesNotExists;
+                return StubTableReplaceOperationResult.EntityDoesNotExists;
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 var now = DateTime.UtcNow;
@@ -104,34 +104,34 @@ namespace CloudStub.Core
 
                 partitionCluster[entityIndex] = replaceEntity;
 
-                return StubTableReplaceResult.Success;
+                return StubTableReplaceOperationResult.Success;
             }
             else
-                return StubTableReplaceResult.EtagsDoNotMatch;
+                return StubTableReplaceOperationResult.EtagsDoNotMatch;
         }
 
-        internal static StubTableDeleteResult Delete(StubEntity entity, List<StubEntity> partitionCluster)
+        internal static StubTableDeleteOperationResult Delete(StubEntity entity, List<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
             if (!found)
-                return StubTableDeleteResult.EntityDoesNotExists;
+                return StubTableDeleteOperationResult.EntityDoesNotExists;
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
                 partitionCluster.RemoveAt(entityIndex);
 
-                return StubTableDeleteResult.Success;
+                return StubTableDeleteOperationResult.Success;
             }
             else
-                return StubTableDeleteResult.EtagsDoNotMatch;
+                return StubTableDeleteOperationResult.EtagsDoNotMatch;
         }
 
-        internal static StubTableRetrieveDataResult Retrieve(string partitionKey, string rowKey, IEnumerable<string> selectedProperties, IReadOnlyList<StubEntity> partitionCluster)
+        internal static StubTableRetrieveOperationDataResult Retrieve(string partitionKey, string rowKey, IEnumerable<string> selectedProperties, IReadOnlyList<StubEntity> partitionCluster)
         {
             var entityIndex = _FindEntityIndex(partitionKey, rowKey, partitionCluster, out var found);
 
             if (!found || partitionCluster[entityIndex].Timestamp is null || partitionCluster[entityIndex].ETag is null)
-                return new StubTableRetrieveDataResult(null);
+                return new StubTableRetrieveOperationDataResult(null);
             else
             {
                 var entity = partitionCluster[entityIndex];
@@ -145,7 +145,7 @@ namespace CloudStub.Core
                         if (entity.Properties.TryGetValue(propertyName, out var propertyValue))
                             retrieveEntity.Properties.Add(propertyName, propertyValue);
 
-                return new StubTableRetrieveDataResult(retrieveEntity);
+                return new StubTableRetrieveOperationDataResult(retrieveEntity);
             }
         }
 
