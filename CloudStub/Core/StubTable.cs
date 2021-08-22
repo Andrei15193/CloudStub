@@ -383,12 +383,10 @@ namespace CloudStub.Core
         }
 
         public StubTableBatchOperation BatchOperation()
-        {
-            return new StubTableBatchOperation(_ExecuteBatchOperation);
-
-            StubTableBatchOperationDataResult _ExecuteBatchOperation(string partitionKey, IEnumerable<Func<List<StubEntity>, StubTableBatchOperationResult>> applyOperationCallbacks)
+            => new StubTableBatchOperation((partitionKey, applyOperationCallbacks) =>
             {
-                var result = new StubTableBatchOperationDataResult(StubTableBatchOperationResult.Success);
+                var result = default(StubTableBatchOperationDataResult);
+                var operationResults = new List<IStubTableOperationDataResult>();
 
                 if (partitionKey is object && applyOperationCallbacks.Any())
                 {
@@ -403,18 +401,20 @@ namespace CloudStub.Core
                         {
                             var partitionCluster = _ReadPartitionCluster(partitionClusterStorageHandler);
 
-                            var operationIndex = 0;
                             using (var applyOperationCallback = applyOperationCallbacks.GetEnumerator())
-                                while (result.OperationResult == StubTableBatchOperationResult.Success && applyOperationCallback.MoveNext())
+                                while (result is null && applyOperationCallback.MoveNext())
                                 {
                                     var operationResult = applyOperationCallback.Current(partitionCluster);
-                                    if (operationResult != StubTableBatchOperationResult.Success)
-                                        result = new StubTableBatchOperationDataResult(operationResult, operationIndex);
-                                    operationIndex++;
+                                    operationResults.Add(operationResult);
+                                    if (!operationResult.IsSuccessful)
+                                        result = new StubTableBatchOperationDataResult(StubTableBatchOperationResult.Failed, operationResults);
                                 }
 
-                            if (result.OperationResult == StubTableBatchOperationResult.Success)
+                            if (result is null)
+                            {
+                                result = new StubTableBatchOperationDataResult(StubTableBatchOperationResult.Success, operationResults);
                                 _WritePartitionCluster(partitionClusterStorageHandler, partitionCluster);
+                            }
                         }
                         finally
                         {
@@ -430,10 +430,12 @@ namespace CloudStub.Core
                         _tableReaderWriterLock.ExitReadLock();
                     }
                 }
+                else
+                    result = new StubTableBatchOperationDataResult(Exists() ? StubTableBatchOperationResult.Success : StubTableBatchOperationResult.TableDoesNotExist);
 
                 return result;
             }
-        }
+            );
 
         private StubEntity _SelectPropertiesFromEntity(StubEntity entity, IReadOnlyCollection<string> selectedPropertyNames)
         {

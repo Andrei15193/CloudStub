@@ -4,9 +4,6 @@
     {
         Success,
         TableDoesNotExist,
-        EtagsDoNotMatch,
-        EntityDoesNotExist,
-        EntityAlreadyExist,
         Failed
     }
 }

@@ -1,15 +1,21 @@
-﻿namespace CloudStub.Core
+﻿using System;
+using System.Collections.Generic;
+
+namespace CloudStub.Core
 {
     public class StubTableBatchOperationDataResult
     {
-        internal StubTableBatchOperationDataResult(StubTableBatchOperationResult batchOperationResult)
-            => (OperationResult, Index) = (batchOperationResult, default);
+        internal StubTableBatchOperationDataResult(StubTableBatchOperationResult operationResult)
+            => (OperationResult, IndividualOperationResults) = (operationResult, Array.Empty<IStubTableOperationDataResult>());
 
-        internal StubTableBatchOperationDataResult(StubTableBatchOperationResult batchOperationResult, int? index)
-            => (OperationResult, Index) = (batchOperationResult, index);
+        internal StubTableBatchOperationDataResult(StubTableBatchOperationResult operationResult, IReadOnlyList<IStubTableOperationDataResult> operationResults)
+            => (OperationResult, IndividualOperationResults) = (operationResult, operationResults);
 
         public StubTableBatchOperationResult OperationResult { get; }
 
-        public int? Index { get; }
+        public bool IsSuccessful
+            => OperationResult == StubTableBatchOperationResult.Success;
+
+        public IReadOnlyList<IStubTableOperationDataResult> IndividualOperationResults { get; }
     }
 }

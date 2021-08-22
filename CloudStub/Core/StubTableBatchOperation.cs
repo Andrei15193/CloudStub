@@ -6,10 +6,10 @@ namespace CloudStub.Core
     public class StubTableBatchOperation
     {
         private string _partitionKey;
-        private readonly Func<string, IEnumerable<Func<List<StubEntity>, StubTableBatchOperationResult>>, StubTableBatchOperationDataResult> _executeCallback;
-        private readonly ICollection<Func<List<StubEntity>, StubTableBatchOperationResult>> _operations = new List<Func<List<StubEntity>, StubTableBatchOperationResult>>();
+        private readonly Func<string, IEnumerable<Func<List<StubEntity>, IStubTableOperationDataResult>>, StubTableBatchOperationDataResult> _executeCallback;
+        private readonly ICollection<Func<List<StubEntity>, IStubTableOperationDataResult>> _operationCallbacks = new List<Func<List<StubEntity>, IStubTableOperationDataResult>>();
 
-        internal StubTableBatchOperation(Func<string, IEnumerable<Func<List<StubEntity>, StubTableBatchOperationResult>>, StubTableBatchOperationDataResult> executeCallback)
+        internal StubTableBatchOperation(Func<string, IEnumerable<Func<List<StubEntity>, IStubTableOperationDataResult>>, StubTableBatchOperationDataResult> executeCallback)
             => _executeCallback = executeCallback;
 
         public StubTableBatchOperation Insert(StubEntity entity)
@@ -19,23 +19,7 @@ namespace CloudStub.Core
             else if (!string.Equals(_partitionKey, entity.PartitionKey, StringComparison.Ordinal))
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
-            _operations.Add(partitionCluster =>
-            {
-                switch (StubTableOperation.Insert(entity, partitionCluster).OperationResult)
-                {
-                    case StubTableInsertOperationResult.Success:
-                        return StubTableBatchOperationResult.Success;
-
-                    case StubTableInsertOperationResult.TableDoesNotExist:
-                        return StubTableBatchOperationResult.TableDoesNotExist;
-
-                    case StubTableInsertOperationResult.EntityAlreadyExists:
-                        return StubTableBatchOperationResult.EntityAlreadyExist;
-
-                    default:
-                        return StubTableBatchOperationResult.Failed;
-                }
-            });
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.Insert(entity, partitionCluster));
             return this;
         }
 
@@ -46,20 +30,7 @@ namespace CloudStub.Core
             else if (!string.Equals(_partitionKey, entity.PartitionKey, StringComparison.Ordinal))
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
-            _operations.Add(partitionCluster =>
-            {
-                switch (StubTableOperation.InsertOrMerge(entity, partitionCluster).OperationResult)
-                {
-                    case StubTableInsertOrMergeOperationResult.Success:
-                        return StubTableBatchOperationResult.Success;
-
-                    case StubTableInsertOrMergeOperationResult.TableDoesNotExist:
-                        return StubTableBatchOperationResult.TableDoesNotExist;
-
-                    default:
-                        return StubTableBatchOperationResult.Failed;
-                }
-            });
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.InsertOrMerge(entity, partitionCluster));
             return this;
         }
 
@@ -70,20 +41,7 @@ namespace CloudStub.Core
             else if (!string.Equals(_partitionKey, entity.PartitionKey, StringComparison.Ordinal))
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
-            _operations.Add(partitionCluster =>
-            {
-                switch (StubTableOperation.InsertOrReplace(entity, partitionCluster).OperationResult)
-                {
-                    case StubTableInsertOrReplaceOperationResult.Success:
-                        return StubTableBatchOperationResult.Success;
-
-                    case StubTableInsertOrReplaceOperationResult.TableDoesNotExist:
-                        return StubTableBatchOperationResult.TableDoesNotExist;
-
-                    default:
-                        return StubTableBatchOperationResult.Failed;
-                }
-            });
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.InsertOrReplace(entity, partitionCluster));
             return this;
         }
 
@@ -94,26 +52,7 @@ namespace CloudStub.Core
             else if (!string.Equals(_partitionKey, entity.PartitionKey, StringComparison.Ordinal))
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
-            _operations.Add(partitionCluster =>
-            {
-                switch (StubTableOperation.Merge(entity, partitionCluster).OperationResult)
-                {
-                    case StubTableMergeOperationResult.Success:
-                        return StubTableBatchOperationResult.Success;
-
-                    case StubTableMergeOperationResult.TableDoesNotExist:
-                        return StubTableBatchOperationResult.TableDoesNotExist;
-
-                    case StubTableMergeOperationResult.EntityDoesNotExists:
-                        return StubTableBatchOperationResult.EntityDoesNotExist;
-
-                    case StubTableMergeOperationResult.EtagsDoNotMatch:
-                        return StubTableBatchOperationResult.EtagsDoNotMatch;
-
-                    default:
-                        return StubTableBatchOperationResult.Failed;
-                }
-            });
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.Merge(entity, partitionCluster));
             return this;
         }
 
@@ -124,26 +63,7 @@ namespace CloudStub.Core
             else if (!string.Equals(_partitionKey, entity.PartitionKey, StringComparison.Ordinal))
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
-            _operations.Add(partitionCluster =>
-            {
-                switch (StubTableOperation.Replace(entity, partitionCluster).OperationResult)
-                {
-                    case StubTableReplaceOperationResult.Success:
-                        return StubTableBatchOperationResult.Success;
-
-                    case StubTableReplaceOperationResult.TableDoesNotExist:
-                        return StubTableBatchOperationResult.TableDoesNotExist;
-
-                    case StubTableReplaceOperationResult.EntityDoesNotExists:
-                        return StubTableBatchOperationResult.EntityDoesNotExist;
-
-                    case StubTableReplaceOperationResult.EtagsDoNotMatch:
-                        return StubTableBatchOperationResult.EtagsDoNotMatch;
-
-                    default:
-                        return StubTableBatchOperationResult.Failed;
-                }
-            });
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.Replace(entity, partitionCluster));
             return this;
         }
 
@@ -154,30 +74,11 @@ namespace CloudStub.Core
             else if (!string.Equals(_partitionKey, entity.PartitionKey, StringComparison.Ordinal))
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
-            _operations.Add(partitionCluster =>
-            {
-                switch (StubTableOperation.Delete(entity, partitionCluster).OperationResult)
-                {
-                    case StubTableDeleteOperationResult.Success:
-                        return StubTableBatchOperationResult.Success;
-
-                    case StubTableDeleteOperationResult.TableDoesNotExist:
-                        return StubTableBatchOperationResult.TableDoesNotExist;
-
-                    case StubTableDeleteOperationResult.EntityDoesNotExists:
-                        return StubTableBatchOperationResult.EntityDoesNotExist;
-
-                    case StubTableDeleteOperationResult.EtagsDoNotMatch:
-                        return StubTableBatchOperationResult.EtagsDoNotMatch;
-
-                    default:
-                        return StubTableBatchOperationResult.Failed;
-                }
-            });
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.Delete(entity, partitionCluster));
             return this;
         }
 
         public StubTableBatchOperationDataResult Execute()
-            => _executeCallback(_partitionKey, _operations);
+            => _executeCallback(_partitionKey, _operationCallbacks);
     }
 }
