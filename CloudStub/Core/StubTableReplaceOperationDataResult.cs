@@ -2,10 +2,10 @@
 {
     public class StubTableReplaceOperationDataResult : IStubTableOperationDataResult<StubTableReplaceOperationResult>
     {
-        public StubTableReplaceOperationDataResult(StubTableReplaceOperationResult operationResult)
+        internal StubTableReplaceOperationDataResult(StubTableReplaceOperationResult operationResult)
             => (OperationResult, Entity) = (operationResult, default);
 
-        public StubTableReplaceOperationDataResult(StubTableReplaceOperationResult operationResult, StubEntity entity)
+        internal StubTableReplaceOperationDataResult(StubTableReplaceOperationResult operationResult, StubEntity entity)
             => (OperationResult, Entity) = (operationResult, entity);
 
         public StubTableOperationType OperationType
