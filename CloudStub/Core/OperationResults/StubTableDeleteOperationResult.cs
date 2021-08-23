@@ -1,6 +1,6 @@
-﻿namespace CloudStub.Core.Operations
+namespace CloudStub.Core.OperationResults
 {
-    public enum StubTableMergeOperationResult
+    public enum StubTableDeleteOperationResult
     {
         Success,
         TableDoesNotExist,

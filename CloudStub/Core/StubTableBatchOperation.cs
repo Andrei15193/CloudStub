@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using CloudStub.Core.OperationResults;
 
-namespace CloudStub.Core.Operations
+namespace CloudStub.Core
 {
     public class StubTableBatchOperation
     {
@@ -75,6 +76,20 @@ namespace CloudStub.Core.Operations
                 throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(entity));
 
             _operationCallbacks.Add(partitionCluster => StubTableOperation.Delete(entity, partitionCluster));
+            return this;
+        }
+
+        public StubTableBatchOperation Retrieve(string partitionKey, string rowKey)
+            => Retrieve(partitionKey, rowKey, default);
+
+        public StubTableBatchOperation Retrieve(string partitionKey, string rowKey, IEnumerable<string> selectedProperties)
+        {
+            if (_partitionKey is null)
+                _partitionKey = partitionKey;
+            else if (!string.Equals(_partitionKey, partitionKey, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Batch operations can be performed only on the same partition.", nameof(partitionKey));
+
+            _operationCallbacks.Add(partitionCluster => StubTableOperation.Retrieve(partitionKey, rowKey, selectedProperties, partitionCluster));
             return this;
         }
 

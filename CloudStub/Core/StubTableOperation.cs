@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using CloudStub.Core.Operations;
+using CloudStub.Core.OperationResults;
 
 namespace CloudStub.Core
 {
@@ -142,7 +142,7 @@ namespace CloudStub.Core
                 if (selectedProperties is null)
                     foreach (var property in entity.Properties)
                         retrieveEntity.Properties.Add(property);
-                else if (selectedProperties.Any())
+                else
                     foreach (var propertyName in selectedProperties)
                         if (entity.Properties.TryGetValue(propertyName, out var propertyValue))
                             retrieveEntity.Properties.Add(propertyName, propertyValue);

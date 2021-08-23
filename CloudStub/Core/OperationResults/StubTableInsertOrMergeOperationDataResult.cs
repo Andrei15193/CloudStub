@@ -1,4 +1,4 @@
-﻿namespace CloudStub.Core.Operations
+﻿namespace CloudStub.Core.OperationResults
 {
     public class StubTableInsertOrMergeOperationDataResult : IStubTableOperationDataResult<StubTableInsertOrMergeOperationResult>
     {

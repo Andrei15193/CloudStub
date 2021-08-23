@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CloudStub.Core.Operations
+namespace CloudStub.Core.OperationResults
 {
     public class StubTableBatchOperationDataResult
     {

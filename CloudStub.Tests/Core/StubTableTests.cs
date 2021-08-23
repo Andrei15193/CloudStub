@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using CloudStub.Core;
-using CloudStub.Core.Operations;
+using CloudStub.Core.OperationResults;
 using CloudStub.Core.StorageHandlers;
 using Xunit;
 
@@ -1597,6 +1597,105 @@ namespace CloudStub.Tests.Core
             Assert.Equal("row-key", deleteOperationResult.Entity.RowKey);
             Assert.NotNull(deleteOperationResult.Entity.ETag);
             Assert.NotNull(deleteOperationResult.Entity.Timestamp);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenRetrievingEntityThatDoesNotExists_TheBatchOperationFails()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+
+            var batchOperationResult = stubTable
+                .BatchOperation()
+                .Retrieve("partition-key", "row-key")
+                .Execute();
+
+            Assert.Equal(StubTableBatchOperationResult.Failed, batchOperationResult.OperationResult);
+            Assert.False(batchOperationResult.IsSuccessful);
+            Assert.Empty(stubTable.Query(new StubTableQuery(), default).Entities);
+
+            var retrieveOperationResult = Assert.IsType<StubTableRetrieveOperationDataResult>(Assert.Single(batchOperationResult.IndividualOperationResults));
+            Assert.Equal(StubTableOperationType.Retrieve, retrieveOperationResult.OperationType);
+            Assert.Equal(StubTableRetrieveOperationResult.EntityDoesNotExists, retrieveOperationResult.OperationResult);
+            Assert.False(retrieveOperationResult.IsSuccessful);
+            Assert.Null(retrieveOperationResult.Entity);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenRetrievingExistingEntity_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
+            {
+                Properties =
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var batchOperationResult = stubTable
+                .BatchOperation()
+                .Retrieve("partition-key", "row-key")
+                .Execute();
+
+            Assert.Equal(StubTableBatchOperationResult.Success, batchOperationResult.OperationResult);
+            Assert.True(batchOperationResult.IsSuccessful);
+            var entity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+
+            var retrieveOperationResult = Assert.IsType<StubTableRetrieveOperationDataResult>(Assert.Single(batchOperationResult.IndividualOperationResults));
+            Assert.Equal(StubTableOperationType.Retrieve, retrieveOperationResult.OperationType);
+            Assert.Equal(StubTableRetrieveOperationResult.Success, retrieveOperationResult.OperationResult);
+            Assert.True(retrieveOperationResult.IsSuccessful);
+            Assert.NotNull(retrieveOperationResult.Entity);
+
+            Assert.Equal(entity.PartitionKey, retrieveOperationResult.Entity.PartitionKey);
+            Assert.Equal(entity.RowKey, retrieveOperationResult.Entity.RowKey);
+            Assert.Equal(entity.ETag, retrieveOperationResult.Entity.ETag);
+            Assert.Equal(entity.Timestamp, retrieveOperationResult.Entity.Timestamp);
+
+            Assert.Equal(entity.Properties.Count, retrieveOperationResult.Entity.Properties.Count);
+            Assert.Equal(entity.Properties["property1"].Value, retrieveOperationResult.Entity.Properties["property1"].Value);
+            Assert.Equal(entity.Properties["property2"].Value, retrieveOperationResult.Entity.Properties["property2"].Value);
+        }
+
+        [Fact]
+        public void BatchOperation_WhenRetrievingExistingEntityWithSelectedProperties_TheBatchOperationSucceeds()
+        {
+            var stubTable = new StubTable("table-name", new InMemoryTableStorageHandler());
+            stubTable.Create();
+            stubTable.Insert(new StubEntity("partition-key", "row-key")
+            {
+                Properties =
+                {
+                    { "property1", new StubEntityProperty("property-1") },
+                    { "property2", new StubEntityProperty("property-2") }
+                }
+            });
+
+            var batchOperationResult = stubTable
+                .BatchOperation()
+                .Retrieve("partition-key", "row-key", new[] { "property2", "property3" })
+                .Execute();
+
+            Assert.Equal(StubTableBatchOperationResult.Success, batchOperationResult.OperationResult);
+            Assert.True(batchOperationResult.IsSuccessful);
+            var entity = Assert.Single(stubTable.Query(new StubTableQuery(), default).Entities);
+
+            var retrieveOperationResult = Assert.IsType<StubTableRetrieveOperationDataResult>(Assert.Single(batchOperationResult.IndividualOperationResults));
+            Assert.Equal(StubTableOperationType.Retrieve, retrieveOperationResult.OperationType);
+            Assert.Equal(StubTableRetrieveOperationResult.Success, retrieveOperationResult.OperationResult);
+            Assert.True(retrieveOperationResult.IsSuccessful);
+            Assert.NotNull(retrieveOperationResult.Entity);
+
+            Assert.Equal(entity.PartitionKey, retrieveOperationResult.Entity.PartitionKey);
+            Assert.Equal(entity.RowKey, retrieveOperationResult.Entity.RowKey);
+            Assert.Equal(entity.ETag, retrieveOperationResult.Entity.ETag);
+            Assert.Equal(entity.Timestamp, retrieveOperationResult.Entity.Timestamp);
+
+            Assert.Equal(1, retrieveOperationResult.Entity.Properties.Count);
+            Assert.Equal("property-2", retrieveOperationResult.Entity.Properties["property2"].Value);
         }
     }
 }
