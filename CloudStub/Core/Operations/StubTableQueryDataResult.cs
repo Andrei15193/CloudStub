@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CloudStub.Core
+namespace CloudStub.Core.Operations
 {
     public class StubTableQueryDataResult
     {

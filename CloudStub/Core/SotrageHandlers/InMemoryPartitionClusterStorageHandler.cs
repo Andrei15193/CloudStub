@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Text;
 
-namespace CloudStub.Core
+namespace CloudStub.Core.StorageHandlers
 {
     internal class InMemoryPartitionClusterStorageHandler : IPartitionClusterStorageHandler
     {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace CloudStub.Core
+namespace CloudStub.Core.StorageHandlers
 {
     public interface ITableStorageHandler
     {

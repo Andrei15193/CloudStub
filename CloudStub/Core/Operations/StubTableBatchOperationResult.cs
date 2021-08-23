@@ -1,4 +1,4 @@
-﻿namespace CloudStub.Core
+﻿namespace CloudStub.Core.Operations
 {
     public enum StubTableBatchOperationResult
     {

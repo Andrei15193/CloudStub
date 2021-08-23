@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace CloudStub.Core
+namespace CloudStub.Core.StorageHandlers
 {
     public interface IPartitionClusterStorageHandler
     {

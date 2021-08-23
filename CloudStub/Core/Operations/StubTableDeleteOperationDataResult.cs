@@ -1,4 +1,4 @@
-﻿namespace CloudStub.Core
+﻿namespace CloudStub.Core.Operations
 {
     public class StubTableDeleteOperationDataResult : IStubTableOperationDataResult<StubTableDeleteOperationResult>
     {

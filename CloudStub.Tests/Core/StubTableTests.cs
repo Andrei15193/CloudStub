@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using CloudStub.Core;
+using CloudStub.Core.Operations;
+using CloudStub.Core.StorageHandlers;
 using Xunit;
 
 namespace CloudStub.Tests.Core

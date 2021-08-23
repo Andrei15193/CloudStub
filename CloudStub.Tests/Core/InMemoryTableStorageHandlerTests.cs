@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using CloudStub.Core;
+using CloudStub.Core.StorageHandlers;
 using Xunit;
 
 namespace CloudStub.Tests.Core
