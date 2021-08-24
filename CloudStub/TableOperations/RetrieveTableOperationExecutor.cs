@@ -1,62 +1,101 @@
 using System;
-using System.Linq;
+using CloudStub.Core;
+using CloudStub.Core.OperationResults;
 using Microsoft.Azure.Cosmos.Table;
 
 namespace CloudStub.TableOperations
 {
     internal sealed class RetrieveTableOperationExecutor : TableOperationExecutor
     {
-        public RetrieveTableOperationExecutor(ITableOperationExecutorContext context)
-            : base(context)
+        public RetrieveTableOperationExecutor(StubTable stubTable)
+            : base(stubTable)
         {
         }
-
-        public override Exception Validate(TableOperation tableOperation, OperationContext operationContext)
-        {
-            if (tableOperation.GetPartitionKey() == null)
-                return new ArgumentNullException("partitionKey");
-            if (tableOperation.GetRowKey() == null)
-                return new ArgumentNullException("rowkey");
-
-            return null;
-        }
-
-        public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
-            => Validate(tableOperation, operationContext);
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
-            if (Context.Entities.TryGetValue(tableOperation.GetPartitionKey(), out var partition)
-                && partition.TryGetValue(tableOperation.GetRowKey(), out var existingEntity))
-                return new TableResult
-                {
-                    HttpStatusCode = 200,
-                    Etag = existingEntity.ETag,
-                    Result = _GetEntityRetrieveResult(existingEntity, tableOperation)
-                };
+            var partitionKey = tableOperation.GetPartitionKey();
+            var rowKey = tableOperation.GetRowKey();
+            var selectedProperties = tableOperation.GetSelectColumns();
 
-            return new TableResult
+            if (partitionKey is null)
+                throw new ArgumentNullException("partitionKey");
+            if (rowKey is null)
+                throw new ArgumentNullException("rowkey");
+
+            var result = StubTable.Retrieve(partitionKey, rowKey, selectedProperties);
+            switch (result.OperationResult)
             {
-                HttpStatusCode = 404,
-                Etag = null,
-                Result = null
+                case StubTableRetrieveOperationResult.Success:
+                    return new TableResult
+                    {
+                        HttpStatusCode = 200,
+                        Etag = result.Entity.ETag,
+                        Result = _GetEntityRetrieveResult(result.Entity, tableOperation)
+                    };
+
+                case StubTableRetrieveOperationResult.TableDoesNotExist:
+                case StubTableRetrieveOperationResult.EntityDoesNotExists:
+                    return new TableResult
+                    {
+                        HttpStatusCode = 404,
+                        Etag = null,
+                        Result = null
+                    };
+
+                default:
+                    throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
+            }
+        }
+
+        public override Func<IStubTableOperationDataResult, TableResult> BatchCallback(StubTableBatchOperation batchOperation, TableOperation tableOperation, OperationContext operationContext, int operationIndex)
+        {
+            var partitionKey = tableOperation.GetPartitionKey();
+            var rowKey = tableOperation.GetRowKey();
+
+            if (partitionKey is null)
+                throw new ArgumentNullException("partitionKey");
+            if (rowKey is null)
+                throw new ArgumentNullException("rowkey");
+
+            batchOperation.Retrieve(partitionKey, rowKey);
+            return operationResult =>
+            {
+                var result = (StubTableRetrieveOperationDataResult)operationResult;
+                switch (result.OperationResult)
+                {
+                    case StubTableRetrieveOperationResult.Success:
+                        return new TableResult
+                        {
+                            HttpStatusCode = 200,
+                            Etag = result.Entity.ETag,
+                            Result = _GetEntityRetrieveResult(result.Entity, tableOperation)
+                        };
+
+                    case StubTableRetrieveOperationResult.TableDoesNotExist:
+                    case StubTableRetrieveOperationResult.EntityDoesNotExists:
+                        return new TableResult
+                        {
+                            HttpStatusCode = 404,
+                            Etag = null,
+                            Result = null
+                        };
+
+                    default:
+                        throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
+                }
             };
         }
 
-        private static object _GetEntityRetrieveResult(DynamicTableEntity existingEntity, TableOperation tableOperation)
+        private static object _GetEntityRetrieveResult(StubEntity stubEntity, TableOperation tableOperation)
         {
-            var selectColumns = tableOperation.GetSelectColumns();
-            var entityProperties = selectColumns == null ?
-                existingEntity.Properties :
-                existingEntity.Properties.Where(property => selectColumns.Contains(property.Key, StringComparer.Ordinal));
-
             var entityResolver = tableOperation.GetEntityResolver<object>();
             var entityResult = entityResolver(
-                existingEntity.PartitionKey,
-                existingEntity.RowKey,
-                existingEntity.Timestamp,
-                entityProperties.ToDictionary(entityProperty => entityProperty.Key, entityProperty => entityProperty.Value, StringComparer.Ordinal),
-                existingEntity.ETag
+                stubEntity.PartitionKey,
+                stubEntity.RowKey,
+                stubEntity.Timestamp.Value,
+                GetEntityProperties(stubEntity.Properties),
+                stubEntity.ETag
             );
             return entityResult;
         }

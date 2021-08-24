@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.Cosmos.Table;
+using CloudStub.Core;
 
 namespace CloudStub.FilterParser.FilterNodes
 {
@@ -11,7 +11,7 @@ namespace CloudStub.FilterParser.FilterNodes
 
         public IEnumerable<FilterNode> Operands { get; }
 
-        public override bool Apply(DynamicTableEntity entity)
+        public override bool Apply(StubEntity entity)
         {
             var result = Operands.Any(operand => operand.Apply(entity));
             return result;

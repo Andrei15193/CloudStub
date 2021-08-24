@@ -439,7 +439,7 @@ namespace CloudStub.Core
             }
             );
 
-        private StubEntity _SelectPropertiesFromEntity(StubEntity entity, IReadOnlyCollection<string> selectedPropertyNames)
+        private StubEntity _SelectPropertiesFromEntity(StubEntity entity, IEnumerable<string> selectedPropertyNames)
         {
             var projectEntity = new StubEntity(entity.PartitionKey, entity.RowKey, entity.Timestamp.Value, entity.ETag);
             if (selectedPropertyNames is null)

@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.Cosmos.Table;
+﻿using CloudStub.Core;
 
 namespace CloudStub.FilterParser.FilterNodes
 {
@@ -9,7 +9,7 @@ namespace CloudStub.FilterParser.FilterNodes
 
         public FilterNode Operand { get; set; }
 
-        public override bool Apply(DynamicTableEntity entity)
+        public override bool Apply(StubEntity entity)
         {
             var operandResult = Operand.Apply(entity);
             var result = !operandResult;

@@ -1,4 +1,6 @@
 ﻿using System;
+using CloudStub.Core;
+using CloudStub.Core.OperationResults;
 using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
@@ -6,90 +8,103 @@ namespace CloudStub.TableOperations
 {
     internal sealed class ReplaceTableOperationExecutor : TableOperationExecutor
     {
-        public ReplaceTableOperationExecutor(ITableOperationExecutorContext context)
-            : base(context)
+        public ReplaceTableOperationExecutor(StubTable stubTable)
+            : base(stubTable)
         {
-        }
-
-        public override Exception Validate(TableOperation tableOperation, OperationContext operationContext)
-        {
-            if (!Context.TableExists)
-                return TableDoesNotExistException();
-
-            if (tableOperation.Entity.PartitionKey == null)
-                return new ArgumentNullException("Replace requires a valid PartitionKey");
-            var partitionKeyException = ValidateKeyProperty(tableOperation.Entity.PartitionKey);
-            if (partitionKeyException != null)
-                return partitionKeyException;
-
-            if (tableOperation.Entity.RowKey == null)
-                return new ArgumentNullException("Replace requires a valid RowKey");
-            var rowKeyException = ValidateKeyProperty(tableOperation.Entity.RowKey);
-            if (rowKeyException != null)
-                return rowKeyException;
-
-            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity);
-            if (entityPropertyException != null)
-                return entityPropertyException;
-
-            if (!Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition)
-                || !partition.TryGetValue(tableOperation.Entity.RowKey, out var existingEntity))
-                return ResourceNotFoundException();
-
-            if (tableOperation.Entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(tableOperation.Entity.ETag, existingEntity.ETag))
-                return PreconditionFailedException();
-
-            return null;
-        }
-
-        public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
-        {
-            if (!Context.TableExists)
-                return TableDoesNotExistForBatchException(operationIndex);
-
-            if (tableOperation.Entity.PartitionKey == null)
-                return new ArgumentNullException("Replace requires a valid PartitionKey");
-            var partitionKeyException = ValidateBatckKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
-            if (partitionKeyException != null)
-                return partitionKeyException;
-
-            if (tableOperation.Entity.RowKey == null)
-                return new ArgumentNullException("Replace requires a valid RowKey");
-            var rowKeyException = ValidateBatckKeyProperty(tableOperation.Entity.RowKey, operationIndex);
-            if (rowKeyException != null)
-                return rowKeyException;
-
-            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity);
-            if (entityPropertyException != null)
-                return entityPropertyException;
-
-            if (!Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition)
-                || !partition.TryGetValue(tableOperation.Entity.RowKey, out var existingEntity))
-                return ResourceNotFoundException();
-
-            if (tableOperation.Entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(tableOperation.Entity.ETag, existingEntity.ETag))
-                return PreconditionFailedException();
-
-            return null;
         }
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
-            var dynamicEntity = GetDynamicEntity(tableOperation.Entity);
-            Context.Entities[tableOperation.Entity.PartitionKey][tableOperation.Entity.RowKey] = dynamicEntity;
+            if (tableOperation.Entity.PartitionKey == null)
+                throw new ArgumentNullException("Replace requires a valid PartitionKey");
+            var partitionKeyException = ValidateKeyProperty(tableOperation.Entity.PartitionKey);
+            if (partitionKeyException != null)
+                throw partitionKeyException;
 
-            return new TableResult
+            if (tableOperation.Entity.RowKey == null)
+                throw new ArgumentNullException("Replace requires a valid RowKey");
+            var rowKeyException = ValidateKeyProperty(tableOperation.Entity.RowKey);
+            if (rowKeyException != null)
+                throw rowKeyException;
+
+            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity);
+            if (entityPropertyException != null)
+                throw entityPropertyException;
+
+            var result = StubTable.Replace(GetStubEntity(tableOperation.Entity));
+            switch (result.OperationResult)
             {
-                HttpStatusCode = 204,
-                Etag = dynamicEntity.ETag,
-                Result = new TableEntity
+                case StubTableReplaceOperationResult.Success:
+                    return _GetTableResult(result);
+
+                case StubTableReplaceOperationResult.TableDoesNotExist:
+                    throw TableDoesNotExistException();
+
+                case StubTableReplaceOperationResult.EntityDoesNotExists:
+                    throw ResourceNotFoundException();
+
+                case StubTableReplaceOperationResult.EtagsDoNotMatch:
+                    throw PreconditionFailedException();
+
+                default:
+                    throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
+            }
+        }
+
+        public override Func<IStubTableOperationDataResult, TableResult> BatchCallback(StubTableBatchOperation batchOperation, TableOperation tableOperation, OperationContext operationContext, int operationIndex)
+        {
+            if (tableOperation.Entity.PartitionKey == null)
+                throw new ArgumentNullException("Replace requires a valid PartitionKey");
+            var partitionKeyException = ValidateBatckKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
+            if (partitionKeyException != null)
+                throw partitionKeyException;
+
+            if (tableOperation.Entity.RowKey == null)
+                throw new ArgumentNullException("Replace requires a valid RowKey");
+            var rowKeyException = ValidateBatckKeyProperty(tableOperation.Entity.RowKey, operationIndex);
+            if (rowKeyException != null)
+                throw rowKeyException;
+
+            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity);
+            if (entityPropertyException != null)
+                throw entityPropertyException;
+
+            batchOperation.Replace(GetStubEntity(tableOperation.Entity));
+            return operationResult =>
+            {
+                var result = (StubTableReplaceOperationDataResult)operationResult;
+                switch (result.OperationResult)
                 {
-                    PartitionKey = dynamicEntity.PartitionKey,
-                    RowKey = dynamicEntity.RowKey,
-                    ETag = dynamicEntity.ETag,
-                    Timestamp = default(DateTimeOffset)
+                    case StubTableReplaceOperationResult.Success:
+                        return _GetTableResult(result);
+
+                    case StubTableReplaceOperationResult.TableDoesNotExist:
+                        throw TableDoesNotExistForBatchException(operationIndex);
+
+                    case StubTableReplaceOperationResult.EntityDoesNotExists:
+                        throw ResourceNotFoundException();
+
+                    case StubTableReplaceOperationResult.EtagsDoNotMatch:
+                        throw PreconditionFailedException();
+
+                    default:
+                        throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
                 }
             };
         }
+
+        private static TableResult _GetTableResult(StubTableReplaceOperationDataResult result)
+            => new TableResult
+            {
+                HttpStatusCode = 204,
+                Etag = result.Entity.ETag,
+                Result = new TableEntity
+                {
+                    PartitionKey = result.Entity.PartitionKey,
+                    RowKey = result.Entity.RowKey,
+                    ETag = result.Entity.ETag,
+                    Timestamp = default(DateTimeOffset)
+                }
+            };
     }
 }

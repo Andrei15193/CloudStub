@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.Azure.Cosmos.Table;
+using CloudStub.Core;
 
 namespace CloudStub.FilterParser.FilterNodes
 {
@@ -7,7 +7,7 @@ namespace CloudStub.FilterParser.FilterNodes
     {
         private const int MismatchingTypeComparisonResult = -1;
 
-        public PropertyFilterNode(string propertyName, EntityProperty filterValue)
+        public PropertyFilterNode(string propertyName, StubEntityProperty filterValue)
         {
             PropertyName = propertyName;
             FilterValue = filterValue;
@@ -15,126 +15,128 @@ namespace CloudStub.FilterParser.FilterNodes
 
         public string PropertyName { get; }
 
-        public EntityProperty FilterValue { get; }
+        public StubEntityProperty FilterValue { get; }
 
-        protected EntityProperty GetValueFromEntity(DynamicTableEntity entity)
+        protected StubEntityProperty GetValueFromEntity(StubEntity entity)
         {
-            EntityProperty entityProperty;
+            StubEntityProperty entityProperty;
 
             if (string.Equals(PropertyName, nameof(entity.PartitionKey), StringComparison.Ordinal))
-                entityProperty = EntityProperty.GeneratePropertyForString(entity.PartitionKey);
+                entityProperty = new StubEntityProperty(entity.PartitionKey);
             else if (string.Equals(PropertyName, nameof(entity.RowKey), StringComparison.Ordinal))
-                entityProperty = EntityProperty.GeneratePropertyForString(entity.RowKey);
+                entityProperty = new StubEntityProperty(entity.RowKey);
             else if (string.Equals(PropertyName, nameof(entity.ETag), StringComparison.Ordinal))
-                entityProperty = EntityProperty.GeneratePropertyForString(entity.ETag);
+                entityProperty = new StubEntityProperty(entity.ETag);
             else if (string.Equals(PropertyName, nameof(entity.Timestamp), StringComparison.Ordinal))
-                entityProperty = EntityProperty.GeneratePropertyForDateTimeOffset(entity.Timestamp);
+                entityProperty = new StubEntityProperty(entity.Timestamp.Value);
             else if (!entity.Properties.TryGetValue(PropertyName, out entityProperty))
                 entityProperty = null;
 
             return entityProperty;
         }
 
-        protected static int? Compare(EntityProperty propertyValue, EntityProperty filterValue)
+        protected static int? Compare(StubEntityProperty propertyValue, StubEntityProperty filterValue)
         {
-            if (propertyValue == null || filterValue == null)
+            if (propertyValue is null || filterValue is null)
                 return null;
-            else if (propertyValue.PropertyAsObject == null && filterValue.PropertyAsObject == null)
+            else if (propertyValue.Value is null && filterValue.Value is null)
                 return 0;
-            else if (propertyValue.PropertyAsObject == null || filterValue.PropertyAsObject == null)
+            else if (propertyValue.Value is null || filterValue.Value is null)
                 return null;
             else
-                switch (propertyValue.PropertyType)
+                switch (propertyValue.Type)
                 {
-                    case EdmType.Int32:
-                        return _CompareInt32(propertyValue.Int32Value.Value, filterValue);
+                    case StubEntityPropertyType.Int32:
+                        return _CompareInt32((int)propertyValue.Value, filterValue);
 
-                    case EdmType.Int64:
-                        return _CompareInt64(propertyValue.Int64Value.Value, filterValue);
+                    case StubEntityPropertyType.Int64:
+                        return _CompareInt64((long)propertyValue.Value, filterValue);
 
-                    case EdmType.Double:
-                        return _CompareDouble(propertyValue.DoubleValue.Value, filterValue);
+                    case StubEntityPropertyType.Double:
+                        return _CompareDouble((double)propertyValue.Value, filterValue);
 
-                    case EdmType.Boolean:
-                        return _CompareBoolean(propertyValue.BooleanValue.Value, filterValue);
+                    case StubEntityPropertyType.Boolean:
+                        return _CompareBoolean((bool)propertyValue.Value, filterValue);
 
-                    case EdmType.DateTime:
-                        return _CompareDateTimeOffset(propertyValue.DateTimeOffsetValue.Value, filterValue);
+                    case StubEntityPropertyType.DateTime:
+                        return _CompareDateTimeOffset((DateTime)propertyValue.Value, filterValue);
 
-                    case EdmType.Guid:
-                        return _CompareGuid(propertyValue.GuidValue.Value, filterValue);
+                    case StubEntityPropertyType.Guid:
+                        return _CompareGuid((Guid)propertyValue.Value, filterValue);
 
-                    case EdmType.Binary:
-                        return _CompareBinary(propertyValue.BinaryValue, filterValue);
+                    case StubEntityPropertyType.Binary:
+                        return _CompareBinary((byte[])propertyValue.Value, filterValue);
 
-                    case EdmType.String:
-                        return _CompareString(propertyValue.StringValue, filterValue);
+                    case StubEntityPropertyType.String:
+                        return _CompareString((string)propertyValue.Value, filterValue);
 
                     default:
                         return null;
                 }
         }
 
-        private static int _CompareInt32(int propertyValue, EntityProperty filterValue)
-            => filterValue.PropertyType == EdmType.Int32 ? propertyValue.CompareTo(filterValue.Int32Value.Value) : MismatchingTypeComparisonResult;
+        private static int _CompareInt32(int propertyValue, StubEntityProperty filterValue)
+            => filterValue.Type == StubEntityPropertyType.Int32 ? propertyValue.CompareTo((int)filterValue.Value) : MismatchingTypeComparisonResult;
 
-        private static int _CompareInt64(long propertyValue, EntityProperty filterValue)
+        private static int _CompareInt64(long propertyValue, StubEntityProperty filterValue)
         {
-            switch (filterValue.PropertyType)
+            switch (filterValue.Type)
             {
-                case EdmType.Int32:
-                    return propertyValue.CompareTo(filterValue.Int32Value.Value);
+                case StubEntityPropertyType.Int32:
+                    return propertyValue.CompareTo((int)filterValue.Value);
 
-                case EdmType.Int64:
-                    return propertyValue.CompareTo(filterValue.Int64Value.Value);
+                case StubEntityPropertyType.Int64:
+                    return propertyValue.CompareTo((long)filterValue.Value);
 
                 default:
                     return MismatchingTypeComparisonResult;
             }
         }
 
-        private static int _CompareDouble(double propertyValue, EntityProperty filterValue)
+        private static int _CompareDouble(double propertyValue, StubEntityProperty filterValue)
         {
-            switch (filterValue.PropertyType)
+            switch (filterValue.Type)
             {
-                case EdmType.Int32:
-                    return propertyValue.CompareTo(filterValue.Int32Value.Value);
+                case StubEntityPropertyType.Int32:
+                    return propertyValue.CompareTo((int)filterValue.Value);
 
-                case EdmType.Int64:
-                    return propertyValue.CompareTo(filterValue.Int64Value.Value);
+                case StubEntityPropertyType.Int64:
+                    return propertyValue.CompareTo((long)filterValue.Value);
 
-                case EdmType.Double:
-                    return propertyValue.CompareTo(filterValue.DoubleValue.Value);
+                case StubEntityPropertyType.Double:
+                    return propertyValue.CompareTo((double)filterValue.Value);
 
                 default:
                     return MismatchingTypeComparisonResult;
             }
         }
 
-        private static int _CompareBoolean(bool propertyValue, EntityProperty filterValue)
-            => filterValue.PropertyType == EdmType.Boolean ? propertyValue.CompareTo(filterValue.BooleanValue.Value) : MismatchingTypeComparisonResult;
+        private static int _CompareBoolean(bool propertyValue, StubEntityProperty filterValue)
+            => filterValue.Type == StubEntityPropertyType.Boolean ? propertyValue.CompareTo((bool)filterValue.Value) : MismatchingTypeComparisonResult;
 
-        private static int _CompareDateTimeOffset(DateTimeOffset propertyValue, EntityProperty filterValue)
-            => filterValue.PropertyType == EdmType.DateTime ? propertyValue.CompareTo(filterValue.DateTimeOffsetValue.Value) : MismatchingTypeComparisonResult;
+        private static int _CompareDateTimeOffset(DateTime propertyValue, StubEntityProperty filterValue)
+            => filterValue.Type == StubEntityPropertyType.DateTime ? propertyValue.CompareTo((DateTime)filterValue.Value) : MismatchingTypeComparisonResult;
 
-        private static int _CompareGuid(Guid propertyValue, EntityProperty filterValue)
-            => filterValue.PropertyType == EdmType.Guid ? propertyValue.CompareTo(filterValue.GuidValue.Value) : MismatchingTypeComparisonResult;
+        private static int _CompareGuid(Guid propertyValue, StubEntityProperty filterValue)
+            => filterValue.Type == StubEntityPropertyType.Guid ? propertyValue.CompareTo((Guid)filterValue.Value) : MismatchingTypeComparisonResult;
 
-        private static int _CompareBinary(byte[] propertyValue, EntityProperty filterValue)
+        private static int _CompareBinary(byte[] propertyValue, StubEntityProperty filterValue)
         {
-            if (filterValue.PropertyType == EdmType.Binary)
+            if (filterValue.Type == StubEntityPropertyType.Binary)
             {
+                var compareValue = (byte[])filterValue.Value;
+
                 var index = 0;
                 var comparisonResult = 0;
-                while (comparisonResult == 0 && index < propertyValue.Length && index < filterValue.BinaryValue.Length)
+                while (comparisonResult == 0 && index < propertyValue.Length && index < compareValue.Length)
                 {
-                    comparisonResult = propertyValue[index].CompareTo(filterValue.BinaryValue[index]);
+                    comparisonResult = propertyValue[index].CompareTo(compareValue[index]);
                     index++;
                 }
 
                 if (index < propertyValue.Length)
                     return 1;
-                else if (index < filterValue.BinaryValue.Length)
+                else if (index < compareValue.Length)
                     return -1;
                 else
                     return comparisonResult;
@@ -143,7 +145,7 @@ namespace CloudStub.FilterParser.FilterNodes
                 return MismatchingTypeComparisonResult;
         }
 
-        private static int _CompareString(string propertyValue, EntityProperty filterValue)
-            => filterValue.PropertyType == EdmType.String ? StringComparer.Ordinal.Compare(propertyValue, filterValue.StringValue) : MismatchingTypeComparisonResult;
+        private static int _CompareString(string propertyValue, StubEntityProperty filterValue)
+            => filterValue.Type == StubEntityPropertyType.String ? StringComparer.Ordinal.Compare(propertyValue, (string)filterValue.Value) : MismatchingTypeComparisonResult;
     }
 }

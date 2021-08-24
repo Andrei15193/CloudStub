@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using CloudStub.Core;
 using CloudStub.FilterParser.FilterNodes;
-using Microsoft.Azure.Cosmos.Table;
 
 namespace CloudStub.FilterParser.FilterNodeFactories
 {
@@ -24,22 +24,22 @@ namespace CloudStub.FilterParser.FilterNodeFactories
             }
         }
 
-        private static EntityProperty _GetEntityProperty(string value)
+        private static StubEntityProperty _GetEntityProperty(string value)
         {
-            EntityProperty result;
+            StubEntityProperty result;
 
             if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intResult))
-                result = EntityProperty.GeneratePropertyForInt(intResult);
+                result = new StubEntityProperty(intResult);
             else if (value.EndsWith("L", StringComparison.OrdinalIgnoreCase) && long.TryParse(value.Substring(0, value.Length - 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out var longResult))
-                result = EntityProperty.GeneratePropertyForLong(longResult);
+                result = new StubEntityProperty(longResult);
             else if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var doubleValue))
-                result = EntityProperty.GeneratePropertyForDouble(doubleValue);
+                result = new StubEntityProperty(doubleValue);
             else if (bool.TryParse(value, out var boolResult))
-                result = EntityProperty.GeneratePropertyForBool(boolResult);
+                result = new StubEntityProperty(boolResult);
             else if (value.StartsWith("x'", StringComparison.OrdinalIgnoreCase) && value.EndsWith("'", StringComparison.OrdinalIgnoreCase))
             {
                 var binaryValue = value.Substring("x'".Length, value.Length - "x'".Length - "'".Length);
-                result = EntityProperty.GeneratePropertyForByteArray(
+                result = new StubEntityProperty(
                     Enumerable
                         .Range(0, binaryValue.Length / 2)
                         .Select(arrayIndex => Convert.ToByte(binaryValue.Substring(arrayIndex * 2, 2), 16))
@@ -49,25 +49,25 @@ namespace CloudStub.FilterParser.FilterNodeFactories
             else if (value.StartsWith("guid'", StringComparison.OrdinalIgnoreCase) && value.EndsWith("'", StringComparison.OrdinalIgnoreCase))
             {
                 var guidValue = value.Substring("guid'".Length, value.Length - "guid'".Length - "'".Length);
-                result = EntityProperty.GeneratePropertyForGuid(Guid.Parse(guidValue));
+                result = new StubEntityProperty(Guid.Parse(guidValue));
             }
             else if (value.StartsWith("datetime'", StringComparison.OrdinalIgnoreCase) && value.EndsWith("'", StringComparison.OrdinalIgnoreCase))
             {
                 var dateTimeValue = value.Substring("datetime'".Length, value.Length - "datetime'".Length - "'".Length);
-                result = EntityProperty.GeneratePropertyForDateTimeOffset(DateTimeOffset.Parse(dateTimeValue, CultureInfo.InvariantCulture));
+                result = new StubEntityProperty(DateTimeOffset.Parse(dateTimeValue, CultureInfo.InvariantCulture).DateTime);
             }
             else if (value.StartsWith("'", StringComparison.OrdinalIgnoreCase) && value.EndsWith("'", StringComparison.OrdinalIgnoreCase))
             {
                 var stringValue = value.Substring("'".Length, value.Length - "'".Length - "'".Length);
-                result = EntityProperty.GeneratePropertyForString(stringValue);
+                result = new StubEntityProperty(stringValue);
             }
             else
-                result = EntityProperty.GeneratePropertyForString(value);
+                result = new StubEntityProperty(value);
 
             return result;
         }
 
-        private static FilterNode _GetOperatorNode(string propertyName, FilterToken @operator, EntityProperty filterValue)
+        private static FilterNode _GetOperatorNode(string propertyName, FilterToken @operator, StubEntityProperty filterValue)
         {
             switch (@operator.Code)
             {

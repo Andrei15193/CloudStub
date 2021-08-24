@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
+using CloudStub.Core;
+using CloudStub.Core.OperationResults;
 using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
@@ -8,87 +9,87 @@ namespace CloudStub.TableOperations
 {
     internal sealed class InsertTableOperationExecutor : TableOperationExecutor
     {
-        public InsertTableOperationExecutor(ITableOperationExecutorContext context)
-            : base(context)
+        public InsertTableOperationExecutor(StubTable stubTable)
+            : base(stubTable)
         {
-        }
-
-        public override Exception Validate(TableOperation tableOperation, OperationContext operationContext)
-        {
-            if (!Context.TableExists)
-                return TableDoesNotExistException();
-
-            if (tableOperation.Entity.PartitionKey == null)
-                return PropertiesWithoutValueException();
-            if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
-                return PropertyValueTooLargeException();
-            if (!tableOperation.Entity.PartitionKey.All(IsValidKeyCharacter))
-                return InvalidPartitionKeyException(tableOperation.Entity.PartitionKey);
-
-            if (tableOperation.Entity.RowKey == null)
-                return PropertiesWithoutValueException();
-            if (tableOperation.Entity.RowKey.Length > (1 << 10))
-                return PropertyValueTooLargeException();
-            if (!tableOperation.Entity.RowKey.All(IsValidKeyCharacter))
-                return InvalidRowKeyException(tableOperation.Entity.RowKey);
-
-            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity);
-            if (entityPropertyException != null)
-                return entityPropertyException;
-
-            if (Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition) && partition.ContainsKey(tableOperation.Entity.RowKey))
-                return EntityAlreadyExistsException();
-
-            return null;
-        }
-
-        public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
-        {
-            if (!Context.TableExists)
-                return TableDoesNotExistForBatchInsertException(operationIndex);
-
-            if (tableOperation.Entity.PartitionKey == null)
-                return new ArgumentNullException("Upserts require a valid PartitionKey");
-            if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
-                return PropertyValueTooLargeForBatchException(operationIndex);
-            var partitionKeyException = _ValidateBatckPartitionKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
-            if (partitionKeyException != null)
-                return partitionKeyException;
-
-            if (tableOperation.Entity.RowKey == null)
-                return new ArgumentNullException("Upserts require a valid RowKey");
-            if (tableOperation.Entity.RowKey.Length > (1 << 10))
-                return PropertyValueTooLargeForBatchException(operationIndex);
-            var rowKeyException = _ValidateBatckRowKeyProperty(tableOperation.Entity.RowKey, operationIndex);
-            if (rowKeyException != null)
-                return rowKeyException;
-
-            var entityPropertyException = ValidateEntityPropertiesForBatch(tableOperation.Entity, operationContext, operationIndex);
-            if (entityPropertyException != null)
-                return entityPropertyException;
-
-            if (Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition) && partition.ContainsKey(tableOperation.Entity.RowKey))
-                return EntityAlreadyExistsForBatchException();
-
-            return null;
         }
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
-            var dynamicEntity = GetDynamicEntity(tableOperation.Entity);
-            var partition = _GetPartition(dynamicEntity);
-            partition.Add(dynamicEntity.RowKey, dynamicEntity);
+            if (tableOperation.Entity.PartitionKey == null)
+                throw PropertiesWithoutValueException();
+            if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
+                throw PropertyValueTooLargeException();
+            if (!tableOperation.Entity.PartitionKey.All(IsValidKeyCharacter))
+                throw InvalidPartitionKeyException(tableOperation.Entity.PartitionKey);
 
-            return new TableResult
+            if (tableOperation.Entity.RowKey == null)
+                throw PropertiesWithoutValueException();
+            if (tableOperation.Entity.RowKey.Length > (1 << 10))
+                throw PropertyValueTooLargeException();
+            if (!tableOperation.Entity.RowKey.All(IsValidKeyCharacter))
+                throw InvalidRowKeyException(tableOperation.Entity.RowKey);
+
+            var entityPropertyException = ValidateEntityProperties(tableOperation.Entity);
+            if (entityPropertyException != null)
+                throw entityPropertyException;
+
+            var result = StubTable.Insert(GetStubEntity(tableOperation.Entity));
+            switch (result.OperationResult)
             {
-                HttpStatusCode = 204,
-                Etag = dynamicEntity.ETag,
-                Result = new TableEntity
+                case StubTableInsertOperationResult.Success:
+                    return _GetTableResult(result);
+
+                case StubTableInsertOperationResult.TableDoesNotExist:
+                    throw TableDoesNotExistException();
+
+                case StubTableInsertOperationResult.EntityAlreadyExists:
+                    throw EntityAlreadyExistsException();
+
+                default:
+                    throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
+            }
+        }
+
+        public override Func<IStubTableOperationDataResult, TableResult> BatchCallback(StubTableBatchOperation batchOperation, TableOperation tableOperation, OperationContext operationContext, int operationIndex)
+        {
+            if (tableOperation.Entity.PartitionKey == null)
+                throw new ArgumentNullException("Upserts require a valid PartitionKey");
+            if (tableOperation.Entity.PartitionKey.Length > (1 << 10))
+                throw PropertyValueTooLargeForBatchException(operationIndex);
+            var partitionKeyException = _ValidateBatckPartitionKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
+            if (partitionKeyException != null)
+                throw partitionKeyException;
+
+            if (tableOperation.Entity.RowKey == null)
+                throw new ArgumentNullException("Upserts require a valid RowKey");
+            if (tableOperation.Entity.RowKey.Length > (1 << 10))
+                throw PropertyValueTooLargeForBatchException(operationIndex);
+            var rowKeyException = _ValidateBatckRowKeyProperty(tableOperation.Entity.RowKey, operationIndex);
+            if (rowKeyException != null)
+                throw rowKeyException;
+
+            var entityPropertyException = ValidateEntityPropertiesForBatch(tableOperation.Entity, operationContext, operationIndex);
+            if (entityPropertyException != null)
+                throw entityPropertyException;
+
+            batchOperation.Insert(GetStubEntity(tableOperation.Entity));
+            return operationResult =>
+            {
+                var result = (StubTableInsertOperationDataResult)operationResult;
+                switch (result.OperationResult)
                 {
-                    PartitionKey = dynamicEntity.PartitionKey,
-                    RowKey = dynamicEntity.RowKey,
-                    ETag = dynamicEntity.ETag,
-                    Timestamp = dynamicEntity.Timestamp
+                    case StubTableInsertOperationResult.Success:
+                        return _GetTableResult(result);
+
+                    case StubTableInsertOperationResult.TableDoesNotExist:
+                        throw TableDoesNotExistForBatchInsertException(operationIndex);
+
+                    case StubTableInsertOperationResult.EntityAlreadyExists:
+                        throw EntityAlreadyExistsForBatchException();
+
+                    default:
+                        throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
                 }
             };
         }
@@ -103,15 +104,18 @@ namespace CloudStub.TableOperations
                 .Select(@char => !IsValidKeyCharacter(@char) ? InvalidRowKeyForBatchException(value, operationIndex) : null)
                 .FirstOrDefault(exception => exception != null);
 
-        private IDictionary<string, DynamicTableEntity> _GetPartition(ITableEntity entity)
-        {
-            if (!Context.Entities.TryGetValue(entity.PartitionKey, out var entitiesByRowKey))
+        private static TableResult _GetTableResult(StubTableInsertOperationDataResult result)
+            => new TableResult
             {
-                entitiesByRowKey = new SortedList<string, DynamicTableEntity>(StringComparer.Ordinal);
-                Context.Entities.Add(entity.PartitionKey, entitiesByRowKey);
-            }
-
-            return entitiesByRowKey;
-        }
+                HttpStatusCode = 204,
+                Etag = result.Entity.ETag,
+                Result = new TableEntity
+                {
+                    PartitionKey = result.Entity.PartitionKey,
+                    RowKey = result.Entity.RowKey,
+                    ETag = result.Entity.ETag,
+                    Timestamp = result.Entity.Timestamp.Value
+                }
+            };
     }
 }

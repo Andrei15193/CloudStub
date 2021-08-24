@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CloudStub.Core;
 using CloudStub.FilterParser.FilterNodeFactories;
-using Microsoft.Azure.Cosmos.Table;
 
 namespace CloudStub.FilterParser
 {
@@ -26,7 +26,7 @@ namespace CloudStub.FilterParser
             _rootFilterNodeFactory = rootFilterNodeFactory;
         }
 
-        public Func<DynamicTableEntity, bool> Parse(IReadOnlyList<FilterToken> tokens)
+        public Func<StubEntity, bool> Parse(IReadOnlyList<FilterToken> tokens)
         {
             if (tokens.Any())
             {

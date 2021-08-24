@@ -1,4 +1,6 @@
 ﻿using System;
+using CloudStub.Core;
+using CloudStub.Core.OperationResults;
 using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
@@ -6,83 +8,95 @@ namespace CloudStub.TableOperations
 {
     internal sealed class DeleteTableOperationExecutor : TableOperationExecutor
     {
-        public DeleteTableOperationExecutor(ITableOperationExecutorContext context)
-            : base(context)
+        public DeleteTableOperationExecutor(StubTable stubTable)
+            : base(stubTable)
         {
-        }
-
-        public override Exception Validate(TableOperation tableOperation, OperationContext operationContext)
-        {
-            if (!Context.TableExists)
-                return TableDoesNotExistException();
-
-            if (tableOperation.Entity.PartitionKey == null)
-                return new ArgumentNullException("Delete requires a valid PartitionKey");
-            var partitionKeyException = ValidateKeyProperty(tableOperation.Entity.PartitionKey);
-            if (partitionKeyException != null)
-                return partitionKeyException;
-
-            if (tableOperation.Entity.RowKey == null)
-                return new ArgumentNullException("Delete requires a valid RowKey");
-            var rowKeyException = ValidateKeyProperty(tableOperation.Entity.RowKey);
-            if (rowKeyException != null)
-                return rowKeyException;
-
-            if (!Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition)
-                || !partition.TryGetValue(tableOperation.Entity.RowKey, out var existingEntity))
-                return ResourceNotFoundException();
-
-            if (tableOperation.Entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(tableOperation.Entity.ETag, existingEntity.ETag))
-                return PreconditionFailedException();
-
-            return null;
-        }
-
-        public override Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex)
-        {
-            if (!Context.TableExists)
-                return TableDoesNotExistForBatchException(operationIndex);
-
-            if (tableOperation.Entity.PartitionKey == null)
-                return new ArgumentNullException("Delete requires a valid PartitionKey");
-            var partitionKeyException = ValidateBatckKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
-            if (partitionKeyException != null)
-                return partitionKeyException;
-
-            if (tableOperation.Entity.RowKey == null)
-                return new ArgumentNullException("Delete requires a valid RowKey");
-            var rowKeyException = ValidateBatckKeyProperty(tableOperation.Entity.RowKey, operationIndex);
-            if (rowKeyException != null)
-                return rowKeyException;
-
-            if (!Context.Entities.TryGetValue(tableOperation.Entity.PartitionKey, out var partition)
-                || !partition.TryGetValue(tableOperation.Entity.RowKey, out var existingEntity))
-                return ResourceNotFoundForBatchException();
-
-            if (tableOperation.Entity.ETag != "*" && !StringComparer.OrdinalIgnoreCase.Equals(tableOperation.Entity.ETag, existingEntity.ETag))
-                return PreconditionFailedForBatchException(operationIndex);
-
-            return null;
         }
 
         public override TableResult Execute(TableOperation tableOperation, OperationContext operationContext)
         {
-            var partition = Context.Entities[tableOperation.Entity.PartitionKey];
-            var existingEntity = partition[tableOperation.Entity.RowKey];
-            partition.Remove(tableOperation.Entity.RowKey);
+            if (tableOperation.Entity.PartitionKey == null)
+                throw new ArgumentNullException("Delete requires a valid PartitionKey");
+            var partitionKeyException = ValidateKeyProperty(tableOperation.Entity.PartitionKey);
+            if (partitionKeyException != null)
+                throw partitionKeyException;
 
-            return new TableResult
+            if (tableOperation.Entity.RowKey == null)
+                throw new ArgumentNullException("Delete requires a valid RowKey");
+            var rowKeyException = ValidateKeyProperty(tableOperation.Entity.RowKey);
+            if (rowKeyException != null)
+                throw rowKeyException;
+
+            var result = StubTable.Delete(GetStubEntity(tableOperation.Entity));
+            switch (result.OperationResult)
+            {
+                case StubTableDeleteOperationResult.Success:
+                    return _GetTableResult(result);
+
+                case StubTableDeleteOperationResult.TableDoesNotExist:
+                    throw TableDoesNotExistException();
+
+                case StubTableDeleteOperationResult.EntityDoesNotExists:
+                    throw ResourceNotFoundException();
+
+                case StubTableDeleteOperationResult.EtagsDoNotMatch:
+                    throw PreconditionFailedException();
+
+                default:
+                    throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
+            }
+        }
+
+        public override Func<IStubTableOperationDataResult, TableResult> BatchCallback(StubTableBatchOperation batchOperation, TableOperation tableOperation, OperationContext operationContext, int operationIndex)
+        {
+            if (tableOperation.Entity.PartitionKey == null)
+                throw new ArgumentNullException("Delete requires a valid PartitionKey");
+            var partitionKeyException = ValidateBatckKeyProperty(tableOperation.Entity.PartitionKey, operationIndex);
+            if (partitionKeyException != null)
+                throw partitionKeyException;
+
+            if (tableOperation.Entity.RowKey == null)
+                throw new ArgumentNullException("Delete requires a valid RowKey");
+            var rowKeyException = ValidateBatckKeyProperty(tableOperation.Entity.RowKey, operationIndex);
+            if (rowKeyException != null)
+                throw rowKeyException;
+
+            batchOperation.Delete(GetStubEntity(tableOperation.Entity));
+            return operationResult =>
+            {
+                var result = (StubTableDeleteOperationDataResult)operationResult;
+                switch (result.OperationResult)
+                {
+                    case StubTableDeleteOperationResult.Success:
+                        return _GetTableResult(result);
+
+                    case StubTableDeleteOperationResult.TableDoesNotExist:
+                        throw TableDoesNotExistForBatchException(operationIndex);
+
+                    case StubTableDeleteOperationResult.EntityDoesNotExists:
+                        throw ResourceNotFoundForBatchException();
+
+                    case StubTableDeleteOperationResult.EtagsDoNotMatch:
+                        throw PreconditionFailedForBatchException(operationIndex);
+
+                    default:
+                        throw new InvalidOperationException($"Operation result {result.OperationResult} not handled.");
+                }
+            };
+        }
+
+        private static TableResult _GetTableResult(StubTableDeleteOperationDataResult result)
+            => new TableResult
             {
                 HttpStatusCode = 204,
                 Etag = null,
                 Result = new TableEntity
                 {
-                    PartitionKey = existingEntity.PartitionKey,
-                    RowKey = existingEntity.RowKey,
-                    ETag = existingEntity.ETag,
-                    Timestamp = default(DateTimeOffset)
+                    PartitionKey = result.Entity.PartitionKey,
+                    RowKey = result.Entity.RowKey,
+                    ETag = result.Entity.ETag,
+                    Timestamp = default
                 }
             };
-        }
     }
 }

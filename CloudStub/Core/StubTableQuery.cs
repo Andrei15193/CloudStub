@@ -7,7 +7,7 @@ namespace CloudStub.Core
     {
         public Func<StubEntity, bool> Filter { get; set; }
 
-        public IReadOnlyCollection<string> SelectedProperties { get; set; }
+        public IEnumerable<string> SelectedProperties { get; set; }
 
         public int? PageSize { get; set; }
     }

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CloudStub.Core;
+using CloudStub.Core.OperationResults;
 using Microsoft.Azure.Cosmos.Table;
 using static CloudStub.StorageExceptionFactory;
 
@@ -8,36 +10,109 @@ namespace CloudStub.TableOperations
 {
     internal abstract class TableOperationExecutor
     {
-        protected TableOperationExecutor(ITableOperationExecutorContext context)
-            => Context = context;
+        protected TableOperationExecutor(StubTable stubTable)
+            => StubTable = stubTable;
 
-        protected ITableOperationExecutorContext Context { get; }
-
-        public abstract Exception Validate(TableOperation tableOperation, OperationContext operationContext);
-
-        public abstract Exception ValidateForBatch(TableOperation tableOperation, OperationContext operationContext, int operationIndex);
+        protected StubTable StubTable { get; }
 
         public abstract TableResult Execute(TableOperation tableOperation, OperationContext operationContext);
 
-        protected static DynamicTableEntity GetDynamicEntity(ITableEntity entity)
+        public abstract Func<IStubTableOperationDataResult, TableResult> BatchCallback(StubTableBatchOperation batchOperation, TableOperation tableOperation, OperationContext operationContext, int operationIndex);
+
+        protected static StubEntity GetStubEntity(ITableEntity entity)
         {
             var timestamp = DateTimeOffset.UtcNow;
             var properties = entity is DynamicTableEntity dynamicTableEntity
-                ? dynamicTableEntity.Properties.Where(pair => pair.Value.PropertyAsObject != null).ToDictionary(pair => pair.Key, pair => EntityProperty.CreateEntityPropertyFromObject(pair.Value.PropertyAsObject), StringComparer.Ordinal)
+                ? dynamicTableEntity.Properties.Where(pair => pair.Value.PropertyAsObject is object).ToDictionary(pair => pair.Key, pair => EntityProperty.CreateEntityPropertyFromObject(pair.Value.PropertyAsObject), StringComparer.Ordinal)
                 : _GetProperties(entity);
             properties.Remove(nameof(TableEntity.PartitionKey));
             properties.Remove(nameof(TableEntity.RowKey));
             properties.Remove(nameof(TableEntity.Timestamp));
             properties.Remove(nameof(TableEntity.ETag));
 
-            return new DynamicTableEntity
+            var stubEntity = new StubEntity(entity.PartitionKey, entity.RowKey, entity.ETag);
+            foreach (var property in properties)
+                switch (property.Value.PropertyType)
+                {
+                    case EdmType.Binary:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.BinaryValue));
+                        break;
+
+                    case EdmType.Boolean:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.BooleanValue.Value));
+                        break;
+
+                    case EdmType.Int32:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.Int32Value.Value));
+                        break;
+
+                    case EdmType.Int64:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.Int64Value.Value));
+                        break;
+
+                    case EdmType.Double:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.DoubleValue.Value));
+                        break;
+
+                    case EdmType.Guid:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.GuidValue.Value));
+                        break;
+
+                    case EdmType.DateTime:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.DateTime.Value));
+                        break;
+
+                    case EdmType.String:
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.StringValue));
+                        break;
+                }
+
+            return stubEntity;
+        }
+
+        protected static IDictionary<string, EntityProperty> GetEntityProperties(IEnumerable<KeyValuePair<string, StubEntityProperty>> stubEntityProperties)
+        {
+            var properties = new Dictionary<string, EntityProperty>(StringComparer.Ordinal);
+
+            foreach (var stubEntityProperty in stubEntityProperties)
             {
-                PartitionKey = entity.PartitionKey,
-                RowKey = entity.RowKey,
-                ETag = $"{timestamp:o}-{Guid.NewGuid()}",
-                Timestamp = timestamp,
-                Properties = properties
-            };
+                switch (stubEntityProperty.Value.Type)
+                {
+                    case StubEntityPropertyType.Binary:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((byte[])stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.Boolean:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((bool)stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.Int32:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((int)stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.Int64:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((long)stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.Double:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((double)stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.Guid:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((Guid)stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.DateTime:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((DateTime)stubEntityProperty.Value.Value));
+                        break;
+
+                    case StubEntityPropertyType.String:
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((string)stubEntityProperty.Value.Value));
+                        break;
+                }
+            }
+
+            return properties;
         }
 
         protected static bool IsValidKeyCharacter(char @char)
