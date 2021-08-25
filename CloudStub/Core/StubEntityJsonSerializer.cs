@@ -69,7 +69,7 @@ namespace CloudStub.Core
             var partitionKey = default(string);
             var rowKey = default(string);
             var etag = default(string);
-            var timestamp = default(DateTime?);
+            var timestamp = default(DateTimeOffset?);
             var entityProperties = new Dictionary<string, StubEntityProperty>(StringComparer.Ordinal);
 
             while (reader.Read() && reader.TokenType != JsonToken.EndObject)
@@ -134,14 +134,14 @@ namespace CloudStub.Core
             return (string)reader.Value;
         }
 
-        private DateTime _ReadEntityTimestampProperty(JsonReader reader)
+        private DateTimeOffset _ReadEntityTimestampProperty(JsonReader reader)
         {
             if (!reader.Read() || reader.TokenType != JsonToken.String)
                 throw _GetInvalidJsonException();
 
             try
             {
-                return DateTime.ParseExact((string)reader.Value, "O", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+                return DateTimeOffset.ParseExact((string)reader.Value, "O", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
             }
             catch (FormatException formatException)
             {
@@ -197,7 +197,7 @@ namespace CloudStub.Core
                         return new StubEntityProperty((double)value);
 
                     case "dateTime":
-                        return new StubEntityProperty(DateTime.ParseExact((string)value, "O", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal));
+                        return new StubEntityProperty(DateTimeOffset.ParseExact((string)value, "O", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal));
 
                     case "guid":
                         return new StubEntityProperty(Guid.ParseExact((string)value, "N"));
@@ -296,7 +296,7 @@ namespace CloudStub.Core
 
                 case StubEntityPropertyType.DateTime:
                     writer.WritePropertyName("value");
-                    writer.WriteValue(((DateTime)entityProperty.Value).ToString("O", CultureInfo.InvariantCulture));
+                    writer.WriteValue(((DateTimeOffset)entityProperty.Value).ToString("O", CultureInfo.InvariantCulture));
                     writer.WritePropertyName("type");
                     writer.WriteValue("dateTime");
                     break;

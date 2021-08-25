@@ -103,7 +103,7 @@ namespace CloudStub.TableOperations
                     PartitionKey = result.Entity.PartitionKey,
                     RowKey = result.Entity.RowKey,
                     ETag = result.Entity.ETag,
-                    Timestamp = default(DateTimeOffset)
+                    Timestamp = default
                 }
             };
     }

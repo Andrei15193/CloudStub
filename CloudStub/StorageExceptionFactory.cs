@@ -309,7 +309,7 @@ namespace CloudStub
                 }
             );
 
-        public static StorageException InvalidDateTimePropertyException(string propertyName, DateTime value)
+        public static StorageException InvalidDateTimePropertyException(string propertyName, DateTimeOffset value)
             => _FromTemplate(
                 new StorageExceptionTemplate
                 {
@@ -324,7 +324,7 @@ namespace CloudStub
                 }
             );
 
-        public static StorageException InvalidDateTimePropertyForBatchException(string propertyName, DateTime value, int operationIndex)
+        public static StorageException InvalidDateTimePropertyForBatchException(string propertyName, DateTimeOffset value, int operationIndex)
             => _FromTemplate(
                 new StorageExceptionTemplate
                 {

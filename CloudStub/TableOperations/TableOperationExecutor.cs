@@ -59,7 +59,7 @@ namespace CloudStub.TableOperations
                         break;
 
                     case EdmType.DateTime:
-                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.DateTime.Value));
+                        stubEntity.Properties.Add(property.Key, new StubEntityProperty(property.Value.DateTimeOffsetValue.Value));
                         break;
 
                     case EdmType.String:
@@ -103,7 +103,7 @@ namespace CloudStub.TableOperations
                         break;
 
                     case StubEntityPropertyType.DateTime:
-                        properties.Add(stubEntityProperty.Key, new EntityProperty((DateTime)stubEntityProperty.Value.Value));
+                        properties.Add(stubEntityProperty.Key, new EntityProperty((DateTimeOffset)stubEntityProperty.Value.Value));
                         break;
 
                     case StubEntityPropertyType.String:
@@ -192,7 +192,7 @@ namespace CloudStub.TableOperations
                 case EdmType.Binary when property.BinaryValue.Length > (1 << 16):
                     return PropertyValueTooLargeException();
 
-                case EdmType.DateTime when property.DateTime != null && property.DateTime < new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc):
+                case EdmType.DateTime when property.DateTimeOffsetValue != null && property.DateTimeOffsetValue.Value < new DateTimeOffset(1601, 1, 1, 0, 0, 0, TimeSpan.Zero):
                     return InvalidDateTimePropertyException(name, property.DateTime.Value);
 
                 default:
@@ -220,7 +220,7 @@ namespace CloudStub.TableOperations
                 case EdmType.Binary when property.BinaryValue.Length > (1 << 16):
                     return PropertyValueTooLargeForBatchException(operationIndex);
 
-                case EdmType.DateTime when property.DateTime != null && property.DateTime < new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc):
+                case EdmType.DateTime when property.DateTimeOffsetValue != null && property.DateTimeOffsetValue < new DateTimeOffset(1601, 1, 1, 0, 0, 0, TimeSpan.Zero):
                     return InvalidDateTimePropertyForBatchException(name, property.DateTime.Value, operationIndex);
 
                 default:

@@ -54,7 +54,7 @@ namespace CloudStub.FilterParser.FilterNodeFactories
             else if (value.StartsWith("datetime'", StringComparison.OrdinalIgnoreCase) && value.EndsWith("'", StringComparison.OrdinalIgnoreCase))
             {
                 var dateTimeValue = value.Substring("datetime'".Length, value.Length - "datetime'".Length - "'".Length);
-                result = new StubEntityProperty(DateTimeOffset.Parse(dateTimeValue, CultureInfo.InvariantCulture).DateTime);
+                result = new StubEntityProperty(DateTimeOffset.Parse(dateTimeValue, CultureInfo.InvariantCulture));
             }
             else if (value.StartsWith("'", StringComparison.OrdinalIgnoreCase) && value.EndsWith("'", StringComparison.OrdinalIgnoreCase))
             {

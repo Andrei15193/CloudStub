@@ -22,8 +22,8 @@ namespace CloudStub.Core
         public StubEntityProperty(Guid guid)
             => (Value, Type) = (guid, StubEntityPropertyType.Guid);
 
-        public StubEntityProperty(DateTime dateTime)
-            => (Value, Type) = (dateTime, StubEntityPropertyType.DateTime);
+        public StubEntityProperty(DateTimeOffset dateTimeOffset)
+            => (Value, Type) = (dateTimeOffset, StubEntityPropertyType.DateTime);
 
         public StubEntityProperty(string @string)
             => (Value, Type) = (@string, StubEntityPropertyType.String);

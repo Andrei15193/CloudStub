@@ -16,7 +16,7 @@ namespace CloudStub.Core
                 return new StubTableInsertOperationDataResult(StubTableInsertOperationResult.EntityAlreadyExists);
             else
             {
-                var now = DateTime.UtcNow;
+                var now = DateTimeOffset.UtcNow;
                 var insertEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}");
                 foreach (var property in entity.Properties)
                     insertEntity.Properties.Add(property);
@@ -30,7 +30,7 @@ namespace CloudStub.Core
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.UtcNow;
             StubEntity insertOrMergeEntity;
             if (found)
             {
@@ -56,7 +56,7 @@ namespace CloudStub.Core
         {
             var entityIndex = _FindEntityIndex(entity.PartitionKey, entity.RowKey, partitionCluster, out var found);
 
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.UtcNow;
             var insertOrReplaceEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
             foreach (var property in entity.Properties)
                 insertOrReplaceEntity.Properties.Add(property);
@@ -77,7 +77,7 @@ namespace CloudStub.Core
                 return new StubTableMergeOperationDataResult(StubTableMergeOperationResult.EntityDoesNotExists);
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
-                var now = DateTime.UtcNow;
+                var now = DateTimeOffset.UtcNow;
                 var mergeEntity = new StubEntity(partitionCluster[entityIndex].PartitionKey, partitionCluster[entityIndex].RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
                 foreach (var property in partitionCluster[entityIndex].Properties.Concat(entity.Properties))
                     mergeEntity.Properties[property.Key] = property.Value;
@@ -98,7 +98,7 @@ namespace CloudStub.Core
                 return new StubTableReplaceOperationDataResult(StubTableReplaceOperationResult.EntityDoesNotExists);
             else if (entity.ETag == "*" || entity.ETag == partitionCluster[entityIndex].ETag)
             {
-                var now = DateTime.UtcNow;
+                var now = DateTimeOffset.UtcNow;
                 var replaceEntity = new StubEntity(entity.PartitionKey, entity.RowKey, now, $"etag/{now:o}".ToString(CultureInfo.InvariantCulture));
                 foreach (var property in entity.Properties)
                     replaceEntity.Properties.Add(property);

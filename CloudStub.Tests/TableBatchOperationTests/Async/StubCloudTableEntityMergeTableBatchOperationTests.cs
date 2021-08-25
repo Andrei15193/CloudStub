@@ -64,7 +64,6 @@ namespace CloudStub.Tests.TableBatchOperationTests.Async
         [Fact]
         public async Task ExecuteAsync_WhenETagsIsWildcard_MergesEntity()
         {
-            var startTime = DateTimeOffset.UtcNow;
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
@@ -104,7 +103,7 @@ namespace CloudStub.Tests.TableBatchOperationTests.Async
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
             Assert.Equal(entity.ETag, resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+            Assert.Equal(default, resultEntity.Timestamp);
         }
 
         [Fact]
@@ -149,7 +148,7 @@ namespace CloudStub.Tests.TableBatchOperationTests.Async
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
             Assert.Equal(entity.ETag, resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+            Assert.Equal(default, resultEntity.Timestamp);
         }
 
         [Fact]

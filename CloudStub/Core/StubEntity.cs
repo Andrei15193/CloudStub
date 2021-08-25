@@ -15,7 +15,7 @@ namespace CloudStub.Core
         {
         }
 
-        internal StubEntity(string partitionKey, string rowKey, DateTime timestamp, string etag)
+        internal StubEntity(string partitionKey, string rowKey, DateTimeOffset timestamp, string etag)
         {
             if (string.IsNullOrWhiteSpace(partitionKey))
                 throw new ArgumentException("The partition key cannot be null, empty or white space.", nameof(partitionKey));
@@ -32,7 +32,7 @@ namespace CloudStub.Core
 
         public string RowKey { get; }
 
-        public DateTime? Timestamp { get; }
+        public DateTimeOffset? Timestamp { get; }
 
         public string ETag { get; }
 

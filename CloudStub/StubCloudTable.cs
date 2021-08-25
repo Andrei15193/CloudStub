@@ -823,7 +823,7 @@ namespace CloudStub
                         return EntityProperty.GeneratePropertyForGuid((Guid)property.Value);
 
                     case StubEntityPropertyType.DateTime:
-                        return EntityProperty.GeneratePropertyForDateTimeOffset((DateTime)property.Value);
+                        return EntityProperty.GeneratePropertyForDateTimeOffset((DateTimeOffset)property.Value);
 
                     case StubEntityPropertyType.String:
                         return EntityProperty.GeneratePropertyForString((string)property.Value);

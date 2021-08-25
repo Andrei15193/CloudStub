@@ -89,7 +89,7 @@ namespace CloudStub.Tests.TableBatchOperationTests.Sync
             Assert.Equal("partition-key", resultEntity.PartitionKey);
             Assert.Equal("row-key", resultEntity.RowKey);
             Assert.NotEmpty(resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+            Assert.Equal(default, resultEntity.Timestamp);
         }
 
         [Fact]
@@ -123,7 +123,7 @@ namespace CloudStub.Tests.TableBatchOperationTests.Sync
             Assert.Equal("partition-key", resultEntity.PartitionKey);
             Assert.Equal("row-key", resultEntity.RowKey);
             Assert.NotEmpty(resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+            Assert.Equal(default, resultEntity.Timestamp);
         }
 
         [Fact]

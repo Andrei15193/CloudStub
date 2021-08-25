@@ -411,7 +411,7 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", mergedEntity.PartitionKey);
             Assert.Equal("row-key", mergedEntity.RowKey);
             Assert.NotEmpty(mergedEntity.ETag);
-            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= mergedEntity.Timestamp && mergedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.True(DateTimeOffset.UtcNow.AddMinutes(-1) <= mergedEntity.Timestamp && mergedEntity.Timestamp <= DateTimeOffset.UtcNow.AddMinutes(1));
             Assert.Equal("property-1", (string)mergedEntity.Properties["property1"].Value);
             Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
@@ -459,7 +459,7 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", mergedEntity.PartitionKey);
             Assert.Equal("row-key", mergedEntity.RowKey);
             Assert.NotEmpty(mergedEntity.ETag);
-            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= mergedEntity.Timestamp && mergedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.True(DateTimeOffset.UtcNow.AddMinutes(-1) <= mergedEntity.Timestamp && mergedEntity.Timestamp <= DateTimeOffset.UtcNow.AddMinutes(1));
             Assert.Equal("property-1", (string)mergedEntity.Properties["property1"].Value);
             Assert.Equal("property-2-merge", (string)mergedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-merge", (string)mergedEntity.Properties["property3"].Value);
@@ -548,7 +548,7 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", replacedEntity.PartitionKey);
             Assert.Equal("row-key", replacedEntity.RowKey);
             Assert.NotEmpty(replacedEntity.ETag);
-            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= replacedEntity.Timestamp && replacedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.True(DateTimeOffset.UtcNow.AddMinutes(-1) <= replacedEntity.Timestamp && replacedEntity.Timestamp <= DateTimeOffset.UtcNow.AddMinutes(1));
             Assert.False(replacedEntity.Properties.ContainsKey("property1"));
             Assert.Equal("property-2-replaced", (string)replacedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-replaced", (string)replacedEntity.Properties["property3"].Value);
@@ -595,7 +595,7 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", replacedEntity.PartitionKey);
             Assert.Equal("row-key", replacedEntity.RowKey);
             Assert.NotEmpty(replacedEntity.ETag);
-            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= replacedEntity.Timestamp && replacedEntity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.True(DateTimeOffset.UtcNow.AddMinutes(-1) <= replacedEntity.Timestamp && replacedEntity.Timestamp <= DateTimeOffset.UtcNow.AddMinutes(1));
             Assert.False(replacedEntity.Properties.ContainsKey("property1"));
             Assert.Equal("property-2-replaced", (string)replacedEntity.Properties["property2"].Value);
             Assert.Equal("property-3-replaced", (string)replacedEntity.Properties["property3"].Value);
@@ -888,7 +888,7 @@ namespace CloudStub.Tests.Core
                     { "int64-property", new StubEntityProperty(default(long)) },
                     { "double-property", new StubEntityProperty(default(double)) },
                     { "guid-property", new StubEntityProperty(default(Guid)) },
-                    { "dateTime-property", new StubEntityProperty(new DateTime(2021, 5, 15, 0, 0, 0, DateTimeKind.Utc)) },
+                    { "dateTime-property", new StubEntityProperty(new DateTimeOffset(2021, 5, 15, 0, 0, 0, TimeSpan.Zero)) },
                     { "string-property", new StubEntityProperty("string") }
                 }
             });
@@ -901,14 +901,14 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", entity.PartitionKey);
             Assert.Equal("row-key", entity.RowKey);
             Assert.NotEmpty(entity.ETag);
-            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= entity.Timestamp && entity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.True(DateTimeOffset.UtcNow.AddMinutes(-1) <= entity.Timestamp && entity.Timestamp <= DateTimeOffset.UtcNow.AddMinutes(1));
             Assert.Equal(new byte[] { 0x00, 0x01, 0x02 }, (byte[])entity.Properties["byte-property"].Value);
             Assert.True((bool)entity.Properties["boolean-property"].Value);
             Assert.Equal(0, (int)entity.Properties["int32-property"].Value);
             Assert.Equal(0L, (long)entity.Properties["int64-property"].Value);
             Assert.Equal(0.0, (double)entity.Properties["double-property"].Value);
             Assert.Equal(default(Guid), (Guid)entity.Properties["guid-property"].Value);
-            Assert.Equal(new DateTime(2021, 5, 15, 0, 0, 0, DateTimeKind.Utc), (DateTime)entity.Properties["dateTime-property"].Value);
+            Assert.Equal(new DateTimeOffset(2021, 5, 15, 0, 0, 0, TimeSpan.Zero), (DateTimeOffset)entity.Properties["dateTime-property"].Value);
             Assert.Equal("string", (string)entity.Properties["string-property"].Value);
         }
 
@@ -966,7 +966,7 @@ namespace CloudStub.Tests.Core
                     { "int64-property", new StubEntityProperty(default(long)) },
                     { "double-property", new StubEntityProperty(default(double)) },
                     { "guid-property", new StubEntityProperty(default(Guid)) },
-                    { "dateTime-property", new StubEntityProperty(new DateTime(2021, 5, 15, 0, 0, 0, DateTimeKind.Utc)) },
+                    { "dateTime-property", new StubEntityProperty(new DateTimeOffset(2021, 5, 15, 0, 0, 0, TimeSpan.Zero)) },
                     { "string-property", new StubEntityProperty("string") }
                 }
             });
@@ -979,7 +979,7 @@ namespace CloudStub.Tests.Core
             Assert.Equal("partition-key", entity.PartitionKey);
             Assert.Equal("row-key", entity.RowKey);
             Assert.NotEmpty(entity.ETag);
-            Assert.True(DateTime.UtcNow.AddMinutes(-1) <= entity.Timestamp && entity.Timestamp <= DateTime.UtcNow.AddMinutes(1));
+            Assert.True(DateTimeOffset.UtcNow.AddMinutes(-1) <= entity.Timestamp && entity.Timestamp <= DateTimeOffset.UtcNow.AddMinutes(1));
             Assert.Equal(selectedProperties.Split(',', StringSplitOptions.RemoveEmptyEntries), entity.Properties.Keys.ToArray());
         }
 

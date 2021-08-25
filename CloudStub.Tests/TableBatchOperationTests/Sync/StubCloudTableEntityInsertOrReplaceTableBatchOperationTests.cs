@@ -91,7 +91,7 @@ namespace CloudStub.Tests.TableBatchOperationTests.Sync
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
             Assert.Equal(entity.ETag, resultEntity.ETag);
-            Assert.Equal(default(DateTimeOffset), resultEntity.Timestamp);
+            Assert.Equal(default, resultEntity.Timestamp);
         }
 
         [Fact]

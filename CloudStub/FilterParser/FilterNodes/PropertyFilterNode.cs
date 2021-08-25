@@ -59,7 +59,7 @@ namespace CloudStub.FilterParser.FilterNodes
                         return _CompareBoolean((bool)propertyValue.Value, filterValue);
 
                     case StubEntityPropertyType.DateTime:
-                        return _CompareDateTimeOffset((DateTime)propertyValue.Value, filterValue);
+                        return _CompareDateTimeOffset((DateTimeOffset)propertyValue.Value, filterValue);
 
                     case StubEntityPropertyType.Guid:
                         return _CompareGuid((Guid)propertyValue.Value, filterValue);
@@ -114,8 +114,8 @@ namespace CloudStub.FilterParser.FilterNodes
         private static int _CompareBoolean(bool propertyValue, StubEntityProperty filterValue)
             => filterValue.Type == StubEntityPropertyType.Boolean ? propertyValue.CompareTo((bool)filterValue.Value) : MismatchingTypeComparisonResult;
 
-        private static int _CompareDateTimeOffset(DateTime propertyValue, StubEntityProperty filterValue)
-            => filterValue.Type == StubEntityPropertyType.DateTime ? propertyValue.CompareTo((DateTime)filterValue.Value) : MismatchingTypeComparisonResult;
+        private static int _CompareDateTimeOffset(DateTimeOffset propertyValue, StubEntityProperty filterValue)
+            => filterValue.Type == StubEntityPropertyType.DateTime ? propertyValue.UtcDateTime.CompareTo(((DateTimeOffset)filterValue.Value).UtcDateTime) : MismatchingTypeComparisonResult;
 
         private static int _CompareGuid(Guid propertyValue, StubEntityProperty filterValue)
             => filterValue.Type == StubEntityPropertyType.Guid ? propertyValue.CompareTo((Guid)filterValue.Value) : MismatchingTypeComparisonResult;
