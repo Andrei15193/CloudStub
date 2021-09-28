@@ -12,9 +12,6 @@ namespace CloudStub.FilterParser.FilterNodes
         public IEnumerable<FilterNode> Operands { get; }
 
         public override bool Apply(StubEntity entity)
-        {
-            var result = Operands.Any(operand => operand.Apply(entity));
-            return result;
-        }
+            => Operands.Any(operand => operand.Apply(entity));
     }
 }
