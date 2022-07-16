@@ -27,6 +27,8 @@ jobs:
       cloud_stub_azure_cosmos_table_release_next_assembly_version: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_next_assembly_version }}
       cloud_stub_azure_cosmos_table_release_next_tag: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_next_tag }}
       cloud_stub_azure_cosmos_table_release_latest_release_ref: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_latest_release_ref }}
+      cloud_stub_azure_cosmos_table_release_dependency_version: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_dependency_version }}
+      cloud_stub_azure_cosmos_table_release_dependency_assembly_version: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_dependency_assembly_version }}
 
     steps:
     - name: Setup .NET 6.0
@@ -66,13 +68,27 @@ jobs:
 
           $nextVersion = if ($latestIncrement -eq $null) { if ($baseVersion -match "^\d+\.\d+$") { "$baseVersion.0" } else { "$baseVersion.1" } } else { "$baseVersion.$($latestIncrement + 1)" }
           $latestReleaseRef = if ($latestIncrement -eq $null) { $null | git hash-object -t tree --stdin } else { "$tagPrefix-$baseVersion.$latestIncrement" }
+          $latestReleaseVersion = if ($latestIncrement -ne $null) { "$baseVersion.$latestIncrement" }
 
+          return @{
+            Name = $name;
+            WorkflowVariablePrefix = $workflowVariablePrefix;
+            NextVersion = $nextVersion;
+            NextAssemblyVersion = (Get-AssemblyVersion $nextVersion);
+            NextTag = "$tagPrefix-$nextVersion";
+            LatestReleaseRef = $latestReleaseRef;
+            LatestReleaseVersion = $latestReleaseVersion
+          }
+        }
+
+        function Get-AssemblyVersion([string]$packageVersion) {
           $prerelease_name_offsets = @{
             "alpha" = 1000;
             "beta" = 2000;
             "rc" = 3000;
           }
-          $nextAssemblyVersion = $nextVersion -replace "^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?<prerelease>-(?<prerelease_name>.+)\.(?<prerelease_increment>\d+))?$", {
+
+          return $packageVersion -replace "^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?<prerelease>-(?<prerelease_name>.+)\.(?<prerelease_increment>\d+))?$", {
               @(
                 $_.Groups["major"].Value
                 $_.Groups["minor"].Value
@@ -90,24 +106,20 @@ jobs:
                 $_.Groups["patch"].Value
               ) -join "."
             }
-
-          return @{
-            Name = $name;
-            WorkflowVariablePrefix = $workflowVariablePrefix;
-            NextVersion = $nextVersion;
-            NextAssemblyVersion = $nextAssemblyVersion;
-            NextTag = "$tagPrefix-$nextVersion";
-            LatestReleaseRef = $latestReleaseRef
-          }
         }
 
-        function Set-CreateProjectReleaseOutput($releaseInformation) {
+        function Set-CreateProjectReleaseOutput($releaseInformation, [string]$dependencyVersion) {
           Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release::yes"
           Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_name::$($releaseInformation.Name)"
           Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_next_version::$($releaseInformation.NextVersion)"
           Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_next_assembly_version::$($releaseInformation.NextAssemblyVersion)"
           Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_next_tag::$($releaseInformation.NextTag)"
           Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_latest_release_ref::$($releaseInformation.LatestReleaseRef)"
+
+          if (-not [string]::IsNullOrWhiteSpace($dependencyVersion)) {
+            Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_dependency_version::$dependencyVersion"
+            Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_dependency_assembly_version::$(Get-AssemblyVersion $dependencyVersion)"
+          }
         }
 
         $cloudStubBaseVersion = Select-Xml -Path .\CloudStub\CloudStub.csproj -XPath "//Project/PropertyGroup/BaseVersion" `
@@ -122,13 +134,23 @@ jobs:
           | ForEach-Object { $_.Trim() }
         $cloudStubAzureCosmosTableReleaseInformation = Get-ReleaseInformation "Cloud Stub Azure Cosmos Table" "cloud_stub_azure_cosmos_table" "cloud-stub-azure-cosmos-table" $cloudStubAzureCosmosTableBaseVersion
 
+        $cloudStubAzureCosmosTableDependencyBaseVersion = Select-Xml -Path .\CloudStub.Azure.Cosmos.Table\CloudStub.Azure.Cosmos.Table.csproj -XPath "//Project/PropertyGroup/DependencyBaseVersion" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object { $_.Trim() }
+
+        $cloudStubAzureCosmosTableDependencyVersion = (Get-ReleaseInformation "CloudStub" "cloud_stub" "cloud-stub" $cloudStubAzureCosmosTableDependencyBaseVersion).LatestReleaseVersion
         if (git diff $cloudStubReleaseInformation.LatestReleaseRef -- "CloudStub/") {
+          if ($cloudStubAzureCosmosTableDependencyBaseVersion -ieq $cloudStubBaseVersion) {
+            $cloudStubAzureCosmosTableDependencyVersion = $cloudStubReleaseInformation.NextVersion
+          }
+
           Set-CreateProjectReleaseOutput $cloudStubReleaseInformation
-          Set-CreateProjectReleaseOutput $cloudStubAzureCosmosTableReleaseInformation
+          Set-CreateProjectReleaseOutput $cloudStubAzureCosmosTableReleaseInformation $cloudStubAzureCosmosTableDependencyVersion
         }
         else {
           if (git diff $cloudStubAzureCosmosTableReleaseInformation.LatestReleaseRef -- "CloudStub.Azure.Cosmos.Table/") {
-            Set-CreateProjectReleaseOutput $cloudStubAzureCosmosTableReleaseInformation
+            Set-CreateProjectReleaseOutput $cloudStubAzureCosmosTableReleaseInformation $cloudStubAzureCosmosTableDependencyVersion
           }
         }
 
@@ -206,6 +228,32 @@ jobs:
     - name: Checkout Sources
       uses: actions/checkout@v3
 
+    - name: Add Version Information to Project Files
+      run: |
+        [xml]$cloudStubProject = Get-Content ./CloudStub/CloudStub.csproj
+        
+        $cloudStubProjectVersionElement = $cloudStubProject.CreateElement("Version")
+        $cloudStubProjectVersionElement.InnerText = "${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_dependency_assembly_version }}"
+        $cloudStubProject.Project.PropertyGroup.AppendChild($cloudStubProjectVersionElement)
+
+        $cloudStubProjectPackageVersionElement = $cloudStubProject.CreateElement("PackageVersion")
+        $cloudStubProjectPackageVersionElement.InnerText = "${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_dependency_version }}"
+        $cloudStubProject.Project.PropertyGroup.AppendChild($cloudStubProjectPackageVersionElement)
+
+        $cloudStubProject.Save("./CloudStub/CloudStub.csproj")
+
+        [xml]$cloudStubAzureCosmosTableProject = Get-Content ./CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj
+        
+        $cloudStubAzureCosmosTableProjectVersionElement = $cloudStubAzureCosmosTableProject.CreateElement("Version")
+        $cloudStubAzureCosmosTableProjectVersionElement.InnerText = "${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_assembly_version }}"
+        $cloudStubAzureCosmosTableProject.Project.PropertyGroup.AppendChild($cloudStubAzureCosmosTableProjectVersionElement)
+
+        $cloudStubAzureCosmosTableProjectPackageVersionElement = $cloudStubAzureCosmosTableProject.CreateElement("PackageVersion")
+        $cloudStubAzureCosmosTableProjectPackageVersionElement.InnerText = "${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_version }}"
+        $cloudStubAzureCosmosTableProject.Project.PropertyGroup.AppendChild($cloudStubAzureCosmosTableProjectPackageVersionElement)
+
+        $cloudStubAzureCosmosTableProject.Save("./CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj")
+
     - name: Create CloudStub.Azure.Cosmos.Table Release
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
@@ -215,8 +263,6 @@ jobs:
         dotnet pack CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj `
           --configuration Release `
           --output Publish `
-          -property:Version=${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_assembly_version }} `
-          -property:PackageVersion=${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_version }} `
           -property:RepositoryCommit=${{ github.event.head_commit.id }} `
           -property:SignAssembly=True `
           -property:AssemblyOriginatorKeyFile=../CloudStub.snk

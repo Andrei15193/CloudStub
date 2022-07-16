@@ -16,6 +16,7 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Andrei15193/CloudStub.git</RepositoryUrl>
     <BaseVersion>1.0.0-alpha</BaseVersion>
+    <DependencyBaseVersion>1.0.0-alpha</DependencyBaseVersion>
   </PropertyGroup>
 
   <ItemGroup>
