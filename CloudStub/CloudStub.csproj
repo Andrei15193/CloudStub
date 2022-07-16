@@ -10,11 +10,14 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>logo.png</PackageIcon>
     <PackageReleaseNotes>
-      * Added InMemoryCloudTable
+      * Added StubTable
+      * Added in-memory storage handler
+      * Added file storage handler
     </PackageReleaseNotes>
     <PackageTags>stub;azure;storage;memory;in-memory;test</PackageTags>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Andrei15193/CloudStub.git</RepositoryUrl>
+    <BaseVersion>1.0.0-alpha</BaseVersion>
   </PropertyGroup>
 
   <ItemGroup>
