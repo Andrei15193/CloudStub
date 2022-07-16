@@ -132,7 +132,7 @@ jobs:
           | Select-Object -ExpandProperty Node `
           | Select-Object -Property InnerText -ExpandProperty InnerText `
           | ForEach-Object { $_.Trim() }
-        $cloudStubAzureCosmosTableReleaseInformation = Get-ReleaseInformation "Cloud Stub Azure Cosmos Table" "cloud_stub_azure_cosmos_table" "cloud-stub-azure-cosmos-table" $cloudStubAzureCosmosTableBaseVersion
+        $cloudStubAzureCosmosTableReleaseInformation = Get-ReleaseInformation "CloudStub Azure Cosmos Table" "cloud_stub_azure_cosmos_table" "cloud-stub-azure-cosmos-table" $cloudStubAzureCosmosTableBaseVersion
 
         $cloudStubAzureCosmosTableDependencyBaseVersion = Select-Xml -Path .\CloudStub.Azure.Cosmos.Table\CloudStub.Azure.Cosmos.Table.csproj -XPath "//Project/PropertyGroup/DependencyBaseVersion" `
           | Select-Object -ExpandProperty Node `
@@ -181,7 +181,8 @@ jobs:
           -property:PackageVersion=${{ needs.build.outputs.cloud_stub_release_next_version }} `
           -property:RepositoryCommit=${{ github.event.head_commit.id }} `
           -property:SignAssembly=True `
-          -property:AssemblyOriginatorKeyFile=../CloudStub.snk
+          -property:AssemblyOriginatorKeyFile=../CloudStub.snk `
+          -property:PackageProjectUrl="https://github.com/Andrei15193/CloudStub/releases/tag/${{ needs.build.outputs.cloud_stub_release_next_tag }}"
 
         $projectDescription = Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/Description" `
           | Select-Object -ExpandProperty Node `
@@ -265,7 +266,8 @@ jobs:
           --output Publish `
           -property:RepositoryCommit=${{ github.event.head_commit.id }} `
           -property:SignAssembly=True `
-          -property:AssemblyOriginatorKeyFile=../CloudStub.snk
+          -property:AssemblyOriginatorKeyFile=../CloudStub.snk `
+          -property:PackageProjectUrl="https://github.com/Andrei15193/CloudStub/releases/tag/${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_tag }}"
 
         $projectDescription = Select-Xml -Path ./CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj -XPath "//Project/PropertyGroup/Description" `
           | Select-Object -ExpandProperty Node `
