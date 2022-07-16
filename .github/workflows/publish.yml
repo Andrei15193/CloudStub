@@ -1,158 +1,253 @@
-name: Publish
+name: Build & Publish
 
 on:
   push:
     branches:
-      - master
-      - releases/*
+      - dev
+
+defaults:
+  run:
+    shell: pwsh
 
 jobs:
   build:
+    name: Build
     runs-on: ubuntu-latest
+    outputs:
+      cloud_stub_release: ${{ steps.releases.outputs.cloud_stub_release }}
+      cloud_stub_release_name: ${{ steps.releases.outputs.cloud_stub_release_name }}
+      cloud_stub_release_next_version: ${{ steps.releases.outputs.cloud_stub_release_next_version }}
+      cloud_stub_release_next_assembly_version: ${{ steps.releases.outputs.cloud_stub_release_next_assembly_version }}
+      cloud_stub_release_next_tag: ${{ steps.releases.outputs.cloud_stub_release_next_tag }}
+      cloud_stub_release_latest_release_ref: ${{ steps.releases.outputs.cloud_stub_release_latest_release_ref }}
+
+      cloud_stub_azure_cosmos_table_release: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release }}
+      cloud_stub_azure_cosmos_table_release_name: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_name }}
+      cloud_stub_azure_cosmos_table_release_next_version: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_next_version }}
+      cloud_stub_azure_cosmos_table_release_next_assembly_version: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_next_assembly_version }}
+      cloud_stub_azure_cosmos_table_release_next_tag: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_next_tag }}
+      cloud_stub_azure_cosmos_table_release_latest_release_ref: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_latest_release_ref }}
 
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Generate Package Info
-      if: startsWith(github.ref, 'refs/heads/releases/')
-      id: package_info
-      shell: pwsh
-      run: |
-        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-
-        $releaseBranchName = $env:GITHUB_REF.Substring($env:GITHUB_REF.LastIndexOf('/') + 1)
-        $minorVersionSeparatorIndex = $releaseBranchName.IndexOf('.')
-        $preReleaseVersionSeparatorIndex = $releaseBranchName.IndexOf('-')
-
-        $majorVersion = $releaseBranchName.Substring(0, $minorVersionSeparatorIndex)
-        if ($preReleaseVersionSeparatorIndex -gt -1)
-        {
-          $minorVersion = $releaseBranchName.Substring($minorVersionSeparatorIndex + 1, $preReleaseVersionSeparatorIndex - $minorVersionSeparatorIndex - 1)
-          $preRelease = $releaseBranchName.Substring($preReleaseVersionSeparatorIndex + 1)
-        }
-        else
-        {
-          $minorVersion = $releaseBranchName.Substring($minorVersionSeparatorIndex + 1)
-          $preRelease = $null
-        }
-        $preReleaseOffset = switch ($preRelease)
-        {
-          'alpha' { 1000 }
-          'beta' { 2000 }
-          'rc' { 3000 }
-          default { 0 }
-        }
-
-        $latestRevision = 0
-        (git tag) |
-          Where-Object { $_ -match "^${majorVersion}\.${minorVersion}\.\d+(-\w+\d*)?$" } |
-          ForEach-Object { $latestRevision = [Math]::Max($latestRevision, $_.Split('.')[2].Split('-')[0]) }
-
-        $hasRelease = $false
-        $latestPreRelease = 0
-        (git tag) |
-          Where-Object { $_ -match "^${majorVersion}\.${minorVersion}\.${latestRevision}(-\w+\d*)?$" } |
-          ForEach-Object {
-            if ($_.Contains('-'))
-            {
-              $preReleasePart = $_.Split('-')[1]
-              if ($preRelease -ne $null -and $preReleasePart.StartsWith($preRelease))
-              {
-                $latestPreRelease = [Math]::Max($latestPreRelease, $preReleasePart.Substring($preRelease.Length))
-              }
-            }
-            else
-            {
-              $hasRelease = $true
-            }
-          }
-
-        $currentRevision = if ($hasRelease) { $latestRevision + 1 } else { $latestRevision }
-        if ($preRelease -ne $null)
-        {
-          $assemblyVersion = "${majorVersion}.${minorVersion}.$($preReleaseOffset + $latestPreRelease + 1).${currentRevision}"
-          $packageVersion = "${majorVersion}.${minorVersion}.${currentRevision}-${preRelease}$($latestPreRelease + 1)"
-        }
-        else
-        {
-          $assemblyVersion = "${majorVersion}.${minorVersion}.0.$($currentRevision)"
-          $packageVersion = "${majorVersion}.${minorVersion}.$($currentRevision)"
-        }
-
-        $description = (Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/Description/text()").Node.Data.Trim()
-        $releaseNotes = (
-            (Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/PackageReleaseNotes/text()").Node.Data -split '\r?\n\r?' |
-              Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-              Foreach-Object { $_.Trim() }
-          ) -join '%0A'
-
-        Write-Host "::set-output name=package_version::$packageVersion"
-        Write-Host "::set-output name=assembly_version::$assemblyVersion"
-        Write-Host "::set-output name=package_description::$description"
-        Write-Host "::set-output name=package_release_notes::$releaseNotes"
-        Write-Host "::set-output name=is_pre_release::$(($preRelease -ne $null).ToString().ToLowerInvariant())"
-        [Convert]::FromBase64String("${{ secrets.KeyFile }}") | Set-Content ./CloudStub.snk -AsByteStream
-
-    - name: Push Tag
-      if: startsWith(github.ref, 'refs/heads/releases/')
-      uses: anothrNick/github-tag-action@1.17.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CUSTOM_TAG : ${{ steps.package_info.outputs.package_version }}
-        RELEASE_BRANCHES: releases/*
-
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
+    - name: Setup .NET 6.0
+      uses: actions/setup-dotnet@v2
       with:
-        dotnet-version: 3.1.101
+        dotnet-version: 6.0.x
 
-    - name: Install Dependencies
+    - name: Checkout sources
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Restore
       run: dotnet restore
 
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
     - name: Test
-      run: dotnet test --configuration Release --no-restore --verbosity normal
+      run: dotnet test --configuration Release --no-build --verbosity normal
 
-    - name: Pack
-      if: startsWith(github.ref, 'refs/heads/releases/')
-      shell: pwsh
+    - name: Determine Releases
+      id: releases
+      if: contains(toJSON(github.event.commits.*.message), '[release]')
       run: |
-        dotnet pack CloudStub.sln `
+        function Get-ReleaseInformation([string]$name, [string]$workflowVariablePrefix, [string]$tagPrefix, [string]$baseVersion) {
+          $tagFilter = "^$(([regex]::Escape("$tagPrefix-$baseVersion")))\.\d+$"
+          $latestIncrement = git tag --list "$tagPrefix-$baseVersion.*" `
+            | Where-Object { $_ -match $tagFilter } `
+            | ForEach-Object {
+              $_ -split "\." `
+              | Select-Object -Last 1 `
+              | ForEach-Object { $_ -as [int] }
+            } `
+            | Sort-Object -Descending `
+            | Select-Object -First 1
+
+          $nextVersion = if ($latestIncrement -eq $null) { if ($baseVersion -match "^\d+\.\d+$") { "$baseVersion.0" } else { "$baseVersion.1" } } else { "$baseVersion.$($latestIncrement + 1)" }
+          $latestReleaseRef = if ($latestIncrement -eq $null) { $null | git hash-object -t tree --stdin } else { "$tagPrefix-$baseVersion.$latestIncrement" }
+
+          $prerelease_name_offsets = @{
+            "alpha" = 1000;
+            "beta" = 2000;
+            "rc" = 3000;
+          }
+          $nextAssemblyVersion = $nextVersion -replace "^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?<prerelease>-(?<prerelease_name>.+)\.(?<prerelease_increment>\d+))?$", {
+              @(
+                $_.Groups["major"].Value
+                $_.Groups["minor"].Value
+                if ($_.Groups["prerelease"].Success) {
+                    if ($prerelease_name_offsets.ContainsKey($_.Groups["prerelease_name"].Value)) {
+                      ($_.Groups["prerelease_increment"].Value -as [int]) + $prerelease_name_offsets[$_.Groups["prerelease_name"].Value]
+                    }
+                    else {
+                      ($_.Groups["prerelease_increment"].Value -as [int]) + ($prerelease_name_offsets.Values | Sort-Object -Descending | Select-Object -First 1) + 1000
+                    }
+                }
+                else {
+                  "0"
+                }
+                $_.Groups["patch"].Value
+              ) -join "."
+            }
+
+          return @{
+            Name = $name;
+            WorkflowVariablePrefix = $workflowVariablePrefix;
+            NextVersion = $nextVersion;
+            NextAssemblyVersion = $nextAssemblyVersion;
+            NextTag = "$tagPrefix-$nextVersion";
+            LatestReleaseRef = $latestReleaseRef
+          }
+        }
+
+        function Set-CreateProjectReleaseOutput($releaseInformation) {
+          Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release::yes"
+          Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_name::$($releaseInformation.Name)"
+          Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_next_version::$($releaseInformation.NextVersion)"
+          Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_next_assembly_version::$($releaseInformation.NextAssemblyVersion)"
+          Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_next_tag::$($releaseInformation.NextTag)"
+          Write-Output "::set-output name=$($releaseInformation.WorkflowVariablePrefix)_release_latest_release_ref::$($releaseInformation.LatestReleaseRef)"
+        }
+
+        $cloudStubBaseVersion = Select-Xml -Path .\CloudStub\CloudStub.csproj -XPath "//Project/PropertyGroup/BaseVersion" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object { $_.Trim() }
+        $cloudStubReleaseInformation = Get-ReleaseInformation "CloudStub" "cloud_stub" "cloud-stub" $cloudStubBaseVersion
+
+        $cloudStubAzureCosmosTableBaseVersion = Select-Xml -Path .\CloudStub.Azure.Cosmos.Table\CloudStub.Azure.Cosmos.Table.csproj -XPath "//Project/PropertyGroup/BaseVersion" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object { $_.Trim() }
+        $cloudStubAzureCosmosTableReleaseInformation = Get-ReleaseInformation "Cloud Stub Azure Cosmos Table" "cloud_stub_azure_cosmos_table" "cloud-stub-azure-cosmos-table" $cloudStubAzureCosmosTableBaseVersion
+
+        if (git diff $cloudStubReleaseInformation.LatestReleaseRef -- "CloudStub/") {
+          Set-CreateProjectReleaseOutput $cloudStubReleaseInformation
+          Set-CreateProjectReleaseOutput $cloudStubAzureCosmosTableReleaseInformation
+        }
+        else {
+          if (git diff $cloudStubAzureCosmosTableReleaseInformation.LatestReleaseRef -- "CloudStub.Azure.Cosmos.Table/") {
+            Set-CreateProjectReleaseOutput $cloudStubAzureCosmosTableReleaseInformation
+          }
+        }
+
+  create-cloud-stub-release:
+    name: Create CloudStub Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: needs.build.outputs.cloud_stub_release == 'yes'
+    steps:
+    - name: Setup .NET 6.0
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.x
+
+    - name: Checkout Sources
+      uses: actions/checkout@v3
+
+    - name: Create CloudStub Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      run: |
+        [Convert]::FromBase64String("${{ secrets.KeyFile }}") | Set-Content ./CloudStub.snk -AsByteStream
+
+        dotnet pack CloudStub/CloudStub.csproj `
           --configuration Release `
-          --output publish `
-          -property:Version=${{ steps.package_info.outputs.assembly_version }} `
-          -property:PackageVersion=${{ steps.package_info.outputs.package_version }} `
-          -property:RepositoryCommit=$env:GITHUB_SHA `
+          --output Publish `
+          -property:Version=${{ needs.build.outputs.cloud_stub_release_next_assembly_version }} `
+          -property:PackageVersion=${{ needs.build.outputs.cloud_stub_release_next_version }} `
+          -property:RepositoryCommit=${{ github.event.head_commit.id }} `
           -property:SignAssembly=True `
           -property:AssemblyOriginatorKeyFile=../CloudStub.snk
 
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/heads/releases/')
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.package_info.outputs.package_version }}
-        release_name: Release ${{ steps.package_info.outputs.package_version }}
-        body: |
-          ${{ steps.package_info.outputs.package_description }}
+        $projectDescription = Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/Description" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object {
+            ($_ -replace "`r", "" -split "`n" `
+              | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } `
+              | ForEach-Object { $_.Trim() }) -join " "
+          }
+        $projectReleaseNotes = Select-Xml -Path ./CloudStub/CloudStub.csproj -XPath "//Project/PropertyGroup/PackageReleaseNotes" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object {
+            ($_ -replace "`r", "" -split "`n" `
+              | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } `
+              | ForEach-Object { $_.Trim() }) -join "`n"
+          }
 
-          Release Notes
-          -------------
-          ${{ steps.package_info.outputs.package_release_notes }}
-        draft: true
-        prerelease: ${{ steps.package_info.outputs.is_pre_release }}
+        $releaseNotes = @"
+        $projectDescription
 
-    - name: Upload NuGet Package to Release
-      if: startsWith(github.ref, 'refs/heads/releases/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #### Release Notes
+        $projectReleaseNotes
+        "@
+
+        gh release create "${{ needs.build.outputs.cloud_stub_release_next_tag }}" `
+          --title "${{ needs.build.outputs.cloud_stub_release_name }} ${{ needs.build.outputs.cloud_stub_release_next_version }}" `
+          --target "${{ github.event.head_commit.id }}" `
+          --notes $releaseNotes `
+          @(if ("${{ needs.build.outputs.cloud_stub_release_next_tag }}" -match "-.+\.\d+$") { "--prerelease" } else { "" }) `
+          "./Publish/CloudStub.${{ needs.build.outputs.cloud_stub_release_next_version }}.nupkg"
+
+  create-cloud-stub-azure-cosmos-table-release:
+    name: Create CloudStub.Azure.Cosmos.Table Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: needs.build.outputs.cloud_stub_azure_cosmos_table_release == 'yes'
+    steps:
+    - name: Setup .NET 6.0
+      uses: actions/setup-dotnet@v2
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./publish/CloudStub.${{ steps.package_info.outputs.package_version }}.nupkg
-        asset_name: CloudStub.${{ steps.package_info.outputs.package_version }}.nupkg
-        asset_content_type: application/zip
+        dotnet-version: 6.0.x
+
+    - name: Checkout Sources
+      uses: actions/checkout@v3
+
+    - name: Create CloudStub.Azure.Cosmos.Table Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      run: |
+        [Convert]::FromBase64String("${{ secrets.KeyFile }}") | Set-Content ./CloudStub.snk -AsByteStream
+
+        dotnet pack CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj `
+          --configuration Release `
+          --output Publish `
+          -property:Version=${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_assembly_version }} `
+          -property:PackageVersion=${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_version }} `
+          -property:RepositoryCommit=${{ github.event.head_commit.id }} `
+          -property:SignAssembly=True `
+          -property:AssemblyOriginatorKeyFile=../CloudStub.snk
+
+        $projectDescription = Select-Xml -Path ./CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj -XPath "//Project/PropertyGroup/Description" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object {
+            ($_ -replace "`r", "" -split "`n" `
+              | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } `
+              | ForEach-Object { $_.Trim() }) -join " "
+          }
+        $projectReleaseNotes = Select-Xml -Path ./CloudStub.Azure.Cosmos.Table/CloudStub.Azure.Cosmos.Table.csproj -XPath "//Project/PropertyGroup/PackageReleaseNotes" `
+          | Select-Object -ExpandProperty Node `
+          | Select-Object -Property InnerText -ExpandProperty InnerText `
+          | ForEach-Object {
+            ($_ -replace "`r", "" -split "`n" `
+              | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } `
+              | ForEach-Object { $_.Trim() }) -join "`n"
+          }
+
+        $releaseNotes = @"
+        $projectDescription
+
+        #### Release Notes
+        $projectReleaseNotes
+        "@
+
+        gh release create "${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_tag }}" `
+          --title "${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_name }} ${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_version }}" `
+          --target "${{ github.event.head_commit.id }}" `
+          --notes $releaseNotes `
+          @(if ("${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_tag }}" -match "-.+\.\d+$") { "--prerelease" } else { "" }) `
+          "./Publish/CloudStub.Azure.Cosmos.Table.${{ needs.build.outputs.cloud_stub_azure_cosmos_table_release_next_version }}.nupkg"
