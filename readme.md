@@ -1,7 +1,7 @@
 Required Software
 -----------------
 
-* .NET Core 3 SDK
+* .NET 6.0 SDK
 * Azure Storage Emulator
 * Visual Studio Code
 
