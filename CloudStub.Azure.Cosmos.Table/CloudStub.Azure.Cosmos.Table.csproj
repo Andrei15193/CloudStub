@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-    <Description>An in-memory implementation similar to Azure Cloud Storage Services useful for testing and local development. This is a base implementation, for concrete adaptors see the specific NuGet packages for this one to get started more quickly.</Description>
+    <Description>An in-memory implementation of Azure Cloud Storage Services (Microsoft.Azure.Cosmos.Table) useful for testing and local development.</Description>
     <Authors>Andrei Fangli</Authors>
     <Copyright>Andrei Fangli</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -23,7 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CloudStub\CloudStub.csproj" />
   </ItemGroup>
 
 </Project>
