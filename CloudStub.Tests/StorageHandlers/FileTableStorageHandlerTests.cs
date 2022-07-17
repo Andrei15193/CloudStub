@@ -26,10 +26,6 @@ namespace CloudStub.Tests.StorageHandlers
             Assert.Equal(new ArgumentNullException("path").Message, exception.Message);
         }
 
-        [Fact]
-        public void Initialize_WhenStorageDirectoryPathIsInvalid_ThrowsException()
-            => Assert.Throws<IOException>(() => new FileTableStorageHandler(storageDirectoryPath: "invalid:path:yes:yes"));
-
         public void Dispose()
         {
             Dispose(true);
