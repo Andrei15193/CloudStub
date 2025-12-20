@@ -7,6 +7,7 @@ using Xunit;
 
 namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Async
 {
+    // Not covered for GH-20
     public class StubCloudTableEntityReplaceTableOperationTests : BaseStubCloudTableTests
     {
         [Fact]

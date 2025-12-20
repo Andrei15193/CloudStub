@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
@@ -31,5 +30,4 @@
   <ItemGroup>
     <ProjectReference Include="..\CloudStub\CloudStub.csproj" />
   </ItemGroup>
-
 </Project>

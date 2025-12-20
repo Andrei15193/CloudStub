@@ -6,6 +6,7 @@ using Xunit;
 
 namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
 {
+    // Not covered for GH-20
     public class StubCloudTableQuerySegmentedTests : BaseStubCloudTableTests
     {
         [Fact]
