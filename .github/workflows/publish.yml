@@ -31,10 +31,10 @@ jobs:
       cloud_stub_azure_cosmos_table_release_dependency_assembly_version: ${{ steps.releases.outputs.cloud_stub_azure_cosmos_table_release_dependency_assembly_version }}
 
     steps:
-    - name: Setup .NET 6.0
-      uses: actions/setup-dotnet@v2
+    - name: Setup .NET 10.0
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 10.0.x
 
     - name: Checkout sources
       uses: actions/checkout@v3
@@ -160,10 +160,10 @@ jobs:
     needs: build
     if: needs.build.outputs.cloud_stub_release == 'yes'
     steps:
-    - name: Setup .NET 6.0
-      uses: actions/setup-dotnet@v2
+    - name: Setup .NET 10.0
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 10.0.x
 
     - name: Checkout Sources
       uses: actions/checkout@v3
@@ -221,10 +221,10 @@ jobs:
     needs: build
     if: needs.build.outputs.cloud_stub_azure_cosmos_table_release == 'yes'
     steps:
-    - name: Setup .NET 6.0
-      uses: actions/setup-dotnet@v2
+    - name: Setup .NET 10.0
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 10.0.x
 
     - name: Checkout Sources
       uses: actions/checkout@v3
