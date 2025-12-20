@@ -1,11 +1,7 @@
 Required Software
 -----------------
 
-* .NET 6.0 SDK
-* Azure Storage Emulator
+* dotnet 10.0 SDK
 * Visual Studio Code
 
-Additional Software
--------------------
-
-* Azure SDK
+For local development check `TestRunContext.cs`, provide your own values to use the debugger and integrated test runner otherwise it can be a pain.

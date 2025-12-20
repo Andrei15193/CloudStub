@@ -9,6 +9,14 @@ internal static class TestRunContext
 
     private static readonly IConfigurationRoot _configuration = new ConfigurationBuilder()
         .AddEnvironmentVariables()
+
+        // For local testing, you can uncomment the following lines and provide values directly.
+        // .AddInMemoryCollection(new Dictionary<string, string?>
+        // {
+        //     { InMemoryKey, bool.FalseString },
+        //     { AzureStorageConnectionStringKey, "get this from somewhere :)" }
+        // })
+
         .Build();
 
     public static bool InMemory
