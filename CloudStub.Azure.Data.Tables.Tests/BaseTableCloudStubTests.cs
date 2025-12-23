@@ -5,7 +5,6 @@ namespace CloudStub.Azure.Data.Tables.Tests;
 [Collection(nameof(TestRunFixtureCollection))]
 public abstract class BaseTableCloudStubTests
 {
-    protected const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
     private static string _TableNamePrefix = "TestTable" + Random.Shared.Next(1000, 9999);
     private static int _tableCounter = 0;
 
@@ -18,8 +17,6 @@ public abstract class BaseTableCloudStubTests
         TestTableName = $"{_TableNamePrefix}{Interlocked.Increment(ref _tableCounter)}";
         CloudTable = TableServiceClient.GetTableClient(TestTableName);
     }
-
-    protected DateTimeOffset TestStart = DateTimeOffset.UtcNow;
 
     protected string TestTableName { get; }
 

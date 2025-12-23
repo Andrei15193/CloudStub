@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Azure.Data.Tables;
 
 namespace CloudStub.Azure.Data.Tables
@@ -6,6 +7,7 @@ namespace CloudStub.Azure.Data.Tables
     public class TableServiceClientStub : TableServiceClient
     {
         private readonly string _accountName;
+        private readonly IDictionary<string, TableClientStub> _tableClientStubs;
 
         public TableServiceClientStub(string accountName)
         {
@@ -15,6 +17,7 @@ namespace CloudStub.Azure.Data.Tables
                 throw new ArgumentException("Account name cannot be empty or whitespace.", nameof(accountName));
 
             _accountName = accountName;
+            _tableClientStubs = new Dictionary<string, TableClientStub>(StringComparer.Ordinal);
         }
 
         public TableServiceClientStub()
@@ -27,5 +30,16 @@ namespace CloudStub.Azure.Data.Tables
 
         public override Uri Uri
             => new Uri($"http://{_accountName}.cloud.stub");
+
+        public override TableClient GetTableClient(string tableName)
+        {
+            if (!_tableClientStubs.TryGetValue(tableName, out var tableClientStub))
+            {
+                tableClientStub = new TableClientStub(this, tableName);
+                _tableClientStubs[tableName] = tableClientStub;
+            }
+
+            return tableClientStub;
+        }
     }
 }
