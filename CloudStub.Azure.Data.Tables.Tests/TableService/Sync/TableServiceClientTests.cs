@@ -11,6 +11,12 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
+    public void AccountName_GetsTheSameNameWhichWasProvided()
+    {
+        Assert.Equal(TableAccountName, TableServiceClient.AccountName);
+    }
+
+    [Fact]
     public void CreateTable_WhenTableDoesNotExist_ReturnsTableItem()
     {
         var tableItem = Assertions.SuccessfulRequest(
@@ -172,56 +178,71 @@ public class StubCloudTableTests : BaseTableCloudStubTests
         );
     }
 
-    // [Fact]
-    // public void Delete_WhenTableDoesNotExist_ThrowsException()
-    // {
-    //     var exception = Assert.Throws<StorageException>(() => CloudTable.Delete(null, null));
+    [Fact]
+    public void DeleteTable_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
+    {
+        Assertions.UnsuccessfulRequest(
+            () => TableServiceClient.DeleteTable(TestTableName),
+            HttpStatusCode.NotFound,
+            "ResourceNotFound",
+            "The specified resource does not exist."
+        );
+    }
 
-    //     Assert.Equal("Not Found", exception.Message);
-    //     Assert.Equal("Microsoft.Azure.Cosmos.Table", exception.Source);
-    //     Assert.Null(exception.HelpLink);
-    //     Assert.Equal(-2146233088, exception.HResult);
-    //     Assert.Null(exception.InnerException);
-    //     Assert.IsAssignableFrom<IDictionary>(exception.Data);
+    [Fact]
+    public void DeleteTable_WhenTableExists_ReturnsSuccessfulResponse()
+    {
+        TableServiceClient.CreateTable(TestTableName);
 
-    //     Assert.Equal(404, exception.RequestInformation.HttpStatusCode);
-    //     Assert.Null(exception.RequestInformation.ContentMd5);
-    //     Assert.Empty(exception.RequestInformation.ErrorCode);
-    //     Assert.Null(exception.RequestInformation.Etag);
+        Assertions.SuccessfulRequest(
+            () => TableServiceClient.DeleteTable(TestTableName),
+            HttpStatusCode.NoContent,
+            new Dictionary<string, string>
+            {
+                { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
+                { "TableName", TestTableName }
+            }
+        );
+    }
 
-    //     Assert.Equal("ResourceNotFound", exception.RequestInformation.ExtendedErrorInformation.ErrorCode);
-    //     Assert.Matches(
-    //         @$"^The specified resource does not exist.\nRequestId:{exception.RequestInformation.ServiceRequestID}\nTime:\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}.\d{{7}}Z$",
-    //         exception.RequestInformation.ExtendedErrorInformation.ErrorMessage
-    //     );
+    [Theory]
+    [InlineData("invalid_table_name")]
+    [InlineData("1nvalid")]
+    public void DeleteTable_WhenTableNameIsInvalid_ThrowsException(string tableName)
+    {
+        Assertions.UnsuccessfulRequest(
+            () => TableServiceClient.DeleteTable(tableName),
+            HttpStatusCode.NotFound,
+            "ResourceNotFound",
+            "The specified resource does not exist."
+        );
+    }
 
-    //     Assert.Same(exception, exception.RequestInformation.Exception);
-    // }
+    [Theory]
+    [InlineData("tables")]
+    public void DeleteTable_WhenTableNameIsReserved_ThrowsException(string tableName)
+    {
+        Assertions.UnsuccessfulRequest(
+            () => TableServiceClient.DeleteTable(tableName),
+            HttpStatusCode.NotFound,
+            "ResourceNotFound",
+            "The specified resource does not exist."
+        );
+    }
 
-    // [Fact(Skip = "CloudTable.Exists cannot be overridden.")]
-    // public void Delete_WhenTableExists_DeletesTable()
-    // {
-    //     CloudTable.Create(null, null, null, null, null);
-
-    //     CloudTable.Delete(null, null);
-
-    //     Assert.False(CloudTable.Exists(null, null));
-    // }
-
-    // [Fact]
-    // public void DeleteIfExists_WhenTableDoesNotExist_ReturnsFalse()
-    // {
-    //     Assert.False(CloudTable.DeleteIfExists(null, null));
-    // }
-
-    // [Fact]
-    // public void DeleteIfExists_WhenTableExists_ReturnsTrue()
-    // {
-    //     CloudTable.Create(null, null, null, null, null);
-
-    //     Assert.True(CloudTable.DeleteIfExists(null, null));
-    //     Assert.False(CloudTable.DeleteIfExists(null, null));
-    // }
+    [Theory]
+    [InlineData("t")]
+    [InlineData("tt")]
+    [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
+    public void DeleteTable_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+    {
+        Assertions.UnsuccessfulRequest(
+            () => TableServiceClient.DeleteTable(tableName),
+            HttpStatusCode.NotFound,
+            "ResourceNotFound",
+            "The specified resource does not exist."
+        );
+    }
 
     // [Fact]
     // public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()

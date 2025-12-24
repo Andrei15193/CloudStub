@@ -69,45 +69,80 @@ Content-Type: application/json;odata=minimalmetadata;streaming=true;charset=utf-
         return exception;
     }
 
-    public static T SuccessfulRequest<T>(Func<Response<T>> action, HttpStatusCode httpStatusCode, IReadOnlyDictionary<string, string> metadataResponse, IReadOnlyDictionary<string, string?>? additionalHeaders = null)
+    public static Response SuccessfulRequest(Func<Response> action, HttpStatusCode httpStatusCode, IReadOnlyDictionary<string, string> metadataResponse, IReadOnlyDictionary<string, string?>? additionalHeaders = null)
     {
         var utcNow = DateTimeOffset.UtcNow;
         var spelledOutStatusCode = Regex.Replace(httpStatusCode.ToString(), "(?<=.)[A-Z]", " $0");
 
         var response = action();
 
-        var rawResponse = response.GetRawResponse();
+        Assert.False(response.IsError);
+        Assert.Equal((int)httpStatusCode, response.Status);
+        Assert.False(response.IsError);
+        Assert.Equal(spelledOutStatusCode, response.ReasonPhrase);
+
+        Assert.NotNull(response.ClientRequestId);
+        Assert.True(Guid.TryParseExact(response.ClientRequestId, "D", out _));
+
+        Assert.NotEmpty(response.Headers);
+
+        if (httpStatusCode == HttpStatusCode.NoContent)
+        {
+            Assert.Equal(0, response.Headers.ContentLength);
+            Assert.Equal(0, response.Headers.ContentLengthLong);
+            Assert.Null(response.Headers.ContentType);
+        }
+        else
+        {
+            Assert.Null(response.Headers.ContentLength);
+            Assert.Null(response.Headers.ContentLengthLong);
+            Assert.Equal("application/json;odata=minimalmetadata;streaming=true;charset=utf-8", response.Headers.ContentType);
+        }
+
+        Assert.NotNull(response.Headers.Date);
+        Assert.InRange(response.Headers.Date!.Value, utcNow.AddSeconds(-3), utcNow.AddMinutes(1));
+
+        Assert.Null(response.Headers.ETag);
+        Assert.NotNull(response.Headers.RequestId);
+        Assert.True(Guid.TryParseExact(response.Headers.RequestId, "D", out _));
+
+        Headers(response, additionalHeaders);
+
+        Assert.NotNull(response.Content);
+        Assert.NotNull(response.ContentStream);
+        var contentReader = new StreamReader(response.Content.ToStream());
+        var content = contentReader.ReadToEnd();
+        if (httpStatusCode == HttpStatusCode.NoContent)
+        {
+            Assert.Empty(content);
+        }
+        else
+        {
+            var jsonContent = JsonSerializer.Deserialize<JsonObject>(content)!;
+
+            Assert.Equal(metadataResponse.Count, jsonContent.Count);
+            foreach (var metadata in metadataResponse)
+                Assert.Equal(metadata.Value, jsonContent[metadata.Key]!.GetValue<string>());
+        }
+
+        return response;
+    }
+
+    public static T SuccessfulRequest<T>(Func<Response<T>> action, HttpStatusCode httpStatusCode, IReadOnlyDictionary<string, string> metadataResponse, IReadOnlyDictionary<string, string?>? additionalHeaders = null)
+    {
+        var response = action();
+
+        SuccessfulRequest(response.GetRawResponse, httpStatusCode, metadataResponse, additionalHeaders);
+
+        return response;
+    }
+
+    public static Response UnsuccessfulRequest(Func<Response> action, HttpStatusCode httpStatusCode, string errorCode, string errorDescription, IReadOnlyDictionary<string, string?>? additionalHeaders = null)
+    {
+        var response = action();
+
+        var (rawResponse, _, _) = UnsuccessfulResponse(response, httpStatusCode, errorCode, errorDescription, additionalHeaders);
         Assert.False(rawResponse.IsError);
-        Assert.Equal((int)httpStatusCode, rawResponse.Status);
-        Assert.False(rawResponse.IsError);
-        Assert.Equal(spelledOutStatusCode, rawResponse.ReasonPhrase);
-
-        Assert.NotNull(rawResponse.ClientRequestId);
-        Assert.True(Guid.TryParseExact(rawResponse.ClientRequestId, "D", out _));
-
-        Assert.NotEmpty(rawResponse.Headers);
-
-        Assert.Null(rawResponse.Headers.ContentLength);
-        Assert.Null(rawResponse.Headers.ContentLengthLong);
-        Assert.Equal("application/json;odata=minimalmetadata;streaming=true;charset=utf-8", rawResponse.Headers.ContentType);
-
-        Assert.NotNull(rawResponse.Headers.Date);
-        Assert.InRange(rawResponse.Headers.Date!.Value, utcNow.AddSeconds(-3), utcNow.AddMinutes(1));
-
-        Assert.Null(rawResponse.Headers.ETag);
-        Assert.NotNull(rawResponse.Headers.RequestId);
-        Assert.True(Guid.TryParseExact(rawResponse.Headers.RequestId, "D", out _));
-
-       Headers(rawResponse, additionalHeaders);
-
-        Assert.NotNull(rawResponse.Content);
-        Assert.NotNull(rawResponse.ContentStream);
-        var content = rawResponse.Content.ToString();
-        var jsonContent = JsonSerializer.Deserialize<JsonObject>(content)!;
-
-        Assert.Equal(metadataResponse.Count, jsonContent.Count);
-        foreach (var metadata in metadataResponse)
-            Assert.Equal(metadata.Value, jsonContent[metadata.Key]!.GetValue<string>());
 
         return response;
     }
@@ -116,8 +151,7 @@ Content-Type: application/json;odata=minimalmetadata;streaming=true;charset=utf-
     {
         var response = action();
 
-        var (rawResponse, _, _) = UnsuccessfulResponse(response.GetRawResponse(), httpStatusCode, errorCode, errorDescription, additionalHeaders);
-        Assert.False(rawResponse.IsError);
+        UnsuccessfulRequest(response.GetRawResponse, httpStatusCode, errorCode, errorDescription, additionalHeaders);
 
         return response;
     }
@@ -158,7 +192,7 @@ Content-Type: application/json;odata=minimalmetadata;streaming=true;charset=utf-
         Assert.NotNull(response.Headers.RequestId);
         Assert.True(Guid.TryParseExact(response.Headers.RequestId, "D", out _));
 
-       Headers(response, additionalHeaders);
+        Headers(response, additionalHeaders);
 
         Assert.NotNull(response.Content);
         Assert.NotNull(response.ContentStream);
@@ -197,16 +231,28 @@ Content-Type: application/json;odata=minimalmetadata;streaming=true;charset=utf-
     {
         var headersDictionary = rawResponse.Headers.ToDictionary(header => header.Name, header => header.Value);
 
-        Assert.Equal(9 + (additionalHeaders?.Count ?? 0), headersDictionary.Count);
+        Assert.Equal(9 + (rawResponse.Status == (int)HttpStatusCode.NoContent ? -1 : 0) + (additionalHeaders?.Count ?? 0), headersDictionary.Count);
         Assert.Equal("no-cache", headersDictionary["Cache-Control"]);
-        Assert.Equal("chunked", headersDictionary["Transfer-Encoding"]);
+
+        if (rawResponse.Status == (int)HttpStatusCode.NoContent)
+        {
+            Assert.False(headersDictionary.ContainsKey("Transfer-Encoding"));
+            Assert.False(headersDictionary.ContainsKey("Content-Type"));
+            Assert.Equal("0", headersDictionary["Content-Length"]);
+        }
+        else
+        {
+            Assert.Equal("chunked", headersDictionary["Transfer-Encoding"]);
+            Assert.Equal("application/json;odata=minimalmetadata;streaming=true;charset=utf-8", headersDictionary["Content-Type"]);
+            Assert.False(headersDictionary.ContainsKey("Content-Length"));
+        }
+
         Assert.Equal("Windows-Azure-Table/1.0 Microsoft-HTTPAPI/2.0", headersDictionary["Server"]);
         Assert.Equal(rawResponse.Headers.RequestId, headersDictionary["x-ms-request-id"]);
         Assert.Equal(rawResponse.ClientRequestId, headersDictionary["x-ms-client-request-id"]);
         Assert.Equal("2020-12-06", headersDictionary["x-ms-version"]);
         Assert.Equal("nosniff", headersDictionary["X-Content-Type-Options"]);
         Assert.Equal(rawResponse.Headers.Date!.Value.ToString("R"), headersDictionary["Date"]);
-        Assert.Equal("application/json;odata=minimalmetadata;streaming=true;charset=utf-8", headersDictionary["Content-Type"]);
         if (additionalHeaders is not null)
             foreach (var additionalHeader in additionalHeaders)
                 Assert.Equal(additionalHeader.Value, headersDictionary[additionalHeader.Key]);
