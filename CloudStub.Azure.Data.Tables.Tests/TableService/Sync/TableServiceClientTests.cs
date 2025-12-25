@@ -1,4 +1,5 @@
 using System.Net;
+using Azure.Data.Tables.Sas;
 
 namespace CloudStub.Azure.Data.Tables.Tests.TableService.Sync;
 
@@ -19,22 +20,35 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Fact]
     public void CreateTable_WhenTableDoesNotExist_ReturnsTableItem()
     {
-        var tableItem = Assertions.SuccessfulRequest(
-            () => TableServiceClient.CreateTable(TestTableName),
-            HttpStatusCode.Created,
-            new Dictionary<string, string>
+        var response = TableServiceClient.CreateTable(TestTableName);
+
+        var tableItem = response.Value;
+        var rawResponse = response.GetRawResponse();
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.SuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.Created,
+                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                    {
+                        { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" }
+                    },
+                    Content =
+                    {
+                        { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
+                        { "TableName", TestTableName }
+                    },
+                }
+            ),
+            () =>
             {
-                { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
-                { "TableName", TestTableName }
-            },
-            new Dictionary<string, string?>
-            {
-                { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" }
+                Assert.NotNull(tableItem);
+                Assert.Equal(TestTableName, tableItem.Name);
             }
         );
-
-        Assert.NotNull(tableItem);
-        Assert.Equal(TestTableName, tableItem.Name);
     }
 
     [Fact]
@@ -44,9 +58,13 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
         Assertions.Throws(
             () => TableServiceClient.CreateTable(TestTableName),
-            HttpStatusCode.Conflict,
-            "TableAlreadyExists",
-            "The table specified already exists."
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.Conflict,
+                Headers = new Assertions.DefaultHeaders(rawResponse),
+                ErrorCode = "TableAlreadyExists",
+                ErrorDescription = "The table specified already exists."
+            }
         );
     }
 
@@ -57,9 +75,13 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         Assertions.Throws(
             () => TableServiceClient.CreateTable(tableName),
-            HttpStatusCode.BadRequest,
-            "InvalidResourceName",
-            "The specifed resource name contains invalid characters."
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                Headers = new Assertions.DefaultHeaders(rawResponse),
+                ErrorCode = "InvalidResourceName",
+                ErrorDescription = "The specifed resource name contains invalid characters."
+            }
         );
     }
 
@@ -69,9 +91,13 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         Assertions.Throws(
             () => TableServiceClient.CreateTable(tableName),
-            HttpStatusCode.BadRequest,
-            "InvalidInput",
-            "One of the request inputs is not valid."
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                Headers = new Assertions.DefaultHeaders(rawResponse),
+                ErrorCode = "InvalidInput",
+                ErrorDescription = "One of the request inputs is not valid."
+            }
         );
     }
 
@@ -83,9 +109,13 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         Assertions.Throws(
             () => TableServiceClient.CreateTable(tableName),
-            HttpStatusCode.BadRequest,
-            "OutOfRangeInput",
-            "The specified resource name length is not within the permissible limits."
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                Headers = new Assertions.DefaultHeaders(rawResponse),
+                ErrorCode = "OutOfRangeInput",
+                ErrorDescription = "The specified resource name length is not within the permissible limits."
+            }   
         );
     }
 
@@ -94,18 +124,31 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         TableServiceClient.CreateTable(TestTableName);
 
-        var tableItem = Assertions.UnsuccessfulRequest(
-            () => TableServiceClient.CreateTableIfNotExists(TestTableName),
-            HttpStatusCode.Conflict,
-            "TableAlreadyExists",
-            "The table specified already exists.",
-            new Dictionary<string, string?>
+        var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
+        var tableItem = response.Value;
+        var rawResponse = response.GetRawResponse();
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.UnsuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.Conflict,
+                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                    {
+                        { "Preference-Applied", "return-no-content" }
+                    },
+                    ErrorCode = "TableAlreadyExists",
+                    ErrorDescription = "The table specified already exists."
+                }
+            ),
+            () =>
             {
-                { "Preference-Applied", "return-no-content" }
+                Assert.NotNull(tableItem);
+                Assert.Equal(TestTableName, tableItem.Name);
             }
         );
-        Assert.NotNull(tableItem);
-        Assert.Equal(TestTableName, tableItem.Name);
     }
 
     [Fact]
@@ -113,18 +156,31 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         TableServiceClient.CreateTable(TestTableName);
 
-        var tableItem = Assertions.UnsuccessfulRequest(
-            () => TableServiceClient.CreateTableIfNotExists(TestTableName),
-            HttpStatusCode.Conflict,
-            "TableAlreadyExists",
-            "The table specified already exists.",
-            new Dictionary<string, string?>
+        var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
+        var tableItem = response.Value;
+        var rawResponse = response.GetRawResponse();
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.UnsuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.Conflict,
+                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                    {
+                        { "Preference-Applied", "return-no-content" }
+                    },
+                    ErrorCode = "TableAlreadyExists",
+                    ErrorDescription = "The table specified already exists."
+                }
+            ),
+            () =>
             {
-                { "Preference-Applied", "return-no-content" }
+                Assert.NotNull(tableItem);
+                Assert.Equal(TestTableName, tableItem.Name);
             }
         );
-        Assert.NotNull(tableItem);
-        Assert.Equal(TestTableName, tableItem.Name);
     }
 
     [Theory]
@@ -134,12 +190,15 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         Assertions.Throws(
             () => TableServiceClient.CreateTableIfNotExists(tableName),
-            HttpStatusCode.BadRequest,
-            "InvalidResourceName",
-            "The specifed resource name contains invalid characters.",
-            new Dictionary<string, string?>
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
-                { "Preference-Applied", "return-no-content" }
+                StatusCode = HttpStatusCode.BadRequest,
+                Headers = new Assertions.DefaultHeaders(rawResponse)
+                {
+                    { "Preference-Applied", "return-no-content" }
+                },
+                ErrorCode = "InvalidResourceName",
+                ErrorDescription = "The specifed resource name contains invalid characters."
             }
         );
     }
@@ -150,12 +209,15 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         Assertions.Throws(
             () => TableServiceClient.CreateTableIfNotExists(tableName),
-            HttpStatusCode.BadRequest,
-            "InvalidInput",
-            "One of the request inputs is not valid.",
-            new Dictionary<string, string?>
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
-                { "Preference-Applied", "return-no-content" }
+                StatusCode = HttpStatusCode.BadRequest,
+                Headers = new Assertions.DefaultHeaders(rawResponse)
+                {
+                    { "Preference-Applied", "return-no-content" }
+                },
+                ErrorCode = "InvalidInput",
+                ErrorDescription = "One of the request inputs is not valid."
             }
         );
     }
@@ -168,12 +230,15 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         Assertions.Throws(
             () => TableServiceClient.CreateTableIfNotExists(tableName),
-            HttpStatusCode.BadRequest,
-            "OutOfRangeInput",
-            "The specified resource name length is not within the permissible limits.",
-            new Dictionary<string, string?>
+            rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
-                { "Preference-Applied", "return-no-content" }
+                StatusCode = HttpStatusCode.BadRequest,
+                Headers = new Assertions.DefaultHeaders(rawResponse)
+                {
+                    { "Preference-Applied", "return-no-content" }
+                },
+                ErrorCode = "OutOfRangeInput",
+                ErrorDescription = "The specified resource name length is not within the permissible limits."
             }
         );
     }
@@ -181,11 +246,20 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Fact]
     public void DeleteTable_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
     {
-        Assertions.UnsuccessfulRequest(
-            () => TableServiceClient.DeleteTable(TestTableName),
-            HttpStatusCode.NotFound,
-            "ResourceNotFound",
-            "The specified resource does not exist."
+        var rawResponse = TableServiceClient.DeleteTable(TestTableName);
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.UnsuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    Headers = new Assertions.DefaultHeaders(rawResponse),
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "The specified resource does not exist."
+                }
+            )
         );
     }
 
@@ -194,14 +268,23 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         TableServiceClient.CreateTable(TestTableName);
 
-        Assertions.SuccessfulRequest(
-            () => TableServiceClient.DeleteTable(TestTableName),
-            HttpStatusCode.NoContent,
-            new Dictionary<string, string>
-            {
-                { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
-                { "TableName", TestTableName }
-            }
+        var rawResponse = TableServiceClient.DeleteTable(TestTableName);
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.SuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(rawResponse),
+                    Content =
+                    {
+                        { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
+                        { "TableName", TestTableName }
+                    },
+                }
+            )
         );
     }
 
@@ -210,11 +293,20 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("1nvalid")]
     public void DeleteTable_WhenTableNameIsInvalid_ThrowsException(string tableName)
     {
-        Assertions.UnsuccessfulRequest(
-            () => TableServiceClient.DeleteTable(tableName),
-            HttpStatusCode.NotFound,
-            "ResourceNotFound",
-            "The specified resource does not exist."
+        var rawResponse = TableServiceClient.DeleteTable(tableName);
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.UnsuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    Headers = new Assertions.DefaultHeaders(rawResponse),
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "The specified resource does not exist."
+                }
+            )
         );
     }
 
@@ -222,11 +314,20 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("tables")]
     public void DeleteTable_WhenTableNameIsReserved_ThrowsException(string tableName)
     {
-        Assertions.UnsuccessfulRequest(
-            () => TableServiceClient.DeleteTable(tableName),
-            HttpStatusCode.NotFound,
-            "ResourceNotFound",
-            "The specified resource does not exist."
+        var rawResponse = TableServiceClient.DeleteTable(tableName);
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.UnsuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    Headers = new Assertions.DefaultHeaders(rawResponse),
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "The specified resource does not exist."
+                }
+            )
         );
     }
 
@@ -236,11 +337,85 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
     public void DeleteTable_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
     {
-        Assertions.UnsuccessfulRequest(
-            () => TableServiceClient.DeleteTable(tableName),
-            HttpStatusCode.NotFound,
-            "ResourceNotFound",
-            "The specified resource does not exist."
+        var rawResponse = TableServiceClient.DeleteTable(tableName);
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.UnsuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    Headers = new Assertions.DefaultHeaders(rawResponse),
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "The specified resource does not exist."
+                }
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.All)]
+    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.All)]
+    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.All)]
+    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.All)]
+    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.All)]
+    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.All)]
+    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.All)]
+
+    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.Container)]
+    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.Container)]
+    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.Container)]
+    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.Container)]
+    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.Container)]
+    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.Container)]
+    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.Container)]
+
+    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.Object)]
+    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.Object)]
+    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.Object)]
+    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.Object)]
+    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.Object)]
+    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.Object)]
+    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.Object)]
+
+    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.Service)]
+    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.Service)]
+    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.Service)]
+    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.Service)]
+    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.Service)]
+    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.Service)]
+    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.Service)]
+    public void GenerateSasUri_WhenCalled_GeneratesValidSasUri(TableAccountSasPermissions permissions, TableAccountSasResourceTypes resourceTypes)
+    {
+        var sasUri = TableServiceClient.GenerateSasUri(permissions, resourceTypes, DateTimeOffset.UtcNow.AddHours(1));
+
+        Assert.NotNull(sasUri);
+    }
+
+    [Fact]
+    public void GetProperties_WhenCalled_GeneratesValidSasUri()
+    {
+        var response = TableServiceClient.GetProperties();
+
+        var properties = response.Value;
+        var rawResponse = response.GetRawResponse();
+
+        Assert.Multiple(
+            () => Assert.False(rawResponse.IsError),
+            () => Assertions.SuccessfulJsonResponse(
+                rawResponse,
+                new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Headers = new Assertions.XmlContentHeaders(rawResponse)
+                }
+            ),
+            () =>
+            {
+                Assert.NotNull(properties);
+                // Assert.Equal(TestTableName, properties.Cors);
+            }
         );
     }
 
