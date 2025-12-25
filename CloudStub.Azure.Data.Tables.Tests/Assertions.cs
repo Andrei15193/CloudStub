@@ -1,8 +1,12 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Serialization;
 using Azure;
 
 namespace CloudStub.Azure.Data.Tables.Tests;
@@ -18,8 +22,21 @@ internal static class Assertions
         "x-ms-request-id",
         "x-ms-client-request-id",
         "Date",
-        "Content-Type"
+        "Content-Type",
+        "Content-Length"
     };
+
+    public static Response EmptyResponse(Response? response, ResponseAssertOptions responseAssertOptions)
+    {
+        Assert.NotNull(response);
+        Assert.Multiple(
+            () => AssertInfo(response, responseAssertOptions),
+            () => AssertHeaders(response, responseAssertOptions),
+            () => AssertEmptyContent(response)
+        );
+
+        return response;
+    }
 
     public static Response SuccessfulJsonResponse(Response? response, SuccessfulResponseAssertOptions responseAssertOptions)
     {
@@ -37,7 +54,7 @@ internal static class Assertions
     {
         Assert.NotNull(response);
         Assert.Multiple(
-            () => AssertInfo(response, responseAssertOptions),
+            () => AssertInfo(response, responseAssertOptions, responseAssertOptions.ErrorPhrase),
             () => AssertHeaders(response, responseAssertOptions),
             () => AssertUnsuccessfulJsonContent(response, responseAssertOptions)
         );
@@ -45,27 +62,71 @@ internal static class Assertions
         return response;
     }
 
-    public static RequestFailedException Throws(Action action, Func<Response?, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+    public static Response SuccessfulXmlResponse(Response? response, SuccessfulResponseAssertOptions responseAssertOptions)
+    {
+        Assert.NotNull(response);
+        Assert.Multiple(
+            () => AssertInfo(response, responseAssertOptions),
+            () => AssertHeaders(response, responseAssertOptions),
+            () => AssertSuccessfulXmlContent(response, responseAssertOptions)
+        );
+
+        return response;
+    }
+
+    public static Response UnsuccessfulXmlResponse(Response? response, UnsuccessfulResponseAssertOptions responseAssertOptions)
+    {
+        Assert.NotNull(response);
+        Assert.Multiple(
+            () => AssertInfo(response, responseAssertOptions, responseAssertOptions.ErrorPhrase),
+            () => AssertHeaders(response, responseAssertOptions),
+            () => AssertUnsuccessfulXmlContent(response, responseAssertOptions)
+        );
+
+        return response;
+    }
+
+    public static RequestFailedException JsonResponseThrows(Action action, Func<Response?, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
     {
         var exception = Assert.Throws<RequestFailedException>(action);
+        var rawResponse = exception.GetRawResponse();
 
         var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
 
         Assert.Multiple(
-            () => AssertException(exception, responseAssertOptions),
-            () => UnsuccessfulJsonResponse(exception.GetRawResponse(), responseAssertOptions)
+            () => AssertExceptionInfo(exception, responseAssertOptions),
+            () => AssertJsonExceptionMessage(exception, responseAssertOptions),
+            () => Assert.True(rawResponse?.IsError),
+            () => UnsuccessfulJsonResponse(rawResponse, responseAssertOptions)
         );
 
         return exception;
     }
 
-    private static void AssertInfo(Response response, ResponseAssertOptions responseAssertOptions)
+    public static RequestFailedException XmlResponseThrows(Action action, Func<Response?, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+    {
+        var exception = Assert.Throws<RequestFailedException>(action);
+        var rawResponse = exception.GetRawResponse();
+
+        var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+        Assert.Multiple(
+            () => AssertExceptionInfo(exception, responseAssertOptions),
+            () => AssertXmlExceptionMessage(exception, responseAssertOptions),
+            () => Assert.True(rawResponse?.IsError),
+            () => UnsuccessfulXmlResponse(rawResponse, responseAssertOptions)
+        );
+
+        return exception;
+    }
+
+    private static void AssertInfo(Response response, ResponseAssertOptions responseAssertOptions, string? reasonPhrase = null)
     {
         var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
 
         Assert.Multiple(
             () => Assert.Equal((int)responseAssertOptions.StatusCode, response.Status),
-            () => Assert.Equal(spelledOutStatusCode, response.ReasonPhrase),
+            () => Assert.Equal(reasonPhrase ?? spelledOutStatusCode, response.ReasonPhrase),
             () =>
             {
                 Assert.NotNull(response.ClientRequestId);
@@ -95,25 +156,50 @@ internal static class Assertions
         );
     }
 
+    private static void AssertEmptyContent(Response response)
+    {
+        Assert.NotNull(response.Content);
+        Assert.NotNull(response.ContentStream);
+        using var contentReader = new StreamReader(response.Content.ToStream());
+        var content = contentReader.ReadToEnd();
+
+        Assert.Empty(content);
+    }
+
     private static void AssertSuccessfulJsonContent(Response response, SuccessfulResponseAssertOptions responseAssertOptions)
     {
         Assert.NotNull(response.Content);
         Assert.NotNull(response.ContentStream);
-        var contentReader = new StreamReader(response.Content.ToStream());
+        using var contentReader = new StreamReader(response.Content.ToStream());
         var content = contentReader.ReadToEnd();
+        Assert.NotEmpty(content);
 
-        if (responseAssertOptions.StatusCode == HttpStatusCode.NoContent)
-            Assert.Empty(content);
-        else
+        var jsonContent = JsonSerializer.Deserialize<JsonObject>(content)!;
+
+        var toCheck = new Queue<(JsonObject Element, IReadOnlyDictionary<string, object>)>([(jsonContent, responseAssertOptions.Content)]);
+        do
         {
-            var jsonContent = JsonSerializer.Deserialize<JsonObject>(content)!;
+            var (jsonObject, expectedItem) = toCheck.Dequeue();
 
-            Assert.Equal(responseAssertOptions.Content.Count, jsonContent.Count);
-            foreach (var jsonContentProperty in jsonContent)
+            Assert.Equal(expectedItem.Count, jsonObject.Count());
+            foreach (var expectedChild in expectedItem)
             {
-                Assert.Contains(jsonContentProperty.Key, responseAssertOptions.Content);
-                Assert.Equal(responseAssertOptions.Content[jsonContentProperty.Key], jsonContentProperty.Value?.GetValue<string>());
+                var propertyValue = jsonObject[expectedChild.Key];
+                Assert.NotNull(propertyValue);
+
+                if (expectedChild.Value is IReadOnlyDictionary<string, object> expectedElementChildren)
+                    toCheck.Enqueue((propertyValue.AsObject(), expectedElementChildren));
+                else
+                    Assert.Equal(expectedChild.Value, propertyValue.GetValue<string>());
             }
+        } while (toCheck.Count > 0);
+
+
+        Assert.Equal(responseAssertOptions.Content.Count, jsonContent.Count);
+        foreach (var jsonContentProperty in jsonContent)
+        {
+            Assert.Contains(jsonContentProperty.Key, responseAssertOptions.Content);
+            Assert.Equal(responseAssertOptions.Content[jsonContentProperty.Key], jsonContentProperty.Value?.GetValue<string>());
         }
     }
 
@@ -124,7 +210,7 @@ internal static class Assertions
             () => Assert.NotNull(response.ContentStream)
         );
 
-        var contentStreamReader = new StreamReader(response.Content.ToStream());
+        using var contentStreamReader = new StreamReader(response.Content.ToStream());
         var content = contentStreamReader.ReadToEnd();
         Assert.NotEmpty(content);
 
@@ -152,7 +238,89 @@ internal static class Assertions
         Assert.True(response.Headers.Date <= jsonContentOdataErrorMessageTime);
     }
 
-    private static void AssertException(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
+    private static void AssertSuccessfulXmlContent(Response response, SuccessfulResponseAssertOptions responseAssertOptions)
+    {
+        Assert.NotNull(response.Content);
+        Assert.NotNull(response.ContentStream);
+        using var contentReader = new StreamReader(response.Content.ToStream());
+        var content = contentReader.ReadToEnd();
+        Assert.NotEmpty(content);
+
+        using var xmlReader = XmlReader.Create(new StringReader(content));
+        var xmlContent = XDocument.Load(xmlReader);
+
+        var toCheck = new Queue<(XContainer Element, IReadOnlyDictionary<string, object>)>([(xmlContent, responseAssertOptions.Content)]);
+        do
+        {
+            var (xmlElement, expectedItem) = toCheck.Dequeue();
+
+            Assert.Equal(expectedItem.Count, xmlElement.Elements().Count());
+            foreach (var expectedChild in expectedItem)
+            {
+                var childXmlElement = xmlElement.Element(expectedChild.Key);
+                Assert.NotNull(childXmlElement);
+
+                if (expectedChild.Value is IReadOnlyDictionary<string, object> expectedElementChildren)
+                    toCheck.Enqueue((childXmlElement, expectedElementChildren));
+                else
+                    Assert.Equal(expectedChild.Value, childXmlElement.Value);
+            }
+        } while (toCheck.Count > 0);
+    }
+
+    private static void AssertUnsuccessfulXmlContent(Response response, UnsuccessfulResponseAssertOptions responseAssertOptions)
+    {
+        Assert.Multiple(
+            () => Assert.NotNull(response.Content),
+            () => Assert.NotNull(response.ContentStream)
+        );
+
+        using var contentStreamReader = new StreamReader(response.Content.ToStream());
+        var content = contentStreamReader.ReadToEnd();
+        Assert.NotEmpty(content);
+
+        using var xmlReader = XmlReader.Create(new StringReader(content));
+        var xmlContent = XDocument.Load(xmlReader);
+
+        Assert.NotNull(xmlContent.Root);
+        Assert.Equal("http://schemas.microsoft.com/ado/2007/08/dataservices/metadata", xmlContent.Root.GetNamespaceOfPrefix("m"));
+
+        Assert.Multiple(
+            () =>
+            {
+                var codeXmlElement = xmlContent.Root.Element(XName.Get("code", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"));
+
+                Assert.NotNull(codeXmlElement);
+                Assert.Equal(responseAssertOptions.ErrorCode, codeXmlElement.Value);
+            },
+            () =>
+            {
+                var errorMessageXmlElement = xmlContent.Root.Element(XName.Get("message", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"));
+
+                Assert.NotNull(errorMessageXmlElement);
+                Assert.Multiple(
+                    () =>
+                    {
+                        var langAttr = errorMessageXmlElement.Attribute(XName.Get("lang", "http://www.w3.org/XML/1998/namespace"));
+                        Assert.NotNull(langAttr);
+                        Assert.Equal("en-US", langAttr.Value);
+                    },
+                    () =>
+                    {
+                        Assert.Equal(
+                            $"{responseAssertOptions.ErrorDescription}\nRequestId:{response.Headers.RequestId}\nTime:",
+                            errorMessageXmlElement.Value[..^DateTimeFormat.Length]
+                        );
+
+                        var errorMessageTime = DateTimeOffset.ParseExact(errorMessageXmlElement.Value[^DateTimeFormat.Length..], DateTimeFormat, CultureInfo.InvariantCulture);
+                        Assert.True(response.Headers.Date <= errorMessageTime);
+                    }
+                );
+            }
+        );
+    }
+
+    private static void AssertExceptionInfo(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
     {
         Assert.Multiple(
             () => Assert.Equal("Azure.Data.Tables", exception.Source),
@@ -160,20 +328,23 @@ internal static class Assertions
             () => Assert.Equal(-2146233088, exception.HResult),
             () => Assert.Null(exception.InnerException),
             () => Assert.Empty(exception.Data),
-            () => Assert.Equal(responseAssertOptions.ErrorCode, exception.ErrorCode),
-            () => Assert.Equal(responseAssertOptions.StatusCode, (HttpStatusCode)exception.Status),
-            () => AssertExceptionMessage(exception, responseAssertOptions)
+            () => Assert.Equal(responseAssertOptions.ExceptiopnErrorCode, exception.ErrorCode),
+            () => Assert.Equal(responseAssertOptions.StatusCode, (HttpStatusCode)exception.Status)
         );
     }
 
-    private static void AssertExceptionMessage(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
+    private static void AssertJsonExceptionMessage(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
     {
         var utcNow = DateTimeOffset.UtcNow;
         var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
         var rawResponse = exception.GetRawResponse()!;
 
         var contentStreamReader = new StreamReader(rawResponse.Content.ToStream());
-        JsonObject jsonContent = JsonSerializer.Deserialize<JsonObject>(contentStreamReader.ReadToEnd())!;
+        var content = contentStreamReader.ReadToEnd();
+        Assert.NotEmpty(content);
+
+        var jsonContent = JsonSerializer.Deserialize<JsonObject>(content);
+        Assert.NotNull(jsonContent);
 
         var jsonContentOdataErrorMessageValue = jsonContent["odata.error"]!["message"]!["value"]!.GetValue<string>();
         var jsonContentOdataErrorMessageTime = DateTimeOffset.ParseExact(jsonContentOdataErrorMessageValue[^DateTimeFormat.Length..], DateTimeFormat, CultureInfo.InvariantCulture);
@@ -196,7 +367,7 @@ Status: {responseAssertOptions.StatusCode:D} ({spelledOutStatusCode})
 ErrorCode: {responseAssertOptions.ErrorCode}
 
 Content:
-{JsonSerializer.Serialize(jsonContent, new JsonSerializerOptions { WriteIndented = false })}
+{content}
 
 Headers:
 {string.Join("\n",
@@ -210,7 +381,56 @@ Headers:
         );
     }
 
-    public abstract class ResponseAssertOptions
+    private static void AssertXmlExceptionMessage(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
+    {
+        var utcNow = DateTimeOffset.UtcNow;
+        var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
+        var rawResponse = exception.GetRawResponse()!;
+
+        using var contentStreamReader = new StreamReader(rawResponse.Content.ToStream());
+        var content = contentStreamReader.ReadToEnd();
+        Assert.NotEmpty(content);
+
+        using var xmlReader = XmlReader.Create(new StringReader(content));
+        var xmlContent = XDocument.Load(xmlReader);
+        Assert.NotNull(xmlContent.Root);
+
+        var xmlErrorMessageElement = xmlContent.Root.Element(XName.Get("message", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"));
+        Assert.NotNull(xmlErrorMessageElement);
+
+        var xmlErrorMessage = xmlErrorMessageElement.Value;
+        var xmlErrorMessageTime = DateTimeOffset.ParseExact(xmlErrorMessage[^DateTimeFormat.Length..], DateTimeFormat, CultureInfo.InvariantCulture);
+
+        Assert.Multiple(
+            () => Assert.Equal(
+                $@"{responseAssertOptions.ErrorDescription}
+RequestId:{rawResponse.Headers.RequestId}
+Time:{xmlErrorMessageTime.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}",
+                xmlErrorMessage
+            ),
+            () => Assert.True(rawResponse.Headers.Date <= xmlErrorMessageTime),
+            () => Assert.InRange(xmlErrorMessageTime, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
+
+            () => Assert.Equal(
+                $@"Service request failed.
+Status: {responseAssertOptions.StatusCode:D} ({responseAssertOptions.ErrorPhrase ?? spelledOutStatusCode})
+
+Content:
+{content}
+
+Headers:
+{string.Join("\n",
+    from header in rawResponse!.Headers
+    let headerValue = (_nonRedactedHeaderNames.Contains(header.Name) ? header.Value : "REDACTED")
+    select $"{header.Name}: {headerValue}"
+)}
+".Replace("\r", string.Empty),
+                exception.Message
+            )
+        );
+    }
+
+    public class ResponseAssertOptions
     {
         public required HttpStatusCode StatusCode { get; init; }
         public required IDictionary<string, string?> Headers { get; init; }
@@ -218,13 +438,28 @@ Headers:
 
     public class SuccessfulResponseAssertOptions : ResponseAssertOptions
     {
-        public IDictionary<string, string> Content { get; } = new Dictionary<string, string>();
+        public Dictionary<string, object> Content { get; } = [];
     }
 
     public class UnsuccessfulResponseAssertOptions : ResponseAssertOptions
     {
+        private bool _exceptionErrorCodeSet = false;
+
         public required string ErrorCode { get; init; }
+
+        public string? ExceptiopnErrorCode
+        {
+            get => _exceptionErrorCodeSet ? field : ErrorCode;
+            set
+            {
+                field = value;
+                _exceptionErrorCodeSet = true;
+            }
+        }
+
         public required string ErrorDescription { get; init; }
+
+        public string? ErrorPhrase { get; set; }
     }
 
     public class DefaultHeaders : Dictionary<string, string?>
@@ -246,7 +481,7 @@ Headers:
 
     public class XmlContentHeaders : DefaultHeaders
     {
-        public XmlContentHeaders(Response response) : base(response)
+        public XmlContentHeaders(Response? response) : base(response)
         {
             this["Content-Type"] = "application/xml";
 
@@ -257,11 +492,21 @@ Headers:
 
     public class NoContentHeaders : DefaultHeaders
     {
-        public NoContentHeaders(Response response) : base(response)
+        public NoContentHeaders(Response? response) : base(response)
         {
             Add("Content-Length", "0");
 
             Remove("Transfer-Encoding");
+            Remove("Content-Type");
+        }
+    }
+
+    public class AcceptedHeaders : DefaultHeaders
+    {
+        public AcceptedHeaders(Response? response) : base(response)
+        {
+            Remove("Cache-Control");
+            Remove("X-Content-Type-Options");
             Remove("Content-Type");
         }
     }

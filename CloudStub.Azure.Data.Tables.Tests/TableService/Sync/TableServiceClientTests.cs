@@ -1,4 +1,6 @@
 using System.Net;
+using Azure.Data.Tables;
+using Azure.Data.Tables.Models;
 using Azure.Data.Tables.Sas;
 
 namespace CloudStub.Azure.Data.Tables.Tests.TableService.Sync;
@@ -56,7 +58,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         TableServiceClient.CreateTable(TestTableName);
 
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTable(TestTableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -73,7 +75,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("1nvalid")]
     public void CreateTable_WhenTableNameIsInvalid_ThrowsException(string tableName)
     {
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTable(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -89,7 +91,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("tables")]
     public void CreateTable_WhenTableNameIsReserved_ThrowsException(string tableName)
     {
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTable(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -107,7 +109,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
     public void CreateTable_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
     {
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTable(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -115,7 +117,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
                 Headers = new Assertions.DefaultHeaders(rawResponse),
                 ErrorCode = "OutOfRangeInput",
                 ErrorDescription = "The specified resource name length is not within the permissible limits."
-            }   
+            }
         );
     }
 
@@ -188,7 +190,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("1nvalid")]
     public void CreateTableIfNotExists_WhenTableNameIsInvalid_ThrowsException(string tableName)
     {
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTableIfNotExists(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -207,7 +209,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("tables")]
     public void CreateTableIfNotExists_WhenTableNameIsReserved_ThrowsException(string tableName)
     {
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTableIfNotExists(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -228,7 +230,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
     public void CreateTableIfNotExists_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
     {
-        Assertions.Throws(
+        Assertions.JsonResponseThrows(
             () => TableServiceClient.CreateTableIfNotExists(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
@@ -272,17 +274,12 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
-            () => Assertions.SuccessfulJsonResponse(
+            () => Assertions.EmptyResponse(
                 rawResponse,
-                new Assertions.SuccessfulResponseAssertOptions
+                new Assertions.ResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.NoContent,
-                    Headers = new Assertions.NoContentHeaders(rawResponse),
-                    Content =
-                    {
-                        { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
-                        { "TableName", TestTableName }
-                    },
+                    Headers = new Assertions.NoContentHeaders(rawResponse)
                 }
             )
         );
@@ -394,7 +391,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void GetProperties_WhenCalled_GeneratesValidSasUri()
+    public void GetProperties_WhenCalled_GetsTableStorageProperties()
     {
         var response = TableServiceClient.GetProperties();
 
@@ -403,18 +400,165 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
-            () => Assertions.SuccessfulJsonResponse(
+            () => Assertions.SuccessfulXmlResponse(
                 rawResponse,
                 new Assertions.SuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.OK,
-                    Headers = new Assertions.XmlContentHeaders(rawResponse)
+                    Headers = new Assertions.XmlContentHeaders(rawResponse),
+                    Content = {
+                        { "StorageServiceProperties", new Dictionary<string, object> {
+                            { "Logging", new Dictionary<string, object> {
+                                { "Version", "1.0" },
+                                { "Delete", "false" },
+                                { "Read", "false" },
+                                { "Write", "false" },
+                                { "RetentionPolicy", new Dictionary<string, object> {
+                                    { "Enabled", "false" }
+                                }}
+                            }},
+                            { "HourMetrics", new Dictionary<string, object> {
+                                { "Version", "1.0" },
+                                { "Enabled", "false" },
+                                { "RetentionPolicy", new Dictionary<string, object> {
+                                    { "Enabled", "false" }
+                                }}
+                            }},
+                            { "MinuteMetrics", new Dictionary<string, object> {
+                                { "Version", "1.0" },
+                                { "Enabled", "false" },
+                                { "RetentionPolicy", new Dictionary<string, object> {
+                                    { "Enabled", "false" }
+                                }}
+                            }},
+                            { "Cors", string.Empty }
+                        }}
+                    }
                 }
             ),
             () =>
             {
                 Assert.NotNull(properties);
-                // Assert.Equal(TestTableName, properties.Cors);
+                Assert.Multiple(
+                    () =>
+                    {
+                        Assert.NotNull(properties.Logging);
+                        Assert.Multiple(
+                            () => Assert.Equal("1.0", properties.Logging.Version),
+                            () => Assert.False(properties.Logging.Read),
+                            () => Assert.False(properties.Logging.Write),
+                            () => Assert.False(properties.Logging.Delete),
+                            () =>
+                            {
+                                Assert.NotNull(properties.Logging.RetentionPolicy);
+                                Assert.Multiple(
+                                    () => Assert.False(properties.Logging.RetentionPolicy.Enabled),
+                                    () => Assert.Null(properties.Logging.RetentionPolicy.Days)
+                                );
+                            }
+                        );
+                    },
+                    () =>
+                    {
+                        Assert.NotNull(properties.HourMetrics);
+                        Assert.Multiple(
+                            () => Assert.Equal("1.0", properties.HourMetrics.Version),
+                            () => Assert.False(properties.HourMetrics.Enabled),
+                            () =>
+                            {
+                                Assert.NotNull(properties.HourMetrics.RetentionPolicy);
+                                Assert.Multiple(
+                                    () => Assert.False(properties.HourMetrics.RetentionPolicy.Enabled),
+                                    () => Assert.Null(properties.HourMetrics.RetentionPolicy.Days)
+                                );
+                            }
+                        );
+                    },
+                    () =>
+                    {
+                        Assert.NotNull(properties.MinuteMetrics);
+                        Assert.Multiple(
+                            () => Assert.False(properties.MinuteMetrics.RetentionPolicy.Enabled),
+                            () => Assert.Null(properties.MinuteMetrics.RetentionPolicy.Days)
+                        );
+                    },
+                    () => Assert.Empty(properties.Cors)
+                );
+            }
+        );
+    }
+
+    [Fact]
+    public void SetProperties_WhenCalled_UpdatesTableStorageProperties()
+    {
+        var response = TableServiceClient.SetProperties(new TableServiceProperties
+        {
+            Logging = new TableAnalyticsLoggingSettings(
+                version: "1.0",
+                delete: false,
+                read: false,
+                write: false,
+                retentionPolicy: new TableRetentionPolicy(enabled: false)
+            ),
+            HourMetrics = new TableMetrics(false)
+            {
+                Version = "1.0",
+                RetentionPolicy = new TableRetentionPolicy(enabled: false)
+                {
+                    Days = null
+                }
+            },
+            MinuteMetrics = new TableMetrics(false)
+            {
+                Version = "1.0",
+                RetentionPolicy = new TableRetentionPolicy(enabled: false)
+                {
+                    Days = null
+                }
+            }
+        });
+
+        Assertions.EmptyResponse(
+            response,
+            new Assertions.ResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.Accepted,
+                Headers = new Assertions.AcceptedHeaders(response)
+            }
+        );
+    }
+
+    [Fact]
+    public void SetProperties_WhenCalledWithNull_ThrowsException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>("tableServiceProperties", () => TableServiceClient.SetProperties(null));
+
+        Assert.Equal(new ArgumentNullException("tableServiceProperties").Message, exception.Message);
+    }
+
+    [Fact]
+    public void SetProperties_WhenCalledWithEmptyProperties_ThrowsException()
+    {
+        var exception = Assertions.XmlResponseThrows(
+            () => TableServiceClient.SetProperties(new TableServiceProperties()),
+            rawResponse =>
+            {
+                var headers = new Assertions.XmlContentHeaders(rawResponse)
+                {
+                    { "Content-Length", "327" },
+                    { "x-ms-error-code", "InvalidXmlDocument" }
+                };
+                headers.Remove("Transfer-Encoding");
+
+                return new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    Headers = headers,
+                    ErrorCode = "InvalidXmlDocument",
+                    ExceptiopnErrorCode = null,
+                    ErrorDescription = "XML specified is not syntactically valid.",
+                    ErrorPhrase = "XML specified is not syntactically valid.",
+                };
             }
         );
     }
