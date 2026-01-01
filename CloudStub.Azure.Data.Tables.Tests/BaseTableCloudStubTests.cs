@@ -5,7 +5,7 @@ namespace CloudStub.Azure.Data.Tables.Tests;
 [Collection(nameof(TestRunFixtureCollection))]
 public abstract class BaseTableCloudStubTests
 {
-    private static string _TableNamePrefix = "TestTable" + Random.Shared.Next(1000, 9999);
+    private static string _TableNamePrefix = "TestTable" + (int)(DateTime.UtcNow - DateTime.UtcNow.Date).TotalSeconds;
     private static int _tableCounter = 0;
 
     public BaseTableCloudStubTests()

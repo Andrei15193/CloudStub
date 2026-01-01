@@ -6,7 +6,6 @@ using Xunit;
 
 namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
 {
-    // Not covered for GH-20
     public class StubCloudTableQueryTests : BaseStubCloudTableTests
     {
         [Fact]
@@ -237,7 +236,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThanOrEqual, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThan, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThanOrEqual, "3")]
-        public void ExecuteQuery_WhenUsingFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        public void ExecuteQuery_WhenUsingFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -262,7 +261,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void ExecuteQuery_WhenUsingPropertyNameFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName)
+        public void ExecuteQuery_WhenUsingPropertyNameFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -287,7 +286,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void ExecuteQuery_WhenUsingPropertyNameFilterOnExistantProperty_ReturnsNotEntities(string propertyName)
+        public void ExecuteQuery_WhenUsingPropertyNameFilterOnExistentProperty_ReturnsNotEntities(string propertyName)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity

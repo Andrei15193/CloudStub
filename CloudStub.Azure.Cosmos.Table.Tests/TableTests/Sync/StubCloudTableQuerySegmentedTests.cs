@@ -237,7 +237,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThanOrEqual, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThan, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThanOrEqual, "3")]
-        public void ExecuteQuerySegmented_WhenUsingFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        public void ExecuteQuerySegmented_WhenUsingFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -262,7 +262,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void ExecuteQuerySegmented_WhenUsingPropertyNameFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName)
+        public void ExecuteQuerySegmented_WhenUsingPropertyNameFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity
@@ -287,7 +287,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void ExecuteQuerySegmented_WhenUsingPropertyNameFilterOnExistantProperty_ReturnsNotEntities(string propertyName)
+        public void ExecuteQuerySegmented_WhenUsingPropertyNameFilterOnExistentProperty_ReturnsNotEntities(string propertyName)
         {
             CloudTable.CreateIfNotExists();
             CloudTable.Execute(TableOperation.Insert(new TestQueryEntity

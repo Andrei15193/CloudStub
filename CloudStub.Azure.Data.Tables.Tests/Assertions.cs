@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
@@ -6,7 +5,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
-using System.Xml.Serialization;
 using Azure;
 
 namespace CloudStub.Azure.Data.Tables.Tests;
@@ -14,6 +12,7 @@ namespace CloudStub.Azure.Data.Tables.Tests;
 internal static class Assertions
 {
     private const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
+    private const string DateTimeValueFormat = "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ";
     private static readonly ICollection<string> _nonRedactedHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Cache-Control",
@@ -185,22 +184,45 @@ internal static class Assertions
             foreach (var expectedChild in expectedItem)
             {
                 var propertyValue = jsonObject[expectedChild.Key];
-                Assert.NotNull(propertyValue);
 
                 if (expectedChild.Value is IReadOnlyDictionary<string, object> expectedElementChildren)
-                    toCheck.Enqueue((propertyValue.AsObject(), expectedElementChildren));
+                    toCheck.Enqueue((propertyValue!.AsObject(), expectedElementChildren));
+                else if (expectedChild.Value is IEnumerable<object> expectedList)
+                {
+                    Assert.Equal(expectedList.Count(), propertyValue!.AsArray().Count);
+
+                    foreach (var (listItem, expectedListItem) in propertyValue.AsArray().Zip(expectedList, (listItem, expectedListItem) => (listItem, expectedListItem)))
+                        toCheck.Enqueue((listItem!.AsObject(), (IReadOnlyDictionary<string, object>)expectedListItem));
+                }
+                else if (expectedChild.Value is bool @bool)
+                    Assert.Equal(@bool, propertyValue?.GetValue<bool>());
+                else if (expectedChild.Value is Guid guid)
+                    Assert.Equal(guid, propertyValue?.GetValue<Guid>());
+
+                else if (expectedChild.Value is DateTime dateTime)
+                    Assert.Equal(dateTime.ToString(DateTimeValueFormat), propertyValue?.GetValue<string>());
+                else if (expectedChild.Value is DateTimeOffset dateTimeOffset)
+                    Assert.Equal(dateTimeOffset.ToString(DateTimeValueFormat), propertyValue?.GetValue<string>());
+
+                else if (expectedChild.Value is int @int)
+                    Assert.Equal(@int, propertyValue?.GetValue<int>());
+                else if (expectedChild.Value is long @long)
+                    Assert.Equal(@long.ToString(), propertyValue?.GetValue<string>());
+                else if (expectedChild.Value is float @float)
+                    Assert.Equal(@float, propertyValue?.GetValue<float>());
+                else if (expectedChild.Value is double @double)
+                    Assert.Equal(@double, propertyValue?.GetValue<double>());
+
+                else if (expectedChild.Value is byte[] byteArray)
+                    Assert.Equal(Convert.ToBase64String(byteArray), propertyValue?.GetValue<string>());
+
+                else if (expectedChild.Value is ETag eTag)
+                    Assert.Equal(eTag.ToString(), propertyValue?.GetValue<string>());
+
                 else
-                    Assert.Equal(expectedChild.Value, propertyValue.GetValue<string>());
+                    Assert.Equal(expectedChild.Value, propertyValue?.GetValue<string>());
             }
         } while (toCheck.Count > 0);
-
-
-        Assert.Equal(responseAssertOptions.Content.Count, jsonContent.Count);
-        foreach (var jsonContentProperty in jsonContent)
-        {
-            Assert.Contains(jsonContentProperty.Key, responseAssertOptions.Content);
-            Assert.Equal(responseAssertOptions.Content[jsonContentProperty.Key], jsonContentProperty.Value?.GetValue<string>());
-        }
     }
 
     private static void AssertUnsuccessfulJsonContent(Response response, UnsuccessfulResponseAssertOptions responseAssertOptions)

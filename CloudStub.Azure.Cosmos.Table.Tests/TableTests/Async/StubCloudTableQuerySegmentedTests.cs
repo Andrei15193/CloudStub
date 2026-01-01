@@ -238,7 +238,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Async
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.LessThanOrEqual, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThan, "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), QueryComparisons.GreaterThanOrEqual, "3")]
-        public async Task ExecuteQuerySegmentedAsync_WhenUsingFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
         {
             await CloudTable.CreateIfNotExistsAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
@@ -263,7 +263,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Async
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public async Task ExecuteQuerySegmentedAsync_WhenUsingPropertyNameFilterOnNonExistantProperty_ReturnsNoEntities(string propertyName)
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingPropertyNameFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName)
         {
             await CloudTable.CreateIfNotExistsAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
@@ -288,7 +288,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableTests.Async
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public async Task ExecuteQuerySegmentedAsync_WhenUsingPropertyNameFilterOnExistantProperty_ReturnsNotEntities(string propertyName)
+        public async Task ExecuteQuerySegmentedAsync_WhenUsingPropertyNameFilterOnExistentProperty_ReturnsNotEntities(string propertyName)
         {
             await CloudTable.CreateIfNotExistsAsync();
             await CloudTable.ExecuteAsync(TableOperation.Insert(new TestQueryEntity
