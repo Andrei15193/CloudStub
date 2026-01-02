@@ -305,7 +305,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
             () => result.First(),
             response =>
             {
-                var headers =  new Assertions.DefaultHeaders(response);
+                var headers = new Assertions.DefaultHeaders(response);
                 headers.Remove("Cache-Control");
 
                 return new Assertions.UnsuccessfulResponseAssertOptions
@@ -315,6 +315,27 @@ public class TableClientQueryTests : BaseTableCloudStubTests
                     ErrorDescription = "Syntax error at position 23 in 'property1 eq 1'invalid''.",
                     Headers = headers
                 };
+            }
+        );
+    }
+
+    [Theory]
+    [InlineData("property1 eq propery2")]
+    [InlineData("1 eq 2")]
+    public void Query_WhenUsingUnsupportedFilter_ThrowsException(string filter)
+    {
+        CloudTable.Create();
+
+        var result = CloudTable.Query<TableEntity>(filter).AsPages();
+
+        Assertions.JsonResponseThrows(
+            () => result.First(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.NotImplemented,
+                ErrorCode = "NotImplemented",
+                ErrorDescription = "The requested operation is not implemented on the specified resource.",
+                Headers = new Assertions.DefaultHeaders(response)
             }
         );
     }
