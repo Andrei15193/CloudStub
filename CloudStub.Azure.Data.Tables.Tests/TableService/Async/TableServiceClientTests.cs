@@ -361,6 +361,83 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
+    public void QueryAsync_WhenThereIsNoMatchingTestTable_ReturnsEmptyResult()
+    {
+        var result = TableServiceClient.QueryAsync($"TableName eq '{TestTableName}'");
+
+        var page = Assert.Single(result.AsPages());
+        Assert.Multiple(
+            () => Assert.Empty(page.Values),
+            () => Assert.Null(page.ContinuationToken),
+            () =>
+            {
+                var response = page.GetRawResponse();
+                Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Headers = new Assertions.DefaultHeaders(response),
+                    Content =
+                    {
+                        { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                        { "value", new List<IReadOnlyDictionary<string, object>>() }
+                    }
+                });
+            }
+        );
+    }
+
+    [Fact]
+    public void QueryAsync_WhenThereIsMatchingTestTable_ReturnsTestTable()
+    {
+        TableServiceClient.CreateTable(TestTableName);
+        var result = TableServiceClient.QueryAsync($"TableName eq '{TestTableName}'");
+
+        var page = Assert.Single(result.AsPages());
+        Assert.Multiple(
+            () => Assert.Single(page.Values),
+            () => Assert.Null(page.ContinuationToken),
+            () =>
+            {
+                var response = page.GetRawResponse();
+                Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Headers = new Assertions.DefaultHeaders(response),
+                    Content =
+                    {
+                        { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                        { "value", new List<IReadOnlyDictionary<string, object>>
+                            {
+                                new Dictionary<string, object>
+                                {
+                                    { "TableName", TestTableName }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        );
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhenSpecifyingNonExistentPropertyName_ThrowsException()
+    {
+        var result = TableServiceClient.QueryAsync($"name eq 'does not exist'");
+
+        await Assertions.JsonResponseThrowsAsync(
+            async () => await result.ToListAsync(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.InternalServerError,
+                ErrorCode = "InternalError",
+                ErrorDescription = "Server encountered an internal error. Please try again after some time.",
+                Headers = new Assertions.DefaultHeaders(response)
+            }
+        );
+    }
+
+    [Fact]
     public async Task GetProperties_WhenCalled_GetsTableStorageProperties()
     {
         var response = await TableServiceClient.GetPropertiesAsync();
@@ -531,5 +608,11 @@ public class StubCloudTableTests : BaseTableCloudStubTests
                 };
             }
         );
+    }
+
+    [Fact]
+    public async Task GetStatisticsAsync_WhenCalled_ThrowsException()
+    {
+        await Assert.ThrowsAnyAsync<Exception>(() => TableServiceClient.GetStatisticsAsync());
     }
 }
