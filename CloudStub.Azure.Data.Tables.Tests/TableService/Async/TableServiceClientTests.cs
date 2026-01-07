@@ -1,30 +1,23 @@
 using System.Net;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
-using Azure.Data.Tables.Sas;
 
-namespace CloudStub.Azure.Data.Tables.Tests.TableService.Sync;
+namespace CloudStub.Azure.Data.Tables.Tests.TableService.Async;
 
 public class StubCloudTableTests : BaseTableCloudStubTests
 {
     [Fact(Skip = "Include this for CloudTableStub tests")]
-    public void TableName_GetsTheSameNameWhichWasProvided()
+    public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()
     {
-        Assert.Equal(TestTableName, CloudTable.Name);
-    }
-
-    [Fact(Skip = "Include this for CloudTableStub tests")]
-    public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()
-    {
-        CloudTable.Create();
-        CloudTable.AddEntity(new TableEntity("partition-key", "row-key"));
-        CloudTable.Delete();
+        await CloudTable.CreateAsync();
+        await CloudTable.AddEntityAsync(new TableEntity("partition-key", "row-key"));
+        await CloudTable.DeleteAsync();
 
         if (!TestRunContext.InMemory)
-            Thread.Sleep(TimeSpan.FromMinutes(1));
-        CloudTable.Create();
+            await Task.Delay(TimeSpan.FromMinutes(1));
+        await CloudTable.CreateAsync();
 
-        var entities = CloudTable.Query<TableEntity>();
+        var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
 
         Assert.Empty(entities);
     }
@@ -36,9 +29,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void CreateTable_WhenTableDoesNotExist_ReturnsTableItem()
+    public async Task CreateTableAsync_WhenTableDoesNotExist_ReturnsTableItem()
     {
-        var response = TableServiceClient.CreateTable(TestTableName);
+        var response = await TableServiceClient.CreateTableAsync(TestTableName);
 
         var tableItem = response.Value;
         var rawResponse = response.GetRawResponse();
@@ -70,12 +63,12 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void CreateTable_WhenTableExists_ThrowsException()
+    public async Task CreateTableAsync_WhenTableExists_ThrowsException()
     {
-        TableServiceClient.CreateTable(TestTableName);
+        await TableServiceClient.CreateTableAsync(TestTableName);
 
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTable(TestTableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableAsync(TestTableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.Conflict,
@@ -89,10 +82,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Theory]
     [InlineData("invalid_table_name")]
     [InlineData("1nvalid")]
-    public void CreateTable_WhenTableNameIsInvalid_ThrowsException(string tableName)
+    public async Task CreateTableAsync_WhenTableNameIsInvalid_ThrowsException(string tableName)
     {
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTable(tableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableAsync(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.BadRequest,
@@ -105,10 +98,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
     [Theory]
     [InlineData("tables")]
-    public void CreateTable_WhenTableNameIsReserved_ThrowsException(string tableName)
+    public async Task CreateTableAsync_WhenTableNameIsReserved_ThrowsException(string tableName)
     {
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTable(tableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableAsync(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.BadRequest,
@@ -123,10 +116,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("t")]
     [InlineData("tt")]
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
-    public void CreateTable_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+    public async Task CreateTableAsync_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
     {
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTable(tableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableAsync(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.BadRequest,
@@ -138,11 +131,11 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void CreateTableIfNotExists_WhenTableDoesNotExist_ReturnsTableItem()
+    public async Task CreateTableIfNotExistsAsync_WhenTableDoesNotExist_ReturnsTableItem()
     {
-        TableServiceClient.CreateTable(TestTableName);
+        await TableServiceClient.CreateTableAsync(TestTableName);
 
-        var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
+        var response = await TableServiceClient.CreateTableIfNotExistsAsync(TestTableName);
         var tableItem = response.Value;
         var rawResponse = response.GetRawResponse();
 
@@ -170,11 +163,11 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void CreateTableIfNotExists_WhenTableExists_ThrowsException()
+    public async Task CreateTableIfNotExistsAsync_WhenTableExists_ThrowsException()
     {
-        TableServiceClient.CreateTable(TestTableName);
+        await TableServiceClient.CreateTableAsync(TestTableName);
 
-        var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
+        var response = await TableServiceClient.CreateTableIfNotExistsAsync(TestTableName);
         var tableItem = response.Value;
         var rawResponse = response.GetRawResponse();
 
@@ -204,10 +197,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Theory]
     [InlineData("invalid_table_name")]
     [InlineData("1nvalid")]
-    public void CreateTableIfNotExists_WhenTableNameIsInvalid_ThrowsException(string tableName)
+    public async Task CreateTableIfNotExistsAsync_WhenTableNameIsInvalid_ThrowsException(string tableName)
     {
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTableIfNotExists(tableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableIfNotExistsAsync(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.BadRequest,
@@ -223,10 +216,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
     [Theory]
     [InlineData("tables")]
-    public void CreateTableIfNotExists_WhenTableNameIsReserved_ThrowsException(string tableName)
+    public async Task CreateTableIfNotExistsAsync_WhenTableNameIsReserved_ThrowsException(string tableName)
     {
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTableIfNotExists(tableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableIfNotExistsAsync(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.BadRequest,
@@ -244,10 +237,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("t")]
     [InlineData("tt")]
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
-    public void CreateTableIfNotExists_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+    public async Task CreateTableIfNotExistsAsync_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
     {
-        Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTableIfNotExists(tableName),
+        await Assertions.JsonResponseThrowsAsync(
+            () => TableServiceClient.CreateTableIfNotExistsAsync(tableName),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.BadRequest,
@@ -262,9 +255,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void DeleteTable_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
+    public async Task DeleteTableAsync_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
     {
-        var rawResponse = TableServiceClient.DeleteTable(TestTableName);
+        var rawResponse = await TableServiceClient.DeleteTableAsync(TestTableName);
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
@@ -282,11 +275,11 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void DeleteTable_WhenTableExists_ReturnsSuccessfulResponse()
+    public async Task DeleteTableAsync_WhenTableExists_ReturnsSuccessfulResponse()
     {
-        TableServiceClient.CreateTable(TestTableName);
+        await TableServiceClient.CreateTableAsync(TestTableName);
 
-        var rawResponse = TableServiceClient.DeleteTable(TestTableName);
+        var rawResponse = await TableServiceClient.DeleteTableAsync(TestTableName);
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
@@ -304,9 +297,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Theory]
     [InlineData("invalid_table_name")]
     [InlineData("1nvalid")]
-    public void DeleteTable_WhenTableNameIsInvalid_ThrowsException(string tableName)
+    public async Task DeleteTableAsync_WhenTableNameIsInvalid_ThrowsException(string tableName)
     {
-        var rawResponse = TableServiceClient.DeleteTable(tableName);
+        var rawResponse = await TableServiceClient.DeleteTableAsync(tableName);
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
@@ -325,9 +318,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
     [Theory]
     [InlineData("tables")]
-    public void DeleteTable_WhenTableNameIsReserved_ThrowsException(string tableName)
+    public async Task DeleteTableAsync_WhenTableNameIsReserved_ThrowsException(string tableName)
     {
-        var rawResponse = TableServiceClient.DeleteTable(tableName);
+        var rawResponse = await TableServiceClient.DeleteTableAsync(tableName);
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
@@ -348,9 +341,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("t")]
     [InlineData("tt")]
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
-    public void DeleteTable_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+    public async Task DeleteTableAsync_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
     {
-        var rawResponse = TableServiceClient.DeleteTable(tableName);
+        var rawResponse = await TableServiceClient.DeleteTableAsync(tableName);
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
@@ -367,49 +360,10 @@ public class StubCloudTableTests : BaseTableCloudStubTests
         );
     }
 
-    [Theory]
-    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.All)]
-    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.All)]
-    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.All)]
-    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.All)]
-    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.All)]
-    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.All)]
-    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.All)]
-
-    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.Container)]
-    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.Container)]
-    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.Container)]
-    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.Container)]
-    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.Container)]
-    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.Container)]
-    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.Container)]
-
-    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.Object)]
-    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.Object)]
-    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.Object)]
-    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.Object)]
-    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.Object)]
-    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.Object)]
-    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.Object)]
-
-    [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.Service)]
-    [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.Service)]
-    [InlineData(TableAccountSasPermissions.Delete, TableAccountSasResourceTypes.Service)]
-    [InlineData(TableAccountSasPermissions.List, TableAccountSasResourceTypes.Service)]
-    [InlineData(TableAccountSasPermissions.Read, TableAccountSasResourceTypes.Service)]
-    [InlineData(TableAccountSasPermissions.Update, TableAccountSasResourceTypes.Service)]
-    [InlineData(TableAccountSasPermissions.Write, TableAccountSasResourceTypes.Service)]
-    public void GenerateSasUri_WhenCalled_GeneratesValidSasUri(TableAccountSasPermissions permissions, TableAccountSasResourceTypes resourceTypes)
-    {
-        var sasUri = TableServiceClient.GenerateSasUri(permissions, resourceTypes, DateTimeOffset.UtcNow.AddHours(1));
-
-        Assert.NotNull(sasUri);
-    }
-
     [Fact]
-    public void GetProperties_WhenCalled_GetsTableStorageProperties()
+    public async Task GetProperties_WhenCalled_GetsTableStorageProperties()
     {
-        var response = TableServiceClient.GetProperties();
+        var response = await TableServiceClient.GetPropertiesAsync();
 
         var properties = response.Value;
         var rawResponse = response.GetRawResponse();
@@ -505,9 +459,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void SetProperties_WhenCalled_UpdatesTableStorageProperties()
+    public async Task SetPropertiesAsync_WhenCalled_UpdatesTableStorageProperties()
     {
-        var response = TableServiceClient.SetProperties(new TableServiceProperties
+        var response = await TableServiceClient.SetPropertiesAsync(new TableServiceProperties
         {
             Logging = new TableAnalyticsLoggingSettings(
                 version: "1.0",
@@ -545,18 +499,18 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void SetProperties_WhenCalledWithNull_ThrowsException()
+    public async Task SetPropertiesAsync_WhenCalledWithNull_ThrowsException()
     {
-        var exception = Assert.Throws<ArgumentNullException>("tableServiceProperties", () => TableServiceClient.SetProperties(null));
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>("tableServiceProperties", () => TableServiceClient.SetPropertiesAsync(null));
 
         Assert.Equal(new ArgumentNullException("tableServiceProperties").Message, exception.Message);
     }
 
     [Fact]
-    public void SetProperties_WhenCalledWithEmptyProperties_ThrowsException()
+    public async Task SetPropertiesAsync_WhenCalledWithEmptyProperties_ThrowsException()
     {
-        var exception = Assertions.XmlResponseThrows(
-            () => TableServiceClient.SetProperties(new TableServiceProperties()),
+        var exception = await Assertions.XmlResponseThrowsAsync(
+            () => TableServiceClient.SetPropertiesAsync(new TableServiceProperties()),
             rawResponse =>
             {
                 var headers = new Assertions.XmlContentHeaders(rawResponse)
@@ -577,11 +531,5 @@ public class StubCloudTableTests : BaseTableCloudStubTests
                 };
             }
         );
-    }
-
-    [Fact]
-    public void GetStatistics_WhenCalled_ThrowsException()
-    {
-        Assert.ThrowsAny<Exception>(() => TableServiceClient.GetStatistics());
     }
 }

@@ -85,6 +85,23 @@ internal static class Assertions
         return response;
     }
 
+    public static async Task<RequestFailedException> JsonResponseThrowsAsync(Func<Task> action, Func<Response?, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+    {
+        var exception = await Assert.ThrowsAsync<RequestFailedException>(action);
+        var rawResponse = exception.GetRawResponse();
+
+        var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+        Assert.Multiple(
+            () => AssertExceptionInfo(exception, responseAssertOptions),
+            () => AssertJsonExceptionMessage(exception, responseAssertOptions),
+            () => Assert.True(rawResponse?.IsError),
+            () => UnsuccessfulJsonResponse(rawResponse, responseAssertOptions)
+        );
+
+        return exception;
+    }
+
     public static RequestFailedException JsonResponseThrows(Action action, Func<Response?, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
     {
         var exception = Assert.Throws<RequestFailedException>(action);
@@ -97,6 +114,23 @@ internal static class Assertions
             () => AssertJsonExceptionMessage(exception, responseAssertOptions),
             () => Assert.True(rawResponse?.IsError),
             () => UnsuccessfulJsonResponse(rawResponse, responseAssertOptions)
+        );
+
+        return exception;
+    }
+
+    public static async Task<RequestFailedException> XmlResponseThrowsAsync(Func<Task> action, Func<Response?, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+    {
+        var exception = await Assert.ThrowsAsync<RequestFailedException>(action);
+        var rawResponse = exception.GetRawResponse();
+
+        var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+        Assert.Multiple(
+            () => AssertExceptionInfo(exception, responseAssertOptions),
+            () => AssertXmlExceptionMessage(exception, responseAssertOptions),
+            () => Assert.True(rawResponse?.IsError),
+            () => UnsuccessfulXmlResponse(rawResponse, responseAssertOptions)
         );
 
         return exception;
