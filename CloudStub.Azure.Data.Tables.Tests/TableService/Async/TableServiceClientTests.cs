@@ -131,27 +131,25 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public async Task CreateTableIfNotExistsAsync_WhenTableDoesNotExist_ReturnsTableItem()
+    public async Task CreateTableIfNotExistsAsync_WhenTableDoesNotExist_ReturnsTableItemWithNoContentResponse()
     {
-        await TableServiceClient.CreateTableAsync(TestTableName);
-
         var response = await TableServiceClient.CreateTableIfNotExistsAsync(TestTableName);
         var tableItem = response.Value;
         var rawResponse = response.GetRawResponse();
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
-            () => Assertions.UnsuccessfulJsonResponse(
+            () => Assertions.EmptyResponse(
                 rawResponse,
-                new Assertions.UnsuccessfulResponseAssertOptions
+                new Assertions.SuccessfulResponseAssertOptions
                 {
-                    StatusCode = HttpStatusCode.Conflict,
-                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(rawResponse)
                     {
-                        { "Preference-Applied", "return-no-content" }
-                    },
-                    ErrorCode = "TableAlreadyExists",
-                    ErrorDescription = "The table specified already exists."
+                        { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" },
+                        { "Preference-Applied", "return-no-content" },
+                        { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TestTableName}')"}
+                    }
                 }
             ),
             () =>
@@ -163,9 +161,9 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public async Task CreateTableIfNotExistsAsync_WhenTableExists_ThrowsException()
+    public async Task CreateTableIfNotExistsAsync_WhenTableExists_ReturnsTableItemWithConflictResponse()
     {
-        await TableServiceClient.CreateTableAsync(TestTableName);
+        TableServiceClient.CreateTable(TestTableName);
 
         var response = await TableServiceClient.CreateTableIfNotExistsAsync(TestTableName);
         var tableItem = response.Value;
@@ -297,7 +295,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Theory]
     [InlineData("invalid_table_name")]
     [InlineData("1nvalid")]
-    public async Task DeleteTableAsync_WhenTableNameIsInvalid_ThrowsException(string tableName)
+    public async Task DeleteTableAsync_WhenTableNameIsInvalid_ReturnsUnsuccessfulResponse(string tableName)
     {
         var rawResponse = await TableServiceClient.DeleteTableAsync(tableName);
 
@@ -318,7 +316,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
     [Theory]
     [InlineData("tables")]
-    public async Task DeleteTableAsync_WhenTableNameIsReserved_ThrowsException(string tableName)
+    public async Task DeleteTableAsync_WhenTableNameIsReserved_ReturnsUnsuccessfulResponse(string tableName)
     {
         var rawResponse = await TableServiceClient.DeleteTableAsync(tableName);
 
@@ -341,7 +339,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("t")]
     [InlineData("tt")]
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
-    public async Task DeleteTableAsync_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+    public async Task DeleteTableAsync_WhenTableNameHasInvalidLength_ReturnsUnsuccessfulResponse(string tableName)
     {
         var rawResponse = await TableServiceClient.DeleteTableAsync(tableName);
 

@@ -13,7 +13,7 @@ internal static class Assertions
 {
     private const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
     private const string DateTimeValueFormat = "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ";
-    private static readonly ICollection<string> _nonRedactedHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyCollection<string> _nonRedactedHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Cache-Control",
         "Transfer-Encoding",
@@ -173,6 +173,16 @@ internal static class Assertions
         var utcNow = DateTimeOffset.UtcNow;
 
         Assert.Multiple(
+            () =>
+            {
+                Assert.False(response.Headers.TryGetValue("non-existent-header", out var value));
+                Assert.Null(value);
+            },
+            () =>
+            {
+                Assert.False(response.Headers.TryGetValues("non-existent-header", out var values));
+                Assert.Null(values);
+            },
             () => Assert.Equal(responseAssertOptions.Headers.Count, response.Headers.Count()),
             () => Assert.Multiple([
                 ..response.Headers.Select(header => new Action(() =>

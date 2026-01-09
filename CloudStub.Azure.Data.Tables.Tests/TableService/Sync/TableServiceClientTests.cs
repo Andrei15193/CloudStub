@@ -5,6 +5,8 @@ using Azure.Data.Tables.Sas;
 
 namespace CloudStub.Azure.Data.Tables.Tests.TableService.Sync;
 
+// TODO:
+// Add tests for continuation token (valid and invalid scenarios)
 public class StubCloudTableTests : BaseTableCloudStubTests
 {
     [Fact(Skip = "Include this for CloudTableStub tests")]
@@ -58,7 +60,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
                     {
                         { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
                         { "TableName", TestTableName }
-                    },
+                    }
                 }
             ),
             () =>
@@ -75,7 +77,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
         TableServiceClient.CreateTable(TestTableName);
 
         Assertions.JsonResponseThrows(
-            () => TableServiceClient.CreateTable(TestTableName),
+            () => TableServiceClient.CreateTable(TestTableName.ToLowerInvariant()),
             rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
             {
                 StatusCode = HttpStatusCode.Conflict,
@@ -138,27 +140,25 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void CreateTableIfNotExists_WhenTableDoesNotExist_ReturnsTableItem()
+    public void CreateTableIfNotExists_WhenTableDoesNotExist_ReturnsTableItemWithNoContentResponse()
     {
-        TableServiceClient.CreateTable(TestTableName);
-
         var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
         var tableItem = response.Value;
         var rawResponse = response.GetRawResponse();
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
-            () => Assertions.UnsuccessfulJsonResponse(
+            () => Assertions.EmptyResponse(
                 rawResponse,
-                new Assertions.UnsuccessfulResponseAssertOptions
+                new Assertions.SuccessfulResponseAssertOptions
                 {
-                    StatusCode = HttpStatusCode.Conflict,
-                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(rawResponse)
                     {
-                        { "Preference-Applied", "return-no-content" }
-                    },
-                    ErrorCode = "TableAlreadyExists",
-                    ErrorDescription = "The table specified already exists."
+                        { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" },
+                        { "Preference-Applied", "return-no-content" },
+                        { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TestTableName}')"}
+                    }
                 }
             ),
             () =>
@@ -170,11 +170,11 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
-    public void CreateTableIfNotExists_WhenTableExists_ThrowsException()
+    public void CreateTableIfNotExists_WhenTableExists_ReturnsTableItemWithConflictResponse()
     {
         TableServiceClient.CreateTable(TestTableName);
 
-        var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
+        var response = TableServiceClient.CreateTableIfNotExists(TestTableName.ToLowerInvariant());
         var tableItem = response.Value;
         var rawResponse = response.GetRawResponse();
 
@@ -196,7 +196,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
             () =>
             {
                 Assert.NotNull(tableItem);
-                Assert.Equal(TestTableName, tableItem.Name);
+                Assert.Equal(TestTableName.ToLowerInvariant(), tableItem.Name);
             }
         );
     }
@@ -286,7 +286,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     {
         TableServiceClient.CreateTable(TestTableName);
 
-        var rawResponse = TableServiceClient.DeleteTable(TestTableName);
+        var rawResponse = TableServiceClient.DeleteTable(TestTableName.ToLowerInvariant());
 
         Assert.Multiple(
             () => Assert.False(rawResponse.IsError),
@@ -304,7 +304,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Theory]
     [InlineData("invalid_table_name")]
     [InlineData("1nvalid")]
-    public void DeleteTable_WhenTableNameIsInvalid_ThrowsException(string tableName)
+    public void DeleteTable_WhenTableNameIsInvalid_ReturnsUnsuccessfulResponse(string tableName)
     {
         var rawResponse = TableServiceClient.DeleteTable(tableName);
 
@@ -325,7 +325,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
 
     [Theory]
     [InlineData("tables")]
-    public void DeleteTable_WhenTableNameIsReserved_ThrowsException(string tableName)
+    public void DeleteTable_WhenTableNameIsReserved_ReturnsUnsuccessfulResponse(string tableName)
     {
         var rawResponse = TableServiceClient.DeleteTable(tableName);
 
@@ -348,7 +348,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [InlineData("t")]
     [InlineData("tt")]
     [InlineData("testTableNameHavingALengthOf63CharactersSomeOfThemAreJustExtra1s")]
-    public void DeleteTable_WhenTableNameHasInvalidLength_ThrowsException(string tableName)
+    public void DeleteTable_WhenTableNameHasInvalidLength_ReturnsUnsuccessfulResponse(string tableName)
     {
         var rawResponse = TableServiceClient.DeleteTable(tableName);
 
@@ -632,7 +632,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     [Fact]
     public void SetProperties_WhenCalledWithEmptyProperties_ThrowsException()
     {
-        var exception = Assertions.XmlResponseThrows(
+        Assertions.XmlResponseThrows(
             () => TableServiceClient.SetProperties(new TableServiceProperties()),
             rawResponse =>
             {
@@ -660,5 +660,15 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     public void GetStatistics_WhenCalled_ThrowsException()
     {
         Assert.ThrowsAny<Exception>(() => TableServiceClient.GetStatistics());
+    }
+
+    [Fact]
+    public void GetTableClient_WhenCalledTwice_ReturnsDifferentInstances()
+    {
+        var first = TableServiceClient.GetTableClient(TestTableName);
+        var second = TableServiceClient.GetTableClient(TestTableName);
+
+        Assert.NotEqual(first, second);
+        Assert.NotSame(first, second);
     }
 }
