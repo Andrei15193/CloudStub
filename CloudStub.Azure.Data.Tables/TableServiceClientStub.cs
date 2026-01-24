@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -10,6 +11,9 @@ using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using Azure.Data.Tables.Sas;
+using CloudStub.Azure.Data.Tables.Filters;
+using CloudStub.Azure.Data.Tables.Filters.Nodes;
+using CloudStub.Azure.Data.Tables.Pageables;
 using CloudStub.Azure.Data.Tables.Serializers;
 
 namespace CloudStub.Azure.Data.Tables
@@ -18,7 +22,7 @@ namespace CloudStub.Azure.Data.Tables
     {
         private static readonly IReadOnlyCollection<string> _reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "tables" };
         private readonly string _accountName;
-        private readonly TableSet _tables = new TableSet();
+        private readonly TableCollectionStub _tables = new TableCollectionStub();
         private volatile TableServiceProperties _tableServiceProperties = new TableServiceProperties
         {
             Logging = new TableAnalyticsLoggingSettings("1.0", false, false, false, new TableRetentionPolicy(false)),
@@ -79,14 +83,20 @@ namespace CloudStub.Azure.Data.Tables
                     "The specifed resource name contains invalid characters."
                 );
 
-            if (!_tables.TryAdd(tableName, new TablePartitionSet()))
-                throw TableStubResponseFactory.JsonRequestFailedException(
-                    HttpStatusCode.Conflict,
-                    "TableAlreadyExists",
-                    "The table specified already exists."
-                );
+            using (_tables.UpgradableReadLock())
+            {
+                if (_tables.ContainsKey(tableName))
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.Conflict,
+                        "TableAlreadyExists",
+                        "The table specified already exists."
+                    );
 
-            return Response.FromValue(TableModelFactory.TableItem(tableName), TableStubResponseFactory.TableCreatedResponse(Uri, tableName));
+                using (_tables.WriteLock())
+                    _tables.Add(tableName, new TableItemStub());
+
+                return Response.FromValue(TableModelFactory.TableItem(tableName), TableStubResponseFactory.TableCreatedResponse(Uri, tableName));
+            }
         }
 
         public override async Task<Response<TableItem>> CreateTableAsync(string tableName, CancellationToken cancellationToken = default)
@@ -130,20 +140,25 @@ namespace CloudStub.Azure.Data.Tables
                     }
                 );
 
-            if (!_tables.TryAdd(tableName, new TablePartitionSet()))
-                return Response.FromValue(
-                    TableModelFactory.TableItem(tableName),
-                    TableStubResponseFactory.UnsuccessfulJsonResponse(
-                        HttpStatusCode.Conflict,
-                        "TableAlreadyExists",
-                        "The table specified already exists.",
-                        new DefaultResponseHeaders
-                        {
-                            { "Preference-Applied", "return-no-content" }
-                        }
-                    )
-                );
-            else
+            using (_tables.UpgradableReadLock())
+            {
+                if (_tables.ContainsKey(tableName))
+                    return Response.FromValue(
+                        TableModelFactory.TableItem(tableName),
+                        TableStubResponseFactory.UnsuccessfulJsonResponse(
+                            HttpStatusCode.Conflict,
+                            "TableAlreadyExists",
+                            "The table specified already exists.",
+                            new DefaultResponseHeaders
+                            {
+                                { "Preference-Applied", "return-no-content" }
+                            }
+                        )
+                    );
+
+                using (_tables.WriteLock())
+                    _tables.Add(tableName, new TableItemStub());
+
                 return Response.FromValue(
                     TableModelFactory.TableItem(tableName),
                     TableStubResponseFactory.NoContentResponse(
@@ -155,6 +170,7 @@ namespace CloudStub.Azure.Data.Tables
                         }
                     )
                 );
+            }
         }
 
         public override async Task<Response<TableItem>> CreateTableIfNotExistsAsync(string tableName, CancellationToken cancellationToken = default)
@@ -165,10 +181,11 @@ namespace CloudStub.Azure.Data.Tables
 
         public override Response DeleteTable(string tableName, CancellationToken cancellationToken = default)
         {
-            if (!_tables.TryRemove(tableName, out var _))
-                return TableStubResponseFactory.UnsuccessfulJsonResponse(HttpStatusCode.NotFound, "ResourceNotFound", "The specified resource does not exist.");
-            else
-                return TableStubResponseFactory.NoContentResponse();
+            using (_tables.WriteLock())
+                if (!_tables.Remove(tableName))
+                    return TableStubResponseFactory.UnsuccessfulJsonResponse(HttpStatusCode.NotFound, "ResourceNotFound", "The specified resource does not exist.");
+                else
+                    return TableStubResponseFactory.NoContentResponse();
         }
 
         public override async Task<Response> DeleteTableAsync(string tableName, CancellationToken cancellationToken = default)
@@ -178,9 +195,7 @@ namespace CloudStub.Azure.Data.Tables
         }
 
         public override Pageable<TableItem> Query(string filter = null, int? maxPerPage = null, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+            => new PageableStub<TableItem>(_GetTableItemsPageFactory(FilterParser.Parse(FilterScanner.Scan(filter)), cancellationToken), maxPerPage);
 
         public override Pageable<TableItem> Query(FormattableString filter, int? maxPerPage = null, CancellationToken cancellationToken = default)
             => Query(CreateQueryFilter(filter), maxPerPage, cancellationToken);
@@ -189,9 +204,7 @@ namespace CloudStub.Azure.Data.Tables
             => Query(CreateQueryFilter(filter), maxPerPage, cancellationToken);
 
         public override AsyncPageable<TableItem> QueryAsync(string filter = null, int? maxPerPage = null, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+            => new AsyncPageableStub<TableItem>(_GetTableItemsPageFactory(FilterParser.Parse(FilterScanner.Scan(filter)), cancellationToken), maxPerPage);
 
         public override AsyncPageable<TableItem> QueryAsync(FormattableString filter, int? maxPerPage = null, CancellationToken cancellationToken = default)
             => QueryAsync(CreateQueryFilter(filter), maxPerPage, cancellationToken);
@@ -247,6 +260,63 @@ namespace CloudStub.Azure.Data.Tables
 
         public override Uri GenerateSasUri(TableAccountSasPermissions permissions, TableAccountSasResourceTypes resourceTypes, DateTimeOffset expiresOn)
             => GenerateSasUri(GetSasBuilder(permissions, resourceTypes, expiresOn));
+
+        private PageFactory<TableItem> _GetTableItemsPageFactory(Filter filter, CancellationToken cancellationToken)
+            => (continuationToken, pageSize) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (pageSize < 0)
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.BadRequest,
+                        "InvalidInput",
+                        "One of the request inputs is not valid."
+                    );
+                if (filter is InvalidFilter invalidFilter)
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.NotImplemented,
+                        "NotImplemented",
+                        "The requested operation is not implemented on the specified resource."
+                    );
+                if (pageSize == 0 || filter.FilteredProperties.Any(propertyName => !string.Equals(propertyName, "TableName", StringComparison.OrdinalIgnoreCase)))
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.InternalServerError,
+                        "InternalError",
+                        "Server encountered an internal error. Please try again after some time."
+                    );
+
+                var tables = new List<IReadOnlyDictionary<string, object>>(pageSize + 1);
+                using (_tables.ReadLock())
+                    tables.AddRange(
+                        _tables
+                            .Keys
+                            .SkipWhile(tableName => continuationToken != null && string.Compare(tableName, continuationToken, StringComparison.OrdinalIgnoreCase) <= 0)
+                            .Select(tableName => new Dictionary<string, object> { { "TableName", tableName } })
+                            .Where(table => filter.Apply(table))
+                            .Take(pageSize + 1)
+                    );
+
+                var nextContinuationToken = default(string);
+                if (tables.Count > pageSize)
+                {
+                    tables.RemoveAt(tables.Count - 1);
+                    nextContinuationToken = (string)tables.Last()["TableName"];
+                }
+
+                var tableItems = new List<TableItem>(tables.Count);
+                tableItems.AddRange(tables.Select(table => TableModelFactory.TableItem((string)table["TableName"])));
+
+                var page = Page<TableItem>.FromValues(
+                    tableItems,
+                    nextContinuationToken,
+                    TableStubResponseFactory.EntitiesResponse(
+                        new DefaultResponseHeaders(),
+                        "https://cloudstubdev.table.core.windows.net/$metadata#Tables",
+                        tables
+                    )
+                );
+                return page;
+            };
 
         private static TableServiceProperties _CopyTableServiceProperties(TableServiceProperties tableServiceProperties)
         {

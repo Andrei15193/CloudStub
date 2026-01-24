@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CloudStub.Azure.Data.Tables.Filters.Nodes
 {
@@ -15,6 +17,9 @@ namespace CloudStub.Azure.Data.Tables.Filters.Nodes
 
         protected string PropertyName { get; }
         protected object Value { get; }
+
+        public sealed override IEnumerable<string> FilteredProperties
+            => Enumerable.Repeat(PropertyName, 1);
 
         protected int Compare(object propertyValue, object value)
         {

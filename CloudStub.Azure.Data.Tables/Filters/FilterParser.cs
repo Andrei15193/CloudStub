@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using CloudStub.Azure.Data.Tables.Filters.Nodes;
 
 namespace CloudStub.Azure.Data.Tables.Filters
@@ -6,7 +7,12 @@ namespace CloudStub.Azure.Data.Tables.Filters
     public static class FilterParser
     {
         public static Filter Parse(IReadOnlyList<FilterToken> tokens)
-            => _Parse(tokens, 0, tokens.Count);
+        {
+            if (tokens.Any(token => token.Type == FilterTokenType.Unknown))
+                return new InvalidFilter("The requested operation is not implemented on the specified resource.");
+
+            return _Parse(tokens, 0, tokens.Count);
+        }
 
         private static Filter _Parse(IReadOnlyList<FilterToken> tokens, int start, int end)
         {

@@ -10,11 +10,6 @@ namespace CloudStub.Azure.Data.Tables.Filters.Nodes
         }
 
         public override bool Apply(IReadOnlyDictionary<string, object> entity)
-        {
-            if (entity.TryGetValue(PropertyName, out var entityPropertyValue))
-                return Compare(entityPropertyValue, Value) >= 0;
-            else
-                return false;
-        }
+            => entity.TryGetValue(PropertyName, out var entityPropertyValue) && Compare(entityPropertyValue, Value) >= 0;
     }
 }

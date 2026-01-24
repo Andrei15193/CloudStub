@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace CloudStub.Azure.Data.Tables.Filters.Nodes
 {
-    public class InvalidFilter : Filter
+    public sealed class InvalidFilter : Filter
     {
         public InvalidFilter(string errorMessage)
             => ErrorMessage = errorMessage;
@@ -12,6 +12,9 @@ namespace CloudStub.Azure.Data.Tables.Filters.Nodes
 
         public override int DiscreteFiltersCount
             => 0;
+
+        public sealed override IEnumerable<string> FilteredProperties
+            => Array.Empty<string>();
 
         public override bool Apply(IReadOnlyDictionary<string, object> entity)
             => throw new InvalidOperationException("The filter expression is invalid. " + ErrorMessage);

@@ -419,6 +419,41 @@ public class StubCloudTableTests : BaseTableCloudStubTests
     }
 
     [Fact]
+    public async Task QueryAsync_WhenUsingZeroPageNumber_ThrowsException()
+    {
+        TableServiceClient.CreateTable(TestTableName);
+        var result = TableServiceClient.QueryAsync($"filter eq not valid", maxPerPage: 0);
+
+        await Assertions.JsonResponseThrowsAsync(
+            async () => await result.ToListAsync(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.NotImplemented,
+                ErrorCode = "NotImplemented",
+                ErrorDescription = "The requested operation is not implemented on the specified resource.",
+                Headers = new Assertions.DefaultHeaders(response)
+            }
+        );
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhenUsingNegativePageNumber_ThrowsException()
+    {
+        var result = TableServiceClient.QueryAsync($"filter eq not valid", maxPerPage: -1);
+
+        await Assertions.JsonResponseThrowsAsync(
+            async () => await result.ToListAsync(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                ErrorCode = "InvalidInput",
+                ErrorDescription = "One of the request inputs is not valid.",
+                Headers = new Assertions.DefaultHeaders(response)
+            }
+        );
+    }
+
+    [Fact]
     public async Task QueryAsync_WhenSpecifyingNonExistentPropertyName_ThrowsException()
     {
         var result = TableServiceClient.QueryAsync($"name eq 'does not exist'");

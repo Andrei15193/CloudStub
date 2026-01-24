@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -45,6 +46,53 @@ namespace CloudStub.Azure.Data.Tables.Serializers
                 jsonWriter.WriteEndObject();
 
 
+                jsonWriter.WriteEndObject();
+            }
+
+            stream.Seek(0L, SeekOrigin.Begin);
+            using (var streamReader = new StreamReader(stream))
+                return streamReader.ReadToEnd();
+        }
+
+        internal static string SerializeEntities(string metadata, IEnumerable<IReadOnlyDictionary<string, object>> entities)
+        {
+            var stream = new MemoryStream();
+            using (var jsonWriter = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
+            {
+                jsonWriter.WriteStartObject();
+
+                jsonWriter.WriteString("odata.metadata", metadata);
+                jsonWriter.WritePropertyName("value");
+                jsonWriter.WriteStartArray();
+
+                foreach (var entity in entities)
+                {
+                    jsonWriter.WriteStartObject();
+
+                    foreach (var property in entity)
+                        if (property.Value == null)
+                            jsonWriter.WriteNull(property.Key);
+                        else if (property.Value is bool boolValue)
+                            jsonWriter.WriteBoolean(property.Key, boolValue);
+                        else if (property.Value is int intValue)
+                            jsonWriter.WriteNumber(property.Key, intValue);
+                        else if (property.Value is long longValue)
+                            jsonWriter.WriteNumber(property.Key, longValue);
+                        else if (property.Value is double doubleValue)
+                            jsonWriter.WriteNumber(property.Key, doubleValue);
+                        else if (property.Value is DateTimeOffset dateTimeValue)
+                            jsonWriter.WriteString(property.Key, dateTimeValue.ToString("o"));
+                        else if (property.Value is Guid guidValue)
+                            jsonWriter.WriteString(property.Key, guidValue.ToString("D"));
+                        else if (property.Value is byte[] binaryValue)
+                            jsonWriter.WriteString(property.Key, Convert.ToBase64String(binaryValue));
+                        else
+                            jsonWriter.WriteString(property.Key, (string)property.Value);
+
+                    jsonWriter.WriteEndObject();
+                }
+
+                jsonWriter.WriteEndArray();
                 jsonWriter.WriteEndObject();
             }
 

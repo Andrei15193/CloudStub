@@ -6,6 +6,8 @@ namespace CloudStub.Azure.Data.Tables.Filters
     {
         public abstract int DiscreteFiltersCount { get; }
 
+        public abstract IEnumerable<string> FilteredProperties { get; }
+
         public abstract bool Apply(IReadOnlyDictionary<string, object> entity);
     }
 }

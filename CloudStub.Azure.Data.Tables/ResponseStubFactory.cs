@@ -10,6 +10,15 @@ namespace CloudStub.Azure.Data.Tables
 {
     internal static class TableStubResponseFactory
     {
+
+        public static ResponseStub EntitiesResponse(ResponseHeaders headers, string metadata, IEnumerable<IReadOnlyDictionary<string, object>> entities)
+            => new ResponseStub(
+                HttpStatusCode.OK,
+                "OK",
+                JsonSeriaizer.SerializeEntities(metadata, entities),
+                headers
+            );
+
         public static ResponseStub NoContentResponse()
             => NoContentResponse(new NoContentResponseHeaders());
 

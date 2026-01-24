@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace CloudStub.Azure.Data.Tables.Filters.Nodes
@@ -6,6 +7,9 @@ namespace CloudStub.Azure.Data.Tables.Filters.Nodes
     {
         public override int DiscreteFiltersCount
             => 0;
+
+        public override IEnumerable<string> FilteredProperties
+            => Array.Empty<string>();
 
         public override bool Apply(IReadOnlyDictionary<string, object> entity)
             => true;

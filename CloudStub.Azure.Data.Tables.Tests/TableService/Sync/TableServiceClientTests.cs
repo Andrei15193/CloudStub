@@ -385,7 +385,7 @@ public class StubCloudTableTests : BaseTableCloudStubTests
                     Headers = new Assertions.DefaultHeaders(response),
                     Content =
                     {
-                        { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                        { "odata.metadata", "https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
                         { "value", new List<IReadOnlyDictionary<string, object>>() }
                     }
                 });
@@ -423,6 +423,58 @@ public class StubCloudTableTests : BaseTableCloudStubTests
                         }
                     }
                 });
+            }
+        );
+    }
+
+    [Fact]
+    public void Query_WhenUsingInvalidFilter_ThrowsException()
+    {
+        var result = TableServiceClient.Query($"filter eq not valid");
+
+        Assertions.JsonResponseThrows(
+            () => result.ToList(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.NotImplemented,
+                ErrorCode = "NotImplemented",
+                ErrorDescription = "The requested operation is not implemented on the specified resource.",
+                Headers = new Assertions.DefaultHeaders(response)
+            }
+        );
+    }
+
+    [Fact]
+    public void Query_WhenUsingZeroPageNumber_ThrowsException()
+    {
+        TableServiceClient.CreateTable(TestTableName);
+        var result = TableServiceClient.Query($"filter eq not valid", maxPerPage: 0);
+
+        Assertions.JsonResponseThrows(
+            () => result.ToList(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.NotImplemented,
+                ErrorCode = "NotImplemented",
+                ErrorDescription = "The requested operation is not implemented on the specified resource.",
+                Headers = new Assertions.DefaultHeaders(response)
+            }
+        );
+    }
+
+    [Fact]
+    public void Query_WhenUsingNegativePageNumber_ThrowsException()
+    {
+        var result = TableServiceClient.Query($"filter eq not valid", maxPerPage: -1);
+
+        Assertions.JsonResponseThrows(
+            () => result.ToList(),
+            response => new Assertions.UnsuccessfulResponseAssertOptions
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                ErrorCode = "InvalidInput",
+                ErrorDescription = "One of the request inputs is not valid.",
+                Headers = new Assertions.DefaultHeaders(response)
             }
         );
     }
