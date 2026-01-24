@@ -1,27 +1,30 @@
+using System;
 using Azure.Data.Tables;
+using Xunit;
 
-namespace CloudStub.AzureDataTables.Tests;
-
-[CollectionDefinition(nameof(TestRunFixtureCollection))]
-public class TestRunFixtureCollection : ICollectionFixture<TestRunFixture>
+namespace CloudStub.AzureDataTables.Tests
 {
-}
-
-public class TestRunFixture :IDisposable
-{
-    public TestRunFixture()
-        => CleanUpTables();
-
-    public void Dispose()
-        => CleanUpTables();
-
-    private void CleanUpTables()
+    [CollectionDefinition(nameof(TestRunFixtureCollection))]
+    public class TestRunFixtureCollection : ICollectionFixture<TestRunFixture>
     {
-        if (!TestRunContext.InMemory)
+    }
+
+    public class TestRunFixture : IDisposable
+    {
+        public TestRunFixture()
+            => CleanUpTables();
+
+        public void Dispose()
+            => CleanUpTables();
+
+        private void CleanUpTables()
         {
-            var tableServiceClinet = new TableServiceClient(TestRunContext.AzureStorageConnectionString);
-            foreach (var table in tableServiceClinet.Query())
-                tableServiceClinet.DeleteTable(table.Name);
+            if (!TestRunContext.InMemory)
+            {
+                var tableServiceClinet = new TableServiceClient(TestRunContext.AzureStorageConnectionString);
+                foreach (var table in tableServiceClinet.Query())
+                    tableServiceClinet.DeleteTable(table.Name);
+            }
         }
     }
 }

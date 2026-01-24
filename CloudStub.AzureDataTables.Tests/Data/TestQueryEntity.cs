@@ -1,21 +1,22 @@
-﻿using Azure;
+﻿using System;
+using Azure;
 using Azure.Data.Tables;
 
 namespace CloudStub.AzureDataTables.Tests.Data
 {
     public sealed class TestQueryEntity : ITableEntity
     {
-        public required string PartitionKey { get; set; }
+        public string PartitionKey { get; set; }
 
-        public required string RowKey { get; set; }
+        public string RowKey { get; set; }
 
         public ETag ETag { get; set; }
 
         public DateTimeOffset? Timestamp { get; set; }
 
-        public string? StringProp { get; set; }
+        public string StringProp { get; set; }
 
-        public byte[]? BinaryProp { get; set; }
+        public byte[] BinaryProp { get; set; }
 
         public int? Int32Prop { get; set; }
 

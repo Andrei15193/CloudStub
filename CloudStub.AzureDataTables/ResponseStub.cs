@@ -90,7 +90,7 @@ namespace CloudStub.AzureDataTables
         public new bool IsError
         {
             get => base.IsError;
-            set => typeof(Response).GetProperty(nameof(IsError)).SetValue(this, value);
+            set => typeof(Response).GetProperty(nameof(IsError))?.SetValue(this, value);
         }
 
         public override void Dispose()
