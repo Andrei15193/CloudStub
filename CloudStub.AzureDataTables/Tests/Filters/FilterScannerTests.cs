@@ -68,7 +68,7 @@ namespace CloudStub.AzureDataTables.Tests.Filters
         [InlineData(")", FilterTokenType.GroupClose)]
         [InlineData("unknown'type'", FilterTokenType.Unknown)]
         [InlineData("-", FilterTokenType.Unknown)]
-        public void Scan_WhenPassedAFilter_ReturnsExpectedTokenType(string filter, FilterTokenType expectedFilterTokenType)
+        internal void Scan_WhenPassedAFilter_ReturnsExpectedTokenType(string filter, FilterTokenType expectedFilterTokenType)
         {
             var tokens = FilterScanner.Scan(filter);
 

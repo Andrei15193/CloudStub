@@ -1,6 +1,6 @@
 namespace CloudStub.AzureDataTables.Filters
 {
-    public enum FilterTokenType : byte
+    internal enum FilterTokenType : byte
     {
         Unknown,
         Identifier,

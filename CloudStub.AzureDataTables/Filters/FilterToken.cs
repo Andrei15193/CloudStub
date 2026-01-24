@@ -1,6 +1,6 @@
 namespace CloudStub.AzureDataTables.Filters
 {
-    public readonly struct FilterToken
+    internal readonly struct FilterToken
     {
         public FilterToken(FilterTokenType tokenType, string filter, int start, int end)
              : this(tokenType, filter, start, end, null)

@@ -4,7 +4,7 @@ using CloudStub.AzureDataTables.Filters.Nodes;
 
 namespace CloudStub.AzureDataTables.Filters
 {
-    public static class FilterParser
+    internal static class FilterParser
     {
         public static Filter Parse(IReadOnlyList<FilterToken> tokens)
         {

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace CloudStub.AzureDataTables.Filters
 {
-    public abstract class Filter
+    internal abstract class Filter
     {
         public abstract int DiscreteFiltersCount { get; }
 

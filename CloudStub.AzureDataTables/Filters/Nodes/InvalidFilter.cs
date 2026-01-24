@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace CloudStub.AzureDataTables.Filters.Nodes
 {
-    public sealed class InvalidFilter : Filter
+    internal sealed class InvalidFilter : Filter
     {
         public InvalidFilter(string errorMessage)
             => ErrorMessage = errorMessage;

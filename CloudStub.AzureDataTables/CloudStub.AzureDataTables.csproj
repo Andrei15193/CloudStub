@@ -15,7 +15,7 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <RepositoryUrl>https://github.com/Andrei15193/CloudStub.AzureDataTables.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
     <PackageReleaseNotes>
     </PackageReleaseNotes>
   </PropertyGroup>
@@ -25,13 +25,17 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <Compile Include="../CloudStub.AzureDataTables.Tests/**/*.cs" />
-
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Compile Remove="Tests/**/*" />
+    <None Include="../logo.png" Pack="true" PackagePath=""/>
+    <None Include="../readme.md" Pack="true" PackagePath=""/>
   </ItemGroup>
 </Project>

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace CloudStub.AzureDataTables.Filters
 {
-    public static class FilterScanner
+    internal static class FilterScanner
     {
         public static IReadOnlyList<FilterToken> Scan(string filter)
         {
