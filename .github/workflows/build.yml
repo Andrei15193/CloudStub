@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - dev
+
+  release:
+    types:
+      - published
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup .NET 10.0
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0
+
+    - name: Checkout sources
+      uses: actions/checkout@v6
+
+    - name: Test
+      run: dotnet test --configuration Debug --environment InMemory=true
+
+    - name: Generate NuGet Package
+      if: github.event_name == 'release'
+      shell: pwsh
+      run: |
+        [Convert]::FromBase64String("${{ secrets.KeyFile }}") | Set-Content ./CloudStub.snk -AsByteStream
+
+        $versionInfo = '${{ github.event.release.tag_name }}' -split '[-+]', 2
+        $baseVersion = $versionInfo[0]
+        $revision = if ($versionInfo.Length -eq 1) { 0 } else { [int]([DateTime]::UtcNow - [DateTime]::UtcNow.Date).TotalMinutes }
+
+        dotnet pack CloudStub.AzureDataTables/CloudStub.AzureDataTables.csproj `
+          --configuration Release `
+          --output Publish `
+          -property:Version="$($baseVersion).$($revision)" `
+          -property:PackageVersion='${{ github.event.release.tag_name }}' `
+          -property:RepositoryCommit=${{ github.event.head_commit.id }} `
+          -property:SignAssembly=True `
+          -property:AssemblyOriginatorKeyFile=../CloudStub.snk
+
+        gh release upload `
+          '${{ github.event.release.tag_name }}' `
+          './Publish/CloudStub.AzureDataTables.${{ github.event.release.tag_name }}.nupkg'

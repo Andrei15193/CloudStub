@@ -1,0 +1,16 @@
+using System;
+using System.Collections.Generic;
+
+namespace CloudStub.AzureDataTables.Filters.Nodes
+{
+    internal class GreaterThanFilter : ComparisonFilter
+    {
+        public GreaterThanFilter(string propertyName, object value)
+            : base(propertyName, value)
+        {
+        }
+
+        public override bool Apply(IReadOnlyDictionary<string, object> entity)
+            => entity.TryGetValue(PropertyName, out var entityPropertyValue) && Compare(entityPropertyValue, Value) > 0;
+    }
+}
