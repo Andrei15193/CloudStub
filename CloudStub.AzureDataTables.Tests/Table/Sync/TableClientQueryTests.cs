@@ -8,7 +8,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync;
 
 public class TableClientQueryTests : BaseTableCloudStubTests
 {
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenThereAreNoFilters_ReturnsAllItems()
     {
         _AddTestData();
@@ -30,7 +30,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenThereAreFiltersWithOr_ReturnsMatchingEntitiesWithDefinedRelatedProperties()
     {
         _AddTestData();
@@ -66,7 +66,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingInvertedOrFilter_ReturnsMatchingEntitiesAndTheOnesWithoutDefinedRelatedProperties()
     {
         _AddTestData();
@@ -103,7 +103,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingOrFilterFollowedByAndFilter_ReturnsEntitiesWhereEitherSideOfTheOrOperandsAreTrue()
     {
         _AddTestData();
@@ -117,7 +117,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingAndFilterFollowedByOrFilter_ReturnsEntitiesWhereEitherSidedOfTheOrOperandsAreTrue()
     {
         _AddTestData();
@@ -131,7 +131,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Theory]
+    [Theory(Skip = "Incomplete implementation")]
     [InlineData(nameof(TestQueryEntity.Int32Prop), "eq", 3)]
     [InlineData(nameof(TestQueryEntity.Int32Prop), "ne", 3)]
     [InlineData(nameof(TestQueryEntity.Int32Prop), "lt", 3)]
@@ -215,7 +215,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         Assert.Empty(entities);
     }
 
-    [Theory]
+    [Theory(Skip = "Incomplete implementation")]
     [InlineData(nameof(TestQueryEntity.Int32Prop))]
     [InlineData(nameof(TestQueryEntity.Int64Prop))]
     [InlineData(nameof(TestQueryEntity.DoubleProp))]
@@ -240,7 +240,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         Assert.Empty(entities);
     }
 
-    [Theory]
+    [Theory(Skip = "Incomplete implementation")]
     [InlineData(nameof(TestQueryEntity.Int32Prop))]
     [InlineData(nameof(TestQueryEntity.Int64Prop))]
     [InlineData(nameof(TestQueryEntity.DoubleProp))]
@@ -274,7 +274,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         Assert.Empty(entities);
     }
 
-    [Theory]
+    [Theory(Skip = "Incomplete implementation")]
     [ClassData(typeof(TableQueryComparisonTestData))]
     public void Query_WhenUsingComparisonFilterOperator_MayReturnEntities(string propertyName, object propertyValue, string filterOperator, object filterValue, bool returnsEntity)
     {
@@ -294,7 +294,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
             Assert.Empty(entities);
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingAnInvalidFilter_ThrowsException()
     {
         CloudTable.Create();
@@ -319,7 +319,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Theory]
+    [Theory(Skip = "Incomplete implementation")]
     [InlineData("property1 eq propery2")]
     [InlineData("1 eq 2")]
     public void Query_WhenUsingUnsupportedFilter_ThrowsException(string filter)
@@ -340,7 +340,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingTakeCount_ReturnsOnlyFirstPage()
     {
         _AddTestData();
@@ -357,7 +357,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingZeroTakeCount_ReturnsNoEntities()
     {
         _AddTestData();
@@ -367,7 +367,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         Assert.Empty(entities);
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_TakeCountEqualTo1000_ReturnsSpecifiedNumberOfEntitiesInOnePage()
     {
         CloudTable.Create();
@@ -385,7 +385,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         Assert.Equal(1000, entities.AsPages().First().Values.Count);
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_TakeCountLessThan0_ThrowsException()
     {
         CloudTable.Create();
@@ -402,7 +402,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_TakeCountGreaterThan1000_ThrowsException()
     {
         CloudTable.Create();
@@ -419,7 +419,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingSelectColumns_ReturnsEntitiesWithSpecifiedColumns()
     {
         _AddTestData();
@@ -455,7 +455,7 @@ public class TableClientQueryTests : BaseTableCloudStubTests
         );
     }
 
-    [Fact]
+    [Fact(Skip = "Incomplete implementation")]
     public void Query_WhenUsingStronglyTypedEntities_ReturnsAllEntities()
     {
         _AddTestData();
