@@ -15,12 +15,6 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
     public class StubCloudTableTests : BaseTableCloudStubTests
     {
         [Fact(Skip = "Include this for CloudTableStub tests")]
-        public void TableName_GetsTheSameNameWhichWasProvided()
-        {
-            Assert.Equal(TestTableName, CloudTable.Name);
-        }
-
-        [Fact(Skip = "Include this for CloudTableStub tests")]
         public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()
         {
             CloudTable.Create();
