@@ -17,8 +17,8 @@ namespace CloudStub.AzureDataTables.Tests
 {
     internal static class Assertions
     {
-        private const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
-        private const string DateTimeValueFormat = "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ";
+        public const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
+        public const string DateTimeValueFormat = "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ";
         private static readonly IReadOnlyCollection<string> _nonRedactedHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Cache-Control",

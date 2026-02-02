@@ -56,12 +56,12 @@ namespace CloudStub.AzureDataTables
 
         public override Response<IReadOnlyList<TableSignedIdentifier>> GetAccessPolicies(CancellationToken cancellationToken = default)
         {
-            return base.GetAccessPolicies(cancellationToken);
+            throw new NotImplementedException();
         }
 
         public override Response SetAccessPolicy(IEnumerable<TableSignedIdentifier> tableAcl, CancellationToken cancellationToken = default)
         {
-            return base.SetAccessPolicy(tableAcl, cancellationToken);
+            throw new NotImplementedException();
         }
     }
 }
