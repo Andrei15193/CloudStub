@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -210,6 +211,60 @@ namespace CloudStub.AzureDataTables.Serializers
                         xmlWriter.WriteStartElement("MaxAgeInSeconds");
                         xmlWriter.WriteString(rule.MaxAgeInSeconds.ToString());
                         xmlWriter.WriteEndElement();
+
+                        xmlWriter.WriteEndElement();
+                    }
+
+                    xmlWriter.WriteEndElement();
+                }
+
+                xmlWriter.WriteEndElement();
+            }
+
+            stream.Seek(0L, SeekOrigin.Begin);
+            using (var streamReader = new StreamReader(stream))
+                return streamReader.ReadToEnd();
+        }
+
+        public static string Serialize(IEnumerable<TableSignedIdentifier> tableSignedIdentifiers)
+        {
+            var stream = new MemoryStream();
+            using (var xmlWriter = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false) }))
+            {
+                xmlWriter.WriteStartElement("SignedIdentifiers");
+
+                foreach (var tableSignedIdentifier in tableSignedIdentifiers)
+                {
+                    xmlWriter.WriteStartElement("SignedIdentifier");
+
+                    xmlWriter.WriteStartElement("Id");
+                    xmlWriter.WriteString(tableSignedIdentifier.Id);
+                    xmlWriter.WriteEndElement();
+
+                    if (tableSignedIdentifier.AccessPolicy != null)
+                    {
+                        xmlWriter.WriteStartElement("AccessPolicy");
+
+                        if (tableSignedIdentifier.AccessPolicy.StartsOn.HasValue)
+                        {
+                            xmlWriter.WriteStartElement("Start");
+                            xmlWriter.WriteString(tableSignedIdentifier.AccessPolicy.StartsOn.Value.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"));
+                            xmlWriter.WriteEndElement();
+                        }
+
+                        if (tableSignedIdentifier.AccessPolicy.ExpiresOn.HasValue)
+                        {
+                            xmlWriter.WriteStartElement("Expiry");
+                            xmlWriter.WriteString(tableSignedIdentifier.AccessPolicy.ExpiresOn.Value.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"));
+                            xmlWriter.WriteEndElement();
+                        }
+
+                        if (tableSignedIdentifier.AccessPolicy.Permission != null)
+                        {
+                            xmlWriter.WriteStartElement("Permission");
+                            xmlWriter.WriteString(tableSignedIdentifier.AccessPolicy.Permission);
+                            xmlWriter.WriteEndElement();
+                        }
 
                         xmlWriter.WriteEndElement();
                     }

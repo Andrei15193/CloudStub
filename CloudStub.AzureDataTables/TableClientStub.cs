@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using Azure.Data.Tables.Sas;
+using CloudStub.AzureDataTables.Serializers;
 
 namespace CloudStub.AzureDataTables
 {
@@ -14,7 +17,7 @@ namespace CloudStub.AzureDataTables
         private readonly TableServiceClientStub _tableServiceClientStub;
         private readonly string _tableName;
 
-        public TableClientStub(TableServiceClientStub tableServiceClientStub, string tableName)
+        internal TableClientStub(TableServiceClientStub tableServiceClientStub, string tableName)
             : base()
         {
             _tableServiceClientStub = tableServiceClientStub;
@@ -56,12 +59,58 @@ namespace CloudStub.AzureDataTables
 
         public override Response<IReadOnlyList<TableSignedIdentifier>> GetAccessPolicies(CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            IReadOnlyList<TableSignedIdentifier> signedIdentifiersCopy;
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var table))
+                {
+                    var responseHeaders = new XmlResponseHeaders
+                    {
+                        { "x-ms-error-code", "TableNotFound" },
+                        { "Content-Length", "316" }
+                    };
+                    responseHeaders.Remove("Transfer-Encoding");
+
+                    throw TableStubResponseFactory.XmlRequestFailedException(HttpStatusCode.NotFound, "TableNotFound", "The table specified does not exist.", responseHeaders);
+                }
+
+                signedIdentifiersCopy = table
+                    .SignedIdentifiers
+                    .Select(signedIdentifier => new TableSignedIdentifier(signedIdentifier.Id, signedIdentifier.AccessPolicy == null ? null : new TableAccessPolicy(signedIdentifier.AccessPolicy.StartsOn, signedIdentifier.AccessPolicy.ExpiresOn, signedIdentifier.AccessPolicy.Permission)))
+                    .ToList();
+            }
+
+            return Response.FromValue(signedIdentifiersCopy, TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(signedIdentifiersCopy)));
         }
 
         public override Response SetAccessPolicy(IEnumerable<TableSignedIdentifier> tableAcl, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            using (_tableServiceClientStub.Tables.UpgradableReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var table))
+                {
+                    var responseHeaders = new XmlResponseHeaders
+                    {
+                        { "x-ms-error-code", "TableNotFound" },
+                        { "Content-Length", "316" }
+                    };
+                    responseHeaders.Remove("Transfer-Encoding");
+
+                    throw TableStubResponseFactory.XmlRequestFailedException(HttpStatusCode.NotFound, "TableNotFound", "The table specified does not exist.", responseHeaders);
+                }
+
+                using (_tableServiceClientStub.Tables.WriteLock())
+                    table.SignedIdentifiers =
+                        tableAcl
+                        ?.Select(signedIdentifier => new TableSignedIdentifier(signedIdentifier.Id, signedIdentifier.AccessPolicy == null ? null : new TableAccessPolicy(signedIdentifier.AccessPolicy.StartsOn, signedIdentifier.AccessPolicy.ExpiresOn, signedIdentifier.AccessPolicy.Permission)))
+                        ?.ToList()
+                        ?? Array.Empty<TableSignedIdentifier>() as IReadOnlyList<TableSignedIdentifier>;
+            }
+
+            var headers = new NoContentResponseHeaders();
+            headers.Remove("Cache-Control");
+            headers.Remove("X-Content-Type-Options");
+            return TableStubResponseFactory.NoContentResponse(headers);
         }
     }
 }

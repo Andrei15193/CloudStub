@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Azure.Data.Tables.Models;
 
 namespace CloudStub.AzureDataTables
 {
@@ -32,6 +33,8 @@ namespace CloudStub.AzureDataTables
             : base(StringComparer.Ordinal)
         {
         }
+
+        public IReadOnlyList<TableSignedIdentifier> SignedIdentifiers { get; set; } = Array.Empty<TableSignedIdentifier>();
 
         public IDisposable ReadLock()
             => new ReadLock(_tableLock);

@@ -553,7 +553,6 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
             var rawResponse = response.GetRawResponse();
 
-
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
                 () => Assertions.SuccessfulXmlResponse(
@@ -635,6 +634,214 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 () => Assert.Equal(
                     accessPolicies.Select(accessPolicy => new { accessPolicy.Id, accessPolicy.AccessPolicy.StartsOn, accessPolicy.AccessPolicy.ExpiresOn, accessPolicy.AccessPolicy.Permission }),
                     new[] { new { Id = "access-policy-id-2", StartsOn = utcNow as DateTimeOffset?, ExpiresOn = utcNow.AddHours(1) as DateTimeOffset?, Permission = "raud" } })
+            );
+        }
+
+        [Fact]
+        public void SetAccessPolicy_WhenPolicyHasNullAccessPolicy_DoesNotSetIt()
+        {
+            var utcNow = DateTimeOffset.UtcNow;
+            CloudTable.Create();
+
+            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", null) });
+
+            var response = CloudTable.GetAccessPolicies();
+            var accessPolicies = response.Value;
+            var rawResponse = response.GetRawResponse();
+            Assert.Multiple(
+                () => Assert.False(rawResponse.IsError),
+                () => Assertions.SuccessfulXmlResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.XmlContentHeaders(rawResponse),
+                        Content =
+                        {
+                            { "SignedIdentifiers",
+                                new Dictionary<string, object> {
+                                    {
+                                        "SignedIdentifier",
+                                        new Dictionary<string, object> {
+                                            { "Id", "access-policy-id" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ),
+                () => Assert.Equal(
+                    accessPolicies.Select(accessPolicy => new { accessPolicy.Id, accessPolicy.AccessPolicy }),
+                    new[] { new { Id = "access-policy-id", AccessPolicy = default(TableAccessPolicy) } })
+            );
+        }
+
+        [Fact]
+        public void SetAccessPolicy_WhenPoliciesAreNull_ClearsThem()
+        {
+            var utcNow = DateTimeOffset.UtcNow;
+            CloudTable.Create();
+            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+
+            CloudTable.SetAccessPolicy(null);
+
+            var response = CloudTable.GetAccessPolicies();
+            var accessPolicies = response.Value;
+            var rawResponse = response.GetRawResponse();
+            Assert.Multiple(
+                () => Assert.False(rawResponse.IsError),
+                () => Assertions.SuccessfulXmlResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.XmlContentHeaders(rawResponse),
+                        Content =
+                        {
+                            { "SignedIdentifiers", string.Empty }
+                        }
+                    }
+                ),
+                () => Assert.Empty(accessPolicies)
+            );
+        }
+
+        [Fact]
+        public void SetAccessPolicy_WhenPolicyHasNullStartsOn_DoesNotSetIt()
+        {
+            var utcNow = DateTimeOffset.UtcNow;
+            CloudTable.Create();
+
+            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(null, utcNow.AddHours(1), "raud")) });
+
+            var response = CloudTable.GetAccessPolicies();
+            var accessPolicies = response.Value;
+            var rawResponse = response.GetRawResponse();
+            Assert.Multiple(
+                () => Assert.False(rawResponse.IsError),
+                () => Assertions.SuccessfulXmlResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.XmlContentHeaders(rawResponse),
+                        Content =
+                        {
+                            { "SignedIdentifiers",
+                                new Dictionary<string, object> {
+                                    {
+                                        "SignedIdentifier",
+                                        new Dictionary<string, object> {
+                                            { "Id", "access-policy-id" },
+                                            {
+                                                "AccessPolicy", new Dictionary<string, object> {
+                                                    { "Expiry", utcNow.AddHours(1).ToString(Assertions.DateTimeFormat) },
+                                                    { "Permission", "raud" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ),
+                () => Assert.Equal(
+                    accessPolicies.Select(accessPolicy => new { accessPolicy.Id, accessPolicy.AccessPolicy.StartsOn, accessPolicy.AccessPolicy.ExpiresOn, accessPolicy.AccessPolicy.Permission }),
+                    new[] { new { Id = "access-policy-id", StartsOn = default(DateTimeOffset?), ExpiresOn = utcNow.AddHours(1) as DateTimeOffset?, Permission = "raud" } })
+            );
+        }
+
+        [Fact]
+        public void SetAccessPolicy_WhenPolicyHasNullExpiresOn_DoesNotSetIt()
+        {
+            var utcNow = DateTimeOffset.UtcNow;
+            CloudTable.Create();
+
+            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, null, "raud")) });
+
+            var response = CloudTable.GetAccessPolicies();
+            var accessPolicies = response.Value;
+            var rawResponse = response.GetRawResponse();
+            Assert.Multiple(
+                () => Assert.False(rawResponse.IsError),
+                () => Assertions.SuccessfulXmlResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.XmlContentHeaders(rawResponse),
+                        Content =
+                        {
+                            { "SignedIdentifiers",
+                                new Dictionary<string, object> {
+                                    {
+                                        "SignedIdentifier",
+                                        new Dictionary<string, object> {
+                                            { "Id", "access-policy-id" },
+                                            {
+                                                "AccessPolicy", new Dictionary<string, object> {
+                                                    { "Start", utcNow.ToString(Assertions.DateTimeFormat) },
+                                                    { "Permission", "raud" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ),
+                () => Assert.Equal(
+                    accessPolicies.Select(accessPolicy => new { accessPolicy.Id, accessPolicy.AccessPolicy.StartsOn, accessPolicy.AccessPolicy.ExpiresOn, accessPolicy.AccessPolicy.Permission }),
+                    new[] { new { Id = "access-policy-id", StartsOn = utcNow as DateTimeOffset?, ExpiresOn = default(DateTimeOffset?), Permission = "raud" } })
+            );
+        }
+
+        [Fact]
+        public void SetAccessPolicy_WhenPolicyHasNullPermissions_DoesNotSetThem()
+        {
+            var utcNow = DateTimeOffset.UtcNow;
+            CloudTable.Create();
+
+            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), null)) });
+
+            var response = CloudTable.GetAccessPolicies();
+            var accessPolicies = response.Value;
+            var rawResponse = response.GetRawResponse();
+            Assert.Multiple(
+                () => Assert.False(rawResponse.IsError),
+                () => Assertions.SuccessfulXmlResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.XmlContentHeaders(rawResponse),
+                        Content =
+                        {
+                            { "SignedIdentifiers",
+                                new Dictionary<string, object> {
+                                    {
+                                        "SignedIdentifier",
+                                        new Dictionary<string, object> {
+                                            { "Id", "access-policy-id" },
+                                            {
+                                                "AccessPolicy", new Dictionary<string, object> {
+                                                    { "Start", utcNow.ToString(Assertions.DateTimeFormat) },
+                                                    { "Expiry", utcNow.AddHours(1).ToString(Assertions.DateTimeFormat) }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ),
+                () => Assert.Equal(
+                    accessPolicies.Select(accessPolicy => new { accessPolicy.Id, accessPolicy.AccessPolicy.StartsOn, accessPolicy.AccessPolicy.ExpiresOn, accessPolicy.AccessPolicy.Permission }),
+                    new[] { new { Id = "access-policy-id", StartsOn = utcNow as DateTimeOffset?, ExpiresOn = utcNow.AddHours(1) as DateTimeOffset?, Permission = default(string) } })
             );
         }
     }

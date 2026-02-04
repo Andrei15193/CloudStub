@@ -21,7 +21,6 @@ namespace CloudStub.AzureDataTables
     {
         private static readonly IReadOnlyCollection<string> _reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "tables" };
         private readonly string _accountName;
-        private readonly TableCollectionStub _tables = new TableCollectionStub();
         private volatile TableServiceProperties _tableServiceProperties = new TableServiceProperties
         {
             Logging = new TableAnalyticsLoggingSettings("1.0", false, false, false, new TableRetentionPolicy(false)),
@@ -43,12 +42,15 @@ namespace CloudStub.AzureDataTables
                 throw new ArgumentException("Account name cannot be empty or whitespace.", nameof(accountName));
 
             _accountName = accountName;
+            Tables = new TableCollectionStub();
         }
 
         public TableServiceClientStub()
             : this("StubStorageAccount")
         {
         }
+
+        internal TableCollectionStub Tables { get; }
 
         public override string AccountName
             => _accountName;
@@ -82,17 +84,17 @@ namespace CloudStub.AzureDataTables
                     "The specifed resource name contains invalid characters."
                 );
 
-            using (_tables.UpgradableReadLock())
+            using (Tables.UpgradableReadLock())
             {
-                if (_tables.ContainsKey(tableName))
+                if (Tables.ContainsKey(tableName))
                     throw TableStubResponseFactory.JsonRequestFailedException(
                         HttpStatusCode.Conflict,
                         "TableAlreadyExists",
                         "The table specified already exists."
                     );
 
-                using (_tables.WriteLock())
-                    _tables.Add(tableName, new TableItemStub());
+                using (Tables.WriteLock())
+                    Tables.Add(tableName, new TableItemStub());
 
                 return Response.FromValue(TableModelFactory.TableItem(tableName), TableStubResponseFactory.TableCreatedResponse(Uri, tableName));
             }
@@ -139,9 +141,9 @@ namespace CloudStub.AzureDataTables
                     }
                 );
 
-            using (_tables.UpgradableReadLock())
+            using (Tables.UpgradableReadLock())
             {
-                if (_tables.ContainsKey(tableName))
+                if (Tables.ContainsKey(tableName))
                     return Response.FromValue(
                         TableModelFactory.TableItem(tableName),
                         TableStubResponseFactory.UnsuccessfulJsonResponse(
@@ -155,8 +157,8 @@ namespace CloudStub.AzureDataTables
                         )
                     );
 
-                using (_tables.WriteLock())
-                    _tables.Add(tableName, new TableItemStub());
+                using (Tables.WriteLock())
+                    Tables.Add(tableName, new TableItemStub());
 
                 return Response.FromValue(
                     TableModelFactory.TableItem(tableName),
@@ -180,8 +182,8 @@ namespace CloudStub.AzureDataTables
 
         public override Response DeleteTable(string tableName, CancellationToken cancellationToken = default)
         {
-            using (_tables.WriteLock())
-                if (!_tables.Remove(tableName))
+            using (Tables.WriteLock())
+                if (!Tables.Remove(tableName))
                     return TableStubResponseFactory.UnsuccessfulJsonResponse(HttpStatusCode.NotFound, "ResourceNotFound", "The specified resource does not exist.");
                 else
                     return TableStubResponseFactory.NoContentResponse();
@@ -213,7 +215,9 @@ namespace CloudStub.AzureDataTables
 
         public override Response<TableServiceProperties> GetProperties(CancellationToken cancellationToken = default)
         {
-            var tableServiceProperties = _CopyTableServiceProperties(_tableServiceProperties);
+            TableServiceProperties tableServiceProperties;
+            using (Tables.ReadLock())
+                tableServiceProperties = _CopyTableServiceProperties(_tableServiceProperties);
 
             return Response.FromValue(tableServiceProperties, TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(tableServiceProperties)));
         }
@@ -235,7 +239,9 @@ namespace CloudStub.AzureDataTables
             if (properties.Logging == null && properties.HourMetrics == null && properties.MinuteMetrics == null)
                 throw TableStubResponseFactory.XmlRequestFailedException(HttpStatusCode.BadRequest, "InvalidXmlDocument", "XML specified is not syntactically valid.");
 
-            _tableServiceProperties = _CopyTableServiceProperties(properties);
+            using (Tables.WriteLock())
+                _tableServiceProperties = _CopyTableServiceProperties(properties);
+
             return TableStubResponseFactory.AcceptedResponse();
         }
 
@@ -285,9 +291,9 @@ namespace CloudStub.AzureDataTables
                     );
 
                 var tables = new List<IReadOnlyDictionary<string, object>>(pageSize + 1);
-                using (_tables.ReadLock())
+                using (Tables.ReadLock())
                     tables.AddRange(
-                        _tables
+                        Tables
                             .Keys
                             .SkipWhile(tableName => continuationToken != null && string.Compare(tableName, continuationToken, StringComparison.OrdinalIgnoreCase) <= 0)
                             .Select(tableName => new Dictionary<string, object> { { "TableName", tableName } })
