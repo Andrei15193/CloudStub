@@ -57,8 +57,94 @@ namespace CloudStub.AzureDataTables
         public override Uri GenerateSasUri(TableSasPermissions permissions, DateTimeOffset expiresOn)
             => GenerateSasUri(GetSasBuilder(permissions, expiresOn));
 
+        public override Response AddEntity<T>(T entity, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response> AddEntityAsync<T>(T entity, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return AddEntity(entity, cancellationToken);
+        }
+
+        public override Response UpsertEntity<T>(T entity, TableUpdateMode mode = TableUpdateMode.Merge, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response> UpsertEntityAsync<T>(T entity, TableUpdateMode mode = TableUpdateMode.Merge, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return UpsertEntity(entity, mode, cancellationToken);
+        }
+
+        public override Response UpdateEntity<T>(T entity, ETag ifMatch, TableUpdateMode mode = TableUpdateMode.Merge, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response> UpdateEntityAsync<T>(T entity, ETag ifMatch, TableUpdateMode mode = TableUpdateMode.Merge, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return UpdateEntity(entity, ifMatch, mode, cancellationToken);
+        }
+
+        public override Response DeleteEntity(string partitionKey, string rowKey, ETag ifMatch = default, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response> DeleteEntityAsync(string partitionKey, string rowKey, ETag ifMatch = default, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return DeleteEntity(partitionKey, rowKey, ifMatch, cancellationToken);
+        }
+
+        public override Response DeleteEntity(ITableEntity entity, ETag ifMatch = default, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response> DeleteEntityAsync(ITableEntity entity, ETag ifMatch = default, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return DeleteEntity(entity, ifMatch, cancellationToken);
+        }
+
+        public override Response<T> GetEntity<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response<T>> GetEntityAsync<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return GetEntity<T>(partitionKey, rowKey, select, cancellationToken);
+        }
+
+        public override NullableResponse<T> GetEntityIfExists<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<NullableResponse<T>> GetEntityIfExistsAsync<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return GetEntityIfExists<T>(partitionKey, rowKey, select, cancellationToken);
+        }
+
         public override Response<IReadOnlyList<TableSignedIdentifier>> GetAccessPolicies(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             IReadOnlyList<TableSignedIdentifier> signedIdentifiersCopy;
             using (_tableServiceClientStub.Tables.ReadLock())
             {
@@ -83,8 +169,16 @@ namespace CloudStub.AzureDataTables
             return Response.FromValue(signedIdentifiersCopy, TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(signedIdentifiersCopy)));
         }
 
+        public override async Task<Response<IReadOnlyList<TableSignedIdentifier>>> GetAccessPoliciesAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return GetAccessPolicies(cancellationToken);
+        }
+
         public override Response SetAccessPolicy(IEnumerable<TableSignedIdentifier> tableAcl, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (_tableServiceClientStub.Tables.UpgradableReadLock())
             {
                 if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var table))
@@ -111,6 +205,12 @@ namespace CloudStub.AzureDataTables
             headers.Remove("Cache-Control");
             headers.Remove("X-Content-Type-Options");
             return TableStubResponseFactory.NoContentResponse(headers);
+        }
+
+        public override async Task<Response> SetAccessPolicyAsync(IEnumerable<TableSignedIdentifier> tableAcl, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return SetAccessPolicy(tableAcl, cancellationToken);
         }
     }
 }

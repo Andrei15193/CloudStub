@@ -63,6 +63,8 @@ namespace CloudStub.AzureDataTables
 
         public override Response<TableItem> CreateTable(string tableName, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!(3 <= tableName.Length && tableName.Length <= 63))
                 throw TableStubResponseFactory.JsonRequestFailedException(
                     HttpStatusCode.BadRequest,
@@ -108,6 +110,8 @@ namespace CloudStub.AzureDataTables
 
         public override Response<TableItem> CreateTableIfNotExists(string tableName, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!(3 <= tableName.Length && tableName.Length <= 63))
                 throw TableStubResponseFactory.JsonRequestFailedException(
                     HttpStatusCode.BadRequest,
@@ -182,6 +186,8 @@ namespace CloudStub.AzureDataTables
 
         public override Response DeleteTable(string tableName, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (Tables.WriteLock())
                 if (!Tables.Remove(tableName))
                     return TableStubResponseFactory.UnsuccessfulJsonResponse(HttpStatusCode.NotFound, "ResourceNotFound", "The specified resource does not exist.");
