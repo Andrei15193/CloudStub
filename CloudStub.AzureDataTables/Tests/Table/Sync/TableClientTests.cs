@@ -10,7 +10,7 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Sync
 {
-    public class TableClientOperationsTests : BaseTableCloudStubTests
+    public class TableClientTests : BaseTableCloudStubTests
     {
         [Fact]
         public void Name_GetsTheSameNameWhichWasProvided()

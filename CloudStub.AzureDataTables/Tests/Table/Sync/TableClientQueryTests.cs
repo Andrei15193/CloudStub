@@ -12,6 +12,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 {
     public class TableClientQueryTests : BaseTableCloudStubTests
     {
+        // Include continuation token tests
+        // Partition and row key of last returned entity make up the continuation token
+        //
+        // Add pagination tests,
+        // Split a query result into 2 pages, fetch the 1st one, delete the last entity from it and then fetch the 2nd page
+
         [Fact(Skip = "Incomplete implementation")]
         public void Query_WhenThereAreNoFilters_ReturnsAllItems()
         {

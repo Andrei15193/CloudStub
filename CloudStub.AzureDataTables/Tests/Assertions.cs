@@ -19,6 +19,7 @@ namespace CloudStub.AzureDataTables.Tests
     {
         public const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
         public const string DateTimeValueFormat = "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ";
+        public const string ETagDateTimeFormat = @"'W/""datetime\''" + DateTimeValueFormat + @"'\'""'";
         private static readonly IReadOnlyCollection<string> _nonRedactedHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Cache-Control",
@@ -202,6 +203,27 @@ namespace CloudStub.AzureDataTables.Tests
                 ),
                 () => Assert.NotNull(response.Headers.Date),
                 () => Assert.InRange(response.Headers.Date.Value, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
+
+                () =>
+                {
+                    if (response.Headers.TryGetValue("ETag", out var eTag))
+                    {
+                        Assert.True(
+                            DateTime.TryParseExact(
+                                Uri.UnescapeDataString(eTag),
+                                ETagDateTimeFormat,
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.None,
+                                out var eTagDateTime
+                            ),
+                            "Expected ETag header value to be in the format " + ETagDateTimeFormat);
+
+                        Assert.Multiple(
+                            () => Assert.InRange(eTagDateTime, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
+                            () => Assert.NotEqual(eTagDateTime, response.Headers.Date)
+                        );
+                    }
+                },
 
                 () => Assert.NotNull(response.Headers.RequestId),
                 () => Assert.True(Guid.TryParseExact(response.Headers.RequestId, "D", out _))
@@ -450,7 +472,7 @@ Time:{jsonContentOdataErrorMessageTime.ToString(DateTimeFormat, CultureInfo.Inva
                 () => Assert.InRange(jsonContentOdataErrorMessageTime, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
 
                 () => Assert.Equal(
-                    $@"{responseAssertOptions.ErrorDescription}
+                    responseAssertOptions.ErrorDescription + $@"
 RequestId:{rawResponse.Headers.RequestId}
 Time:{jsonContentOdataErrorMessageTime.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}
 Status: {responseAssertOptions.StatusCode:D} ({spelledOutStatusCode})
