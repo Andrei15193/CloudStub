@@ -17,6 +17,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         //
         // Add pagination tests,
         // Split a query result into 2 pages, fetch the 1st one, delete the last entity from it and then fetch the 2nd page
+        //
+        // Include mapping fields, include case sensitivity checks, include mismatching types for properties
 
         [Fact(Skip = "Incomplete implementation")]
         public void Query_WhenThereAreNoFilters_ReturnsAllItems()
@@ -48,7 +50,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             var dateTimeValue = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc);
             var dateTimeOffsetValue = new DateTimeOffset(2020, 1, 4, 0, 0, 0, TimeSpan.Zero);
             var binaryValue = Enumerable.Range(0, byte.MaxValue).Select(value => (byte)value).ToArray();
-            var query = string.Join(" or ", new []
+            var query = string.Join(" or ", new[]
             {
                 TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.StringProp == "test"),
                 TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.Int32Prop == 3),
@@ -85,7 +87,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             var dateTimeValue = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc);
             var dateTimeOffsetValue = new DateTimeOffset(2020, 1, 4, 0, 0, 0, TimeSpan.Zero);
             var binaryValue = Enumerable.Range(0, byte.MaxValue).Select(value => (byte)value).ToArray();
-            var query = $@"not ({string.Join(" and ", new []
+            var query = $@"not ({string.Join(" and ", new[]
                 {
                     TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.StringProp != "test"),
                     TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.Int32Prop != 3),

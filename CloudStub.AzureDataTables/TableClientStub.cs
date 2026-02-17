@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,12 +9,17 @@ using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using Azure.Data.Tables.Sas;
+using CloudStub.AzureDataTables.Filters;
+using CloudStub.AzureDataTables.Filters.Nodes;
+using CloudStub.AzureDataTables.Pageables;
 using CloudStub.AzureDataTables.Serializers;
 
 namespace CloudStub.AzureDataTables
 {
     public class TableClientStub : TableClient
     {
+        private static readonly char[] ContinuationTokenSeparator = new[] { ' ' };
+
         private readonly TableServiceClientStub _tableServiceClientStub;
         private readonly string _tableName;
 
@@ -59,8 +65,104 @@ namespace CloudStub.AzureDataTables
 
         public override Response AddEntity<T>(T entity, CancellationToken cancellationToken = default)
         {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity))
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (entity.PartitionKey == null)
+                throw new ArgumentNullException("PartitionKey")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (entity.RowKey == null)
+                throw new ArgumentNullException("RowKey")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
+            var mappedEntity = new ValidatedTableRowStub<T>(entity);
+            if (mappedEntity.NotSupportedDateTimeValue != null)
+                throw new NotSupportedException($"DateTime {mappedEntity.NotSupportedDateTimeValue} has a Kind of {mappedEntity.NotSupportedDateTimeValue?.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
             cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+
+            if (mappedEntity.IsPartitionKeyInvalid)
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "OutOfRangeInput",
+                    $"The 'PartitionKey' parameter of value '{entity.PartitionKey}' is out of range.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+            if (mappedEntity.IsRowKeyInvalid)
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "OutOfRangeInput",
+                    $"The 'RowKey' parameter of value '{entity.RowKey}' is out of range.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            if (mappedEntity.IsPartitionKeyExceedingMaxLength || mappedEntity.IsRowKeyExceedingMaxLength || mappedEntity.IsStringPropertyExceedingMaxLength || mappedEntity.IsBinaryPropertyExceedingMaxLength)
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "PropertyValueTooLarge",
+                    "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    new DefaultResponseHeaders
+                    {
+                        { "Preference-Applied", "return-no-content" }
+                    }
+                );
+            if (mappedEntity.InvalidDateTimeProperty != null)
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "OutOfRangeInput",
+                    $"The '{mappedEntity.InvalidDateTimeProperty?.Key}' parameter of value '{mappedEntity.InvalidDateTimeProperty?.Value:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.NotFound,
+                        "TableNotFound",
+                        "The table specified does not exist.",
+                         new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                    );
+
+                if (!tableItem.TryGetValue(entity.PartitionKey, out var tablePartition))
+                {
+                    tablePartition = new TablePartitionStub();
+                    tableItem.Add(entity.PartitionKey, tablePartition);
+                }
+
+                if (tablePartition.ContainsKey(entity.RowKey))
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.Conflict,
+                        "EntityAlreadyExists",
+                        "The specified entity already exists.",
+                        new DefaultResponseHeaders
+                        {
+                            { "Preference-Applied", "return-no-content" }
+                        }
+                    );
+
+                tablePartition.Add(entity.RowKey, mappedEntity);
+
+                return TableStubResponseFactory.NoContentResponse(
+                    new NoContentResponseHeaders()
+                    {
+                        { "ETag", mappedEntity.ETag },
+                        { "Location", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" },
+                        { "Preference-Applied", "return-no-content" },
+                        { "DataServiceId", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" }
+                    }
+
+                );
+            }
         }
 
         public override async Task<Response> AddEntityAsync<T>(T entity, CancellationToken cancellationToken = default)
@@ -141,6 +243,15 @@ namespace CloudStub.AzureDataTables
             return GetEntityIfExists<T>(partitionKey, rowKey, select, cancellationToken);
         }
 
+        public override Pageable<T> Query<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return new PageableStub<T>(_GetTableItemsPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), cancellationToken), maxPerPage);
+        }
+
+        public override Pageable<T> Query<T>(Expression<Func<T, bool>> filter, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+            => Query<T>(CreateQueryFilter(filter), maxPerPage, select, cancellationToken);
+
         public override Response<IReadOnlyList<TableSignedIdentifier>> GetAccessPolicies(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -212,5 +323,63 @@ namespace CloudStub.AzureDataTables
             await Task.Yield();
             return SetAccessPolicy(tableAcl, cancellationToken);
         }
+
+        private PageFactory<T> _GetTableItemsPageFactory<T>(Filter filter, CancellationToken cancellationToken)
+            => (continuationToken, pageSize) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (pageSize < 0)
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.BadRequest,
+                        "InvalidInput",
+                        "One of the request inputs is not valid."
+                    );
+                if (filter is InvalidFilter invalidFilter)
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.NotImplemented,
+                        "NotImplemented",
+                        "The requested operation is not implemented on the specified resource."
+                    );
+
+                var rows = new List<TableRowStub>(pageSize + 1);
+                var continuationTokenParts = continuationToken?.Split(ContinuationTokenSeparator, 2);
+                var continuationTokenPartitionKey = continuationTokenParts?.First();
+                var continuationTokenRowKey = continuationTokenParts?.Last();
+
+                using (_tableServiceClientStub.Tables.ReadLock())
+                    if (_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                        using (tableItem.ReadLock())
+                            rows.AddRange(
+                                tableItem
+                                    .SkipWhile(tablePartition => string.Compare(tablePartition.Key, continuationTokenPartitionKey, StringComparison.Ordinal) < 0)
+                                    .SelectMany(tablePartition => tablePartition.Value)
+                                    .SkipWhile(tableRow => string.Compare(tableRow.Key, continuationTokenRowKey, StringComparison.Ordinal) < 0)
+                                    .Select(tableRow => tableRow.Value)
+                                    .Take(pageSize + 1)
+                            );
+
+                var nextContinuationToken = default(string);
+                if (rows.Count > pageSize)
+                {
+                    rows.RemoveAt(rows.Count - 1);
+                    var lastEntity = rows.Last();
+                    nextContinuationToken = $"{lastEntity[nameof(ITableEntity.PartitionKey)]} {lastEntity[nameof(ITableEntity.RowKey)]}";
+                }
+
+                var entities = new List<T>(rows.Count);
+                entities.AddRange(rows.Select(row => row.MapToEntity<T>()));
+
+                var page = Page<T>.FromValues(
+                    entities,
+                    nextContinuationToken,
+                    TableStubResponseFactory.EntitiesResponse(
+                        new DefaultResponseHeaders(),
+                        "https://cloudstubdev.table.core.windows.net/$metadata#Tables",
+                        rows
+                    )
+                );
+                return page;
+            };
     }
 }

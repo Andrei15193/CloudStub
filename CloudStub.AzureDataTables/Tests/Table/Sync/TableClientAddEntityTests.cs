@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using Azure;
 using Azure.Data.Tables;
 using CloudStub.AzureDataTables.Tests.Data;
 using Xunit;
@@ -19,8 +18,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 () => CloudTable.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
-                    RowKey = "row-key",
-                    ETag = ETag.All
+                    RowKey = "row-key"
                 }),
                 rawResponse =>
                 {
@@ -42,7 +40,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void AddEntity_WhenEntityIsNull_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.AddEntity<ITableEntity>(null));
-            Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+
+            Assert.Multiple(
+                () => Assert.Equal(new ArgumentNullException("entity").Message, exception.Message),
+                () => Assert.Equal("Azure.Data.Tables", exception.Source)
+            );
         }
 
         [Fact]
@@ -62,9 +64,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 Headers = new Assertions.NoContentHeaders(response)
                 {
                     { "ETag", response.Headers.ETag.ToString() },
-                    { "Location", $"{CloudTable.Uri.AbsoluteUri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
+                    { "Location", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
                     { "Preference-Applied", "return-no-content" },
-                    { "DataServiceId", $"{CloudTable.Uri.AbsoluteUri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
+                    { "DataServiceId", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
                 }
             });
         }
@@ -388,7 +390,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void AddEntity_WhenDateTimePropertyIsLocal_ThrowsException()
+        public void AddEntity_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             CloudTable.Create();
 
@@ -397,16 +399,49 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
-                DateTimeProp = now
+                DateTimeProp = now,
+                DateTimeOffsetProp = DateTimeOffset.Now
             }));
 
             Assert.Multiple(
-                () => Assert.Equal($"DateTime {now} has a Kind of Local. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.", exception.Message),
+                () => Assert.Equal($"DateTime {now} has a Kind of {now.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.", exception.Message),
                 () => Assert.Equal("Azure.Data.Tables", exception.Source),
                 () => Assert.Empty(exception.Data),
                 () => Assert.Null(exception.InnerException),
                 () => Assert.Null(exception.HelpLink),
                 () => Assert.Equal(-2146233067, exception.HResult)
+            );
+        }
+
+        [Fact]
+        public void AddEntity_WhenDateTimeOffsetPropertyIsLocal_InsertsEntity()
+        {
+            CloudTable.Create();
+
+            var now = DateTimeOffset.Now;
+            var response = CloudTable.AddEntity(new TestEntity
+            {
+                PartitionKey = "partition-key:1",
+                RowKey = "row-key:1",
+                DateTimeOffsetProp = now
+            });
+
+            var entities = CloudTable.Query<TableEntity>().ToList();
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Equal(now.UtcDateTime, entity.GetDateTimeOffset(nameof(TestEntity.DateTimeOffsetProp))),
+                () => Assert.Equal(TimeSpan.Zero, entity.GetDateTimeOffset(nameof(TestEntity.DateTimeOffsetProp))?.Offset),
+                () => Assertions.EmptyResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(response)
+                    {
+                        { "ETag", response.Headers.ETag.ToString() },
+                        { "Location", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
+                        { "Preference-Applied", "return-no-content" },
+                        { "DataServiceId", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
+                    }
+                })
             );
         }
     }

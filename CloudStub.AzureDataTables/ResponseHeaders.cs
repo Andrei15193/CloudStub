@@ -17,7 +17,7 @@ namespace CloudStub.AzureDataTables
 
     internal class DefaultResponseHeaders : ResponseHeaders
     {
-        public DefaultResponseHeaders()
+        public DefaultResponseHeaders(Action<ResponseHeaders> otherConfig = null)
         {
             Add("Cache-Control", "no-cache");
             Add("Server", "Windows-Azure-Table/1.0 Microsoft-HTTPAPI/2.0");
@@ -29,6 +29,8 @@ namespace CloudStub.AzureDataTables
 
             Add("Transfer-Encoding", "chunked");
             Add("Content-Type", "application/json;odata=minimalmetadata;streaming=true;charset=utf-8");
+
+            otherConfig?.Invoke(this);
         }
     }
 

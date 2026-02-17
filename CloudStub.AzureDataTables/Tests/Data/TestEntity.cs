@@ -28,6 +28,8 @@ namespace CloudStub.AzureDataTables.Tests.Data
 
         public DateTime? DateTimeProp { get; set; }
 
+        public DateTimeOffset? DateTimeOffsetProp { get; set; }
+
         public Guid? GuidProp { get; set; }
 
         public decimal? DecimalProp { get; set; }
