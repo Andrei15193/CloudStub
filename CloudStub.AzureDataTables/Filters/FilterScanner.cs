@@ -154,7 +154,7 @@ namespace CloudStub.AzureDataTables.Filters
 
             else if (_StartsWith("datetime'", filter, start, end) && filter[end - 1] == '\'')
             {
-                var valueStart = "datetime'".Length;
+                var valueStart = start + "datetime'".Length;
                 var valueEnd = end - 1;
                 var dateTimeString = filter.Substring(valueStart, valueEnd - valueStart);
 
@@ -166,7 +166,7 @@ namespace CloudStub.AzureDataTables.Filters
 
             else if (_StartsWith("guid'", filter, start, end) && filter[end - 1] == '\'')
             {
-                var valueStart = "guid'".Length;
+                var valueStart = start + "guid'".Length;
                 var valueEnd = end - 1;
                 var guidString = filter.Substring(valueStart, valueEnd - valueStart);
 
@@ -178,7 +178,7 @@ namespace CloudStub.AzureDataTables.Filters
 
             else if (_StartsWith("x'", filter, start, end) && filter[end - 1] == '\'')
             {
-                var valueStart = "x'".Length;
+                var valueStart = start + "x'".Length;
                 var valueEnd = end - 1;
 
                 if (_IsHexString(filter, valueStart, valueEnd))

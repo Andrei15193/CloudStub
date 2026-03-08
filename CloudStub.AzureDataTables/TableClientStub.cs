@@ -246,7 +246,7 @@ namespace CloudStub.AzureDataTables
         public override Pageable<T> Query<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new PageableStub<T>(_GetTableItemsPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), cancellationToken), maxPerPage);
+            return new PageableStub<T>(_GetTableItemsPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), select, cancellationToken), maxPerPage);
         }
 
         public override Pageable<T> Query<T>(Expression<Func<T, bool>> filter, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
@@ -324,23 +324,38 @@ namespace CloudStub.AzureDataTables
             return SetAccessPolicy(tableAcl, cancellationToken);
         }
 
-        private PageFactory<T> _GetTableItemsPageFactory<T>(Filter filter, CancellationToken cancellationToken)
+        private PageFactory<T> _GetTableItemsPageFactory<T>(Filter filter, IEnumerable<string> selectedProperties, CancellationToken cancellationToken)
             => (continuationToken, pageSize) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (pageSize < 0)
+                if (pageSize < 0 || 1000 < pageSize)
                     throw TableStubResponseFactory.JsonRequestFailedException(
                         HttpStatusCode.BadRequest,
                         "InvalidInput",
                         "One of the request inputs is not valid."
                     );
                 if (filter is InvalidFilter invalidFilter)
-                    throw TableStubResponseFactory.JsonRequestFailedException(
-                        HttpStatusCode.NotImplemented,
-                        "NotImplemented",
-                        "The requested operation is not implemented on the specified resource."
-                    );
+                    switch (invalidFilter.Type)
+                    {
+                        case InvalidFilterType.NotImplemented:
+                            throw TableStubResponseFactory.JsonRequestFailedException(
+                                HttpStatusCode.NotImplemented,
+                                "NotImplemented",
+                                "The requested operation is not implemented on the specified resource."
+                            );
+
+                        case InvalidFilterType.SyntaxError:
+                            throw TableStubResponseFactory.JsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "InvalidInput",
+                                invalidFilter.ErrorMessage,
+                                new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                            );
+
+                        default:
+                            throw new InvalidOperationException($"Unhandled invalid filter type {invalidFilter.Type}.");
+                    }
 
                 var rows = new List<TableRowStub>(pageSize + 1);
                 var continuationTokenParts = continuationToken?.Split(ContinuationTokenSeparator, 2);
@@ -356,6 +371,7 @@ namespace CloudStub.AzureDataTables
                                     .SelectMany(tablePartition => tablePartition.Value)
                                     .SkipWhile(tableRow => string.Compare(tableRow.Key, continuationTokenRowKey, StringComparison.Ordinal) < 0)
                                     .Select(tableRow => tableRow.Value)
+                                    .Where(tableRow => filter == null || filter.Apply(tableRow))
                                     .Take(pageSize + 1)
                             );
 
@@ -363,20 +379,32 @@ namespace CloudStub.AzureDataTables
                 if (rows.Count > pageSize)
                 {
                     rows.RemoveAt(rows.Count - 1);
-                    var lastEntity = rows.Last();
-                    nextContinuationToken = $"{lastEntity[nameof(ITableEntity.PartitionKey)]} {lastEntity[nameof(ITableEntity.RowKey)]}";
+                    if (rows.Count > 0)
+                    {
+                        var lastEntity = rows.Last();
+                        nextContinuationToken = $"{lastEntity[nameof(ITableEntity.PartitionKey)]} {lastEntity[nameof(ITableEntity.RowKey)]}";
+                    }
                 }
 
                 var entities = new List<T>(rows.Count);
-                entities.AddRange(rows.Select(row => row.MapToEntity<T>()));
+                entities.AddRange(rows.Select(row => row.MapToEntity<T>(selectedProperties)));
 
                 var page = Page<T>.FromValues(
                     entities,
                     nextContinuationToken,
                     TableStubResponseFactory.EntitiesResponse(
-                        new DefaultResponseHeaders(),
-                        "https://cloudstubdev.table.core.windows.net/$metadata#Tables",
-                        rows
+                        new DefaultResponseHeaders(headers =>
+                        {
+                            if (nextContinuationToken != null)
+                            {
+                                var lastRow = rows[rows.Count - 1];
+                                headers.Add("x-ms-continuation-NextPartitionKey", (string)lastRow[nameof(ITableEntity.PartitionKey)]);
+                                headers.Add("x-ms-continuation-NextRowKey", (string)lastRow[nameof(ITableEntity.RowKey)]);
+                            }
+                        }),
+                        $"https://cloudstubdev.table.core.windows.net/$metadata#{_tableName}{(selectedProperties?.Any() ?? false ? "&$select=" + string.Join(",", selectedProperties) : string.Empty)}",
+                        rows,
+                        selectedProperties
                     )
                 );
                 return page;

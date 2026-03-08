@@ -9,10 +9,7 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
         private readonly Filter _right;
 
         public AndFilter(Filter left, Filter right)
-        {
-            _left = left;
-            _right = right;
-        }
+            => (_left, _right) = (left, right);
 
         public override int DiscreteFiltersCount
             => 1 + _left.DiscreteFiltersCount + _right.DiscreteFiltersCount;

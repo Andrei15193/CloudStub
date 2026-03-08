@@ -7,10 +7,7 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
     internal abstract class ComparisonFilter : Filter
     {
         public ComparisonFilter(string propertyName, object value)
-        {
-            PropertyName = propertyName;
-            Value = value;
-        }
+            => (PropertyName, Value) = (propertyName, value);
 
         public override int DiscreteFiltersCount
             => 1;
@@ -21,12 +18,20 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
         public sealed override IEnumerable<string> FilteredProperties
             => Enumerable.Repeat(PropertyName, 1);
 
-        protected int Compare(object propertyValue, object value)
+        protected int? Compare(object propertyValue, object value)
         {
-            if (propertyValue?.GetType() != value?.GetType())
-                return -1;
-            else if (propertyValue == null && value == null)
+            if ((propertyValue == null || value == null) && propertyValue != value)
+                return null;
+
+            if (propertyValue == null && value == null)
                 return 0;
+
+            else if (propertyValue is string stringPropertyValue && value is string stringValue)
+                return string.CompareOrdinal(stringPropertyValue, stringValue);
+
+            else if (propertyValue.GetType() == value.GetType() && propertyValue is IComparable comparablePropertyValue)
+                return comparablePropertyValue.CompareTo(value);
+
             else if (propertyValue is byte[] binaryPropertyValue && value is byte[] binaryValue)
             {
                 var index = 0;
@@ -37,14 +42,12 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
                     index++;
                 }
                 if (compareResult == 0)
-                    compareResult = binaryPropertyValue.Length.CompareTo(binaryPropertyValue.Length);
+                    compareResult = binaryPropertyValue.Length.CompareTo(binaryValue.Length);
 
                 return compareResult;
             }
-            else if (propertyValue is string stringPropertyValue && value is string stringValue)
-                return string.CompareOrdinal(stringPropertyValue, stringValue);
             else
-                return ((IComparable)propertyValue).CompareTo(value);
+                return null;
         }
     }
 }

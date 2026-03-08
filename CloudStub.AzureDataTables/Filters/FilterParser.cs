@@ -8,8 +8,9 @@ namespace CloudStub.AzureDataTables.Filters
     {
         public static Filter Parse(IReadOnlyList<FilterToken> tokens)
         {
-            if (tokens.Any(token => token.Type == FilterTokenType.Unknown))
-                return new InvalidFilter("The requested operation is not implemented on the specified resource.");
+            var unknownToken = tokens.FirstOrDefault(token => token.Type == FilterTokenType.Unknown);
+            if (unknownToken.Filter != null)
+                return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {unknownToken.End} in '{unknownToken.Filter}'.");
 
             return _Parse(tokens, 0, tokens.Count);
         }
@@ -19,15 +20,15 @@ namespace CloudStub.AzureDataTables.Filters
             if (start == end)
                 return new TrueFilter();
 
-            if (tokens[start].Type == FilterTokenType.GroupOpen && tokens[end - 1].Type == FilterTokenType.GroupClose)
-                return _ParseGroup(tokens, start, end);
-
             if (tokens[start].Type == FilterTokenType.Not && end - start > 1)
                 return new NotFilter(_Parse(tokens, start + 1, end));
 
             var logicalFilter = _TryParseLogicalFilter(tokens, start, end);
             if (logicalFilter != null)
                 return logicalFilter;
+
+            if (tokens[start].Type == FilterTokenType.GroupOpen && tokens[end - 1].Type == FilterTokenType.GroupClose)
+                return _ParseGroup(tokens, start, end);
 
             return _ParseDiscreteFilter(tokens, start, end);
         }
@@ -41,7 +42,7 @@ namespace CloudStub.AzureDataTables.Filters
 
                 case 1:
                     if (tokens[start].Type != FilterTokenType.Identifier)
-                        return new InvalidFilter($"Syntax error at position {tokens[start].End} in '{tokens[start].Filter}'.");
+                        return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[start].End} in '{tokens[start].Filter}'.");
                     else
                         return new EqualsFilter((string)tokens[start].Value, true);
 
@@ -72,7 +73,7 @@ namespace CloudStub.AzureDataTables.Filters
                                 return new GreaterThanOrEqualFilter(propertyName, value);
 
                             default:
-                                return new InvalidFilter($"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
+                                return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
                         }
                     }
                     else if (_IsValueTokenType(tokens[start].Type) && tokens[end - 1].Type == FilterTokenType.Identifier)
@@ -101,14 +102,14 @@ namespace CloudStub.AzureDataTables.Filters
                                 return new LessThanOrEqualFilter(propertyName, value);
 
                             default:
-                                return new InvalidFilter($"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
+                                return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
                         }
                     }
                     else
-                        return new InvalidFilter("The requested operation is not implemented on the specified resource.");
+                        return new InvalidFilter(InvalidFilterType.NotImplemented, "The requested operation is not implemented on the specified resource.");
 
                 default:
-                    return new InvalidFilter($"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
+                    return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
             }
         }
 
@@ -130,8 +131,8 @@ namespace CloudStub.AzureDataTables.Filters
                         index++;
                         break;
 
-                    case FilterTokenType.Or:
-                    case FilterTokenType.And:
+                    case FilterTokenType.Or when nestingLevel == 0:
+                    case FilterTokenType.And when nestingLevel == 0:
                         foundLogicalOperator = true;
                         break;
 
@@ -144,7 +145,7 @@ namespace CloudStub.AzureDataTables.Filters
                 return null;
 
             if (start == index || index + 1 == end)
-                return new InvalidFilter($"Syntax error at position {tokens[index].End} in '{tokens[index].Filter}'.");
+                return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[index].End} in '{tokens[index].Filter}'.");
 
             var leftFilter = _Parse(tokens, start, index);
             if (leftFilter is InvalidFilter)
@@ -181,7 +182,7 @@ namespace CloudStub.AzureDataTables.Filters
             }
 
             if (index != end)
-                return new InvalidFilter($"Syntax error at position {tokens[index - 1].End} in '{tokens[index - 1].Filter}'.");
+                return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[index - 1].End} in '{tokens[index - 1].Filter}'.");
             else
                 return _Parse(tokens, start + 1, end - 1);
         }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 
@@ -58,16 +59,21 @@ namespace CloudStub.AzureDataTables
 
     internal class TableRowStub : Dictionary<string, object>
     {
-        // selected fields
-        public T MapToEntity<T>()
+        public T MapToEntity<T>(IEnumerable<string> selectedProperties)
         {
-            if (typeof(T) == typeof(TableEntity))
+            if (typeof(T) == typeof(TableEntity) && !(selectedProperties?.Any() ?? false))
                 return (T)(new TableEntity(this) as object);
             else if (typeof(IDictionary<string, object>).IsAssignableFrom(typeof(T)))
             {
                 var entity = (IDictionary<string, object>)Activator.CreateInstance<T>();
                 foreach (var property in this)
-                    entity[property.Key] = property.Value;
+                    if (selectedProperties == null || selectedProperties.Contains(property.Key, StringComparer.OrdinalIgnoreCase))
+                        entity[property.Key] = property.Value;
+
+                if (selectedProperties != null)
+                    foreach (var property in selectedProperties)
+                        if (!entity.ContainsKey(property))
+                            entity[property] = null;
 
                 return (T)entity;
             }
@@ -76,49 +82,80 @@ namespace CloudStub.AzureDataTables
                 var entity = Activator.CreateInstance<T>();
 
                 foreach (var field in typeof(T).GetFields())
-                {
-                    var isPrimitive = (
-                        field.FieldType == typeof(string)
-                        || field.FieldType == typeof(DateTimeOffset)
-                        || field.FieldType == typeof(Guid)
-                        || field.FieldType == typeof(byte[])
-                        || field.FieldType.IsPrimitive
-                    );
-
-                    if (isPrimitive && TryGetValue(field.Name, out var value))
-                        if (field.FieldType == typeof(byte[]) && value?.GetType() == typeof(byte[]))
-                        {
-                            var binaryArrayCopy = new byte[((byte[])value).Length];
-                            Array.Copy((byte[])value, binaryArrayCopy, binaryArrayCopy.Length);
-                            field.SetValue(entity, binaryArrayCopy);
-                        }
-                        else
-                            field.SetValue(entity, Convert.ChangeType(value, field.FieldType));
-                }
+                    if (selectedProperties == null || selectedProperties.Contains(field.Name, StringComparer.OrdinalIgnoreCase))
+                        _TrySetProperty(field.Name, field.FieldType, value => field.SetValue(entity, value));
 
                 foreach (var property in typeof(T).GetProperties())
-                {
-                    var isPrimitive = (
-                        property.PropertyType == typeof(string)
-                        || property.PropertyType == typeof(DateTimeOffset)
-                        || property.PropertyType == typeof(Guid)
-                        || property.PropertyType == typeof(byte[])
-                        || property.PropertyType.IsPrimitive
-                    );
-
-                    if (property.CanWrite && isPrimitive && TryGetValue(property.Name, out var value))
-                        if (property.PropertyType == typeof(byte[]) && value?.GetType() == typeof(byte[]))
-                        {
-                            var binaryArrayCopy = new byte[((byte[])value).Length];
-                            Array.Copy((byte[])value, binaryArrayCopy, binaryArrayCopy.Length);
-                            property.SetValue(entity, binaryArrayCopy);
-                        }
-                        else
-                            property.SetValue(entity, Convert.ChangeType(value, property.PropertyType));
-                }
+                    if (property.CanWrite && (selectedProperties == null || selectedProperties.Contains(property.Name, StringComparer.OrdinalIgnoreCase)))
+                        _TrySetProperty(property.Name, property.PropertyType, value => property.SetValue(entity, value));
 
                 return entity;
             }
+        }
+
+        private void _TrySetProperty(string targetName, Type targetType, Action<object> setValueAction)
+        {
+            var entityPropertyName = targetName == nameof(ITableEntity.ETag) ? "odata.etag" : targetName;
+            var isNullableType = Nullable.GetUnderlyingType(targetType) != null;
+            var resolvedTargetType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+            if (TryGetValue(entityPropertyName, out var sourceValue))
+                if (resolvedTargetType == typeof(ETag) && sourceValue is string stringValueForETag)
+                {
+                    var etag = new ETag(stringValueForETag);
+                    setValueAction(isNullableType ? (ETag?)etag : etag);
+                }
+
+                else if (resolvedTargetType == typeof(string) && sourceValue is string stringValue)
+                    setValueAction(stringValue);
+
+                else if (resolvedTargetType == typeof(bool) && sourceValue is bool boolValue)
+                    setValueAction(isNullableType ? (bool?)boolValue : boolValue);
+
+                else if (resolvedTargetType == typeof(int) && sourceValue is int intForIntValue)
+                    setValueAction(isNullableType ? (int?)intForIntValue : intForIntValue);
+
+                else if (resolvedTargetType == typeof(long) && sourceValue is int intForLongValue)
+                    setValueAction(isNullableType ? (long?)intForLongValue : (long)intForLongValue);
+                else if (resolvedTargetType == typeof(long) && sourceValue is long longForLongValue)
+                    setValueAction(isNullableType ? (long?)longForLongValue : longForLongValue);
+
+                else if (resolvedTargetType == typeof(float) && sourceValue is int intForFloatValue)
+                    setValueAction(isNullableType ? (float?)intForFloatValue : (float)intForFloatValue);
+                else if (resolvedTargetType == typeof(float) && sourceValue is long longForFloatValue)
+                    setValueAction(isNullableType ? (float?)longForFloatValue : (float)longForFloatValue);
+
+                else if (resolvedTargetType == typeof(double) && sourceValue is int intForDoubleValue)
+                    setValueAction(isNullableType ? (double?)intForDoubleValue : (double)intForDoubleValue);
+                else if (resolvedTargetType == typeof(double) && sourceValue is long longForDoubleValue)
+                    setValueAction(isNullableType ? (double?)longForDoubleValue : (double)longForDoubleValue);
+                else if (resolvedTargetType == typeof(double) && sourceValue is double doubleForDoubleValue)
+                    setValueAction(isNullableType ? (double?)doubleForDoubleValue : doubleForDoubleValue);
+
+                else if (resolvedTargetType == typeof(decimal) && sourceValue is int intForDecimalValue)
+                    setValueAction(isNullableType ? (decimal?)intForDecimalValue : (decimal)intForDecimalValue);
+                else if (resolvedTargetType == typeof(decimal) && sourceValue is long longForDecimalValue)
+                    setValueAction(isNullableType ? (decimal?)longForDecimalValue : (decimal)longForDecimalValue);
+                else if (resolvedTargetType == typeof(decimal) && sourceValue is double doubleForDecimalValue)
+                    setValueAction(isNullableType ? (decimal?)doubleForDecimalValue : (decimal)doubleForDecimalValue);
+
+                else if (resolvedTargetType == typeof(DateTime) && sourceValue is DateTimeOffset dateTimeOffsetForDateTimeValue)
+                    setValueAction(isNullableType ? (DateTime?)dateTimeOffsetForDateTimeValue.UtcDateTime : dateTimeOffsetForDateTimeValue.UtcDateTime);
+                else if (resolvedTargetType == typeof(DateTimeOffset) && sourceValue is DateTimeOffset dateTimeOffsetForDateTimeOffsetValue)
+                    setValueAction(isNullableType ? (DateTimeOffset?)dateTimeOffsetForDateTimeOffsetValue : dateTimeOffsetForDateTimeOffsetValue);
+
+                else if (resolvedTargetType == typeof(Guid) && sourceValue is Guid guidValue)
+                    setValueAction(isNullableType ? (Guid?)guidValue : guidValue);
+
+                else if (resolvedTargetType == typeof(byte[]) && sourceValue is byte[] byteArrayValue)
+                {
+                    var binaryArrayCopy = new byte[byteArrayValue.Length];
+                    Array.Copy(byteArrayValue, binaryArrayCopy, binaryArrayCopy.Length);
+                    setValueAction(binaryArrayCopy);
+                }
+
+                else
+                    setValueAction(Convert.ChangeType(sourceValue, targetType));
         }
     }
 

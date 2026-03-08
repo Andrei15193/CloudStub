@@ -288,7 +288,7 @@ namespace CloudStub.AzureDataTables.Tests
                     else if (expectedChild.Value is int @int)
                         Assert.Equal(@int, propertyValue?.GetValue<int>());
                     else if (expectedChild.Value is long @long)
-                        Assert.Equal(@long.ToString(), propertyValue?.GetValue<string>());
+                        Assert.Equal(@long, long.Parse(propertyValue?.GetValue<string>(), NumberStyles.Integer));
                     else if (expectedChild.Value is float @float)
                         Assert.Equal(@float, propertyValue?.GetValue<float>());
                     else if (expectedChild.Value is double @double)

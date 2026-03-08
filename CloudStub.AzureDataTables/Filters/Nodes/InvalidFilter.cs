@@ -3,11 +3,18 @@ using System.Collections.Generic;
 
 namespace CloudStub.AzureDataTables.Filters.Nodes
 {
+    internal enum InvalidFilterType
+    {
+        SyntaxError,
+        NotImplemented
+    }
+
     internal sealed class InvalidFilter : Filter
     {
-        public InvalidFilter(string errorMessage)
-            => ErrorMessage = errorMessage;
+        public InvalidFilter(InvalidFilterType type, string errorMessage)
+            => (Type, ErrorMessage) = (type, errorMessage);
 
+        public InvalidFilterType Type { get; }
         public string ErrorMessage { get; }
 
         public override int DiscreteFiltersCount
