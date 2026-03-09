@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -12,12 +13,6 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 {
     public class TableClientQueryTests : BaseTableCloudStubTests
     {
-        // Include continuation token tests
-        // Partition and row key of last returned entity make up the continuation token
-        //
-        // Add pagination tests,
-        // Split a query result into 2 pages, fetch the 1st one, delete the last entity from it and then fetch the 2nd page
-        //
         // Include mapping fields, include case sensitivity checks, include mismatching types for properties
         //
         // Include discrete operation count tests (max 15 according to docs, iirc)
@@ -376,6 +371,60 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
+        public void Query_WhenUsingTakeCount_ReturnsContinuationTokenContainingPartitionAndRowKeysForNextPage()
+        {
+            _AddTestData();
+
+            var entities = CloudTable.Query<TableEntity>(maxPerPage: 5);
+
+            _AssertResult(
+                entities,
+                ("partition-1", "row-1"),
+                ("partition-10", "row-10"),
+                ("partition-2", "row-2"),
+                ("partition-3", "row-3"),
+                ("partition-4", "row-4"),
+                ("partition-5", "row-5"),
+                ("partition-6", "row-6"),
+                ("partition-7", "row-7"),
+                ("partition-8", "row-8"),
+                ("partition-9", "row-9")
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingTakeCount_ReturnsContinuationTokenUsingBase64UrlEncoding()
+        {
+            CloudTable.CreateIfNotExists();
+
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "<",
+                RowKey = "row"
+            });
+
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "<.>",
+                RowKey = "test"
+            });
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "<.>",
+                RowKey = "ÿÿÿ"
+            });
+
+            var entities = CloudTable.Query<TableEntity>(maxPerPage: 1);
+
+            _AssertResult(
+                entities,
+                ("<", "row"),
+                ("<.>", "test"),
+                ("<.>", "ÿÿÿ")
+            );
+        }
+
+        [Fact]
         public void Query_WhenUsingZeroTakeCount_ReturnsNoEntities()
         {
             _AddTestData();
@@ -562,14 +611,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             where T : ITableEntity
         {
             var processedItemsCount = 0;
+            var previousContinuationToken = default(string);
 
             Assert.Multiple(
                 entities
                 .AsPages()
                 .Select(page => new Action(() =>
                 {
-                    _AssertResult(page, selectedProperties, expectedItems.Skip(processedItemsCount).Take(page.Values.Count).ToArray());
+                    _AssertResult(page, selectedProperties, previousContinuationToken, expectedItems.Skip(processedItemsCount).Take(page.Values.Count).ToArray());
                     processedItemsCount += page.Values.Count;
+                    previousContinuationToken = page.ContinuationToken;
                 }))
                 .ToArray()
             );
@@ -577,15 +628,25 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
         private void _AssertResult<T>(Page<T> entities, params (string, string)[] expectedItems)
             where T : ITableEntity
-            => _AssertResult(entities, Array.Empty<string>(), expectedItems);
+            => _AssertResult(entities, Array.Empty<string>(), null, expectedItems);
 
-        private void _AssertResult<T>(Page<T> entities, IEnumerable<string> selectedProperties, params (string, string)[] expectedItems)
+        private void _AssertResult<T>(Page<T> entities, IEnumerable<string> selectedProperties, string previousContinuationToken, params (string, string)[] expectedItems)
             where T : ITableEntity
         {
             var resposne = entities.GetRawResponse();
 
             Assert.Multiple(
                 () => Assert.Equal(expectedItems, entities.Values.Select(entity => (entity.PartitionKey, entity.RowKey))),
+                () =>
+                {
+                    if (previousContinuationToken is object)
+                    {
+                        var firstEntity = entities.Values.First();
+
+                        _AssertContinuationTokenPart(firstEntity.PartitionKey, previousContinuationToken.Split(' ').First());
+                        _AssertContinuationTokenPart(firstEntity.RowKey, previousContinuationToken.Split(' ').Last());
+                    }
+                },
                 () => Assertions.SuccessfulJsonResponse(resposne, new Assertions.SuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.OK,
@@ -602,6 +663,26 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         { "value", entities.Values.Select(entity => _MapEntityToDictionary(entity)).ToList() }
                     }
                 })
+            );
+        }
+
+        private static void _AssertContinuationTokenPart(string key, string tokenPart)
+        {
+            var encodedTokenParts = tokenPart.Split('!', 3);
+            var version = encodedTokenParts[0];
+            var encodedKeyLength = int.Parse(encodedTokenParts[1], NumberStyles.None, CultureInfo.InvariantCulture);
+            var encodedKey = encodedTokenParts[2];
+
+            var decodedKey = Encoding.UTF8.GetString(
+                Convert.FromBase64String(
+                    encodedKey.Replace("*", "+").Replace("-", "=").Replace("_", "/") + new string('=', encodedKey.Length % 4)
+                )
+            );
+
+            Assert.Multiple(
+                () => Assert.Equal("1", version),
+                () => Assert.Equal(encodedKey.Length, encodedKeyLength),
+                () => Assert.Equal(key, decodedKey)
             );
         }
 

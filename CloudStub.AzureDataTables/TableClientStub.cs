@@ -18,7 +18,7 @@ namespace CloudStub.AzureDataTables
 {
     public class TableClientStub : TableClient
     {
-        private static readonly char[] ContinuationTokenSeparator = new[] { ' ' };
+        // Add binary search when a continuation token is provided
 
         private readonly TableServiceClientStub _tableServiceClientStub;
         private readonly string _tableName;
@@ -358,9 +358,7 @@ namespace CloudStub.AzureDataTables
                     }
 
                 var rows = new List<TableRowStub>(pageSize + 1);
-                var continuationTokenParts = continuationToken?.Split(ContinuationTokenSeparator, 2);
-                var continuationTokenPartitionKey = continuationTokenParts?.First();
-                var continuationTokenRowKey = continuationTokenParts?.Last();
+                var (continuationTokenPartitionKey, continuationTokenRowKey) = ResponseContinuationToken.DecodeRowContinuationToken(continuationToken);
 
                 using (_tableServiceClientStub.Tables.ReadLock())
                     if (_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
@@ -375,14 +373,19 @@ namespace CloudStub.AzureDataTables
                                     .Take(pageSize + 1)
                             );
 
+                var nextContinuationTokenPartitionKey = default(string);
+                var nextContinuationTokenRowKey = default(string);
                 var nextContinuationToken = default(string);
                 if (rows.Count > pageSize)
                 {
+                    var nextEntity = rows.Last();
                     rows.RemoveAt(rows.Count - 1);
+
                     if (rows.Count > 0)
                     {
-                        var lastEntity = rows.Last();
-                        nextContinuationToken = $"{lastEntity[nameof(ITableEntity.PartitionKey)]} {lastEntity[nameof(ITableEntity.RowKey)]}";
+                        nextContinuationTokenPartitionKey = ResponseContinuationToken.EncodeContinuationToken((string)nextEntity[nameof(ITableEntity.PartitionKey)]);
+                        nextContinuationTokenRowKey = ResponseContinuationToken.EncodeContinuationToken((string)nextEntity[nameof(ITableEntity.RowKey)]);
+                        nextContinuationToken = $"{nextContinuationTokenPartitionKey} {nextContinuationTokenRowKey}";
                     }
                 }
 
@@ -398,8 +401,8 @@ namespace CloudStub.AzureDataTables
                             if (nextContinuationToken != null)
                             {
                                 var lastRow = rows[rows.Count - 1];
-                                headers.Add("x-ms-continuation-NextPartitionKey", (string)lastRow[nameof(ITableEntity.PartitionKey)]);
-                                headers.Add("x-ms-continuation-NextRowKey", (string)lastRow[nameof(ITableEntity.RowKey)]);
+                                headers.Add("x-ms-continuation-NextPartitionKey", nextContinuationTokenPartitionKey);
+                                headers.Add("x-ms-continuation-NextRowKey", nextContinuationTokenRowKey);
                             }
                         }),
                         $"https://cloudstubdev.table.core.windows.net/$metadata#{_tableName}{(selectedProperties?.Any() ?? false ? "&$select=" + string.Join(",", selectedProperties) : string.Empty)}",
