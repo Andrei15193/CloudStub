@@ -11,9 +11,6 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
         public OrFilter(Filter left, Filter right)
             => (_left, _right) = (left, right);
 
-        public override int DiscreteFiltersCount
-            => 1 + _left.DiscreteFiltersCount + _right.DiscreteFiltersCount;
-
         public override IEnumerable<string> FilteredProperties
             => _left.FilteredProperties.Concat(_right.FilteredProperties);
 

@@ -495,6 +495,124 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
             );
         }
 
+        [Fact]
+        public void Query_WhenUsingTakeCount_ReturnsOnlyFirstPage()
+        {
+            TableServiceClient.CreateTable($"z1zz{TestTableName}");
+            TableServiceClient.CreateTable($"z1zzz{TestTableName}");
+            TableServiceClient.CreateTable($"z1zzzz{TestTableName}");
+            TableServiceClient.CreateTable($"z1zzzzz{TestTableName}");
+
+            var page = TableServiceClient.Query($"TableName eq 'z1zz{TestTableName}' or TableName eq 'z1zzz{TestTableName}' or TableName eq 'z1zzzz{TestTableName}' or TableName eq 'z1zzzzz{TestTableName}'", maxPerPage: 2).AsPages().First();
+
+            Assert.Multiple(
+                () => Assert.Equal(2, page.Values.Count),
+                () => Assert.Equal($"z1zzzz{TestTableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(page.ContinuationToken)),
+                () =>
+                {
+                    var response = page.GetRawResponse();
+                    Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.DefaultHeaders(response)
+                        {
+                            { "x-ms-continuation-NextTableName", page.ContinuationToken }
+                        },
+                        Content =
+                        {
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                            { "value", new List<IReadOnlyDictionary<string, object>>
+                                {
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"z1zz{TestTableName}" }
+                                    },
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"z1zzz{TestTableName}" }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingTakeCount_ReturnsContinuationTokenContainingPartitionAndRowKeysForNextPage()
+        {
+            TableServiceClient.CreateTable($"z2zz{TestTableName}");
+            TableServiceClient.CreateTable($"z2zzz{TestTableName}");
+            TableServiceClient.CreateTable($"z2zzzz{TestTableName}");
+            TableServiceClient.CreateTable($"z2zzzzz{TestTableName}");
+
+            var pages = TableServiceClient.Query($"TableName eq 'z2zz{TestTableName}' or TableName eq 'z2zzz{TestTableName}' or TableName eq 'z2zzzz{TestTableName}' or TableName eq 'z2zzzzz{TestTableName}'", maxPerPage: 2).AsPages().ToList();
+            var firstPage = pages.First();
+            var lastPage = pages.Last();
+
+            Assert.Multiple(
+                () => Assert.Equal(2, firstPage.Values.Count),
+                () => Assert.Equal($"z2zzzz{TestTableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(firstPage.ContinuationToken)),
+                () =>
+                {
+                    var response = firstPage.GetRawResponse();
+                    Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.DefaultHeaders(response)
+                        {
+                            { "x-ms-continuation-NextTableName", firstPage.ContinuationToken }
+                        },
+                        Content =
+                        {
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                            { "value", new List<IReadOnlyDictionary<string, object>>
+                                {
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"z2zz{TestTableName}" }
+                                    },
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"z2zzz{TestTableName}" }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                () => Assert.Equal(2, lastPage.Values.Count),
+                () => Assert.Null(lastPage.ContinuationToken),
+                () =>
+                {
+                    var response = lastPage.GetRawResponse();
+                    Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.DefaultHeaders(response),
+                        Content =
+                        {
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                            { "value", new List<IReadOnlyDictionary<string, object>>
+                                {
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"z2zzzz{TestTableName}" }
+                                    },
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"z2zzzzz{TestTableName}" }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            );
+        }
+
         [Theory]
         [InlineData(TableAccountSasPermissions.All, TableAccountSasResourceTypes.All)]
         [InlineData(TableAccountSasPermissions.Add, TableAccountSasResourceTypes.All)]

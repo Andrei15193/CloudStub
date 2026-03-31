@@ -476,6 +476,124 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Async
         }
 
         [Fact]
+        public async Task QueryAsync_WhenUsingTakeCount_ReturnsOnlyFirstPage()
+        {
+            await TableServiceClient.CreateTableAsync($"y1yy{TestTableName}");
+            await TableServiceClient.CreateTableAsync($"y1yyy{TestTableName}");
+            await TableServiceClient.CreateTableAsync($"y1yyyy{TestTableName}");
+            await TableServiceClient.CreateTableAsync($"y1yyyyy{TestTableName}");
+
+            var page = await TableServiceClient.QueryAsync($"TableName eq 'y1yy{TestTableName}' or TableName eq 'y1yyy{TestTableName}' or TableName eq 'y1yyyy{TestTableName}' or TableName eq 'y1yyyyy{TestTableName}'", maxPerPage: 2).AsPages().FirstAsync();
+
+            Assert.Multiple(
+                () => Assert.Equal(2, page.Values.Count),
+                () => Assert.Equal($"y1yyyy{TestTableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(page.ContinuationToken)),
+                () =>
+                {
+                    var response = page.GetRawResponse();
+                    Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.DefaultHeaders(response)
+                        {
+                            { "x-ms-continuation-NextTableName", page.ContinuationToken }
+                        },
+                        Content =
+                        {
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                            { "value", new List<IReadOnlyDictionary<string, object>>
+                                {
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"y1yy{TestTableName}" }
+                                    },
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"y1yyy{TestTableName}" }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            );
+        }
+
+        [Fact]
+        public async Task QueryAsync_WhenUsingTakeCount_ReturnsContinuationTokenContainingPartitionAndRowKeysForNextPage()
+        {
+            await TableServiceClient.CreateTableAsync($"y2yy{TestTableName}");
+            await TableServiceClient.CreateTableAsync($"y2yyy{TestTableName}");
+            await TableServiceClient.CreateTableAsync($"y2yyyy{TestTableName}");
+            await TableServiceClient.CreateTableAsync($"y2yyyyy{TestTableName}");
+
+            var pages = await TableServiceClient.QueryAsync($"TableName eq 'y2yy{TestTableName}' or TableName eq 'y2yyy{TestTableName}' or TableName eq 'y2yyyy{TestTableName}' or TableName eq 'y2yyyyy{TestTableName}'", maxPerPage: 2).AsPages().ToListAsync();
+            var firstPage = pages.First();
+            var lastPage = pages.Last();
+
+            Assert.Multiple(
+                () => Assert.Equal(2, firstPage.Values.Count),
+                () => Assert.Equal($"y2yyyy{TestTableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(firstPage.ContinuationToken)),
+                () =>
+                {
+                    var response = firstPage.GetRawResponse();
+                    Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.DefaultHeaders(response)
+                        {
+                            { "x-ms-continuation-NextTableName", firstPage.ContinuationToken }
+                        },
+                        Content =
+                        {
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                            { "value", new List<IReadOnlyDictionary<string, object>>
+                                {
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"y2yy{TestTableName}" }
+                                    },
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"y2yyy{TestTableName}" }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                () => Assert.Equal(2, lastPage.Values.Count),
+                () => Assert.Null(lastPage.ContinuationToken),
+                () =>
+                {
+                    var response = lastPage.GetRawResponse();
+                    Assertions.SuccessfulJsonResponse(response, new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Headers = new Assertions.DefaultHeaders(response),
+                        Content =
+                        {
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#Tables" },
+                            { "value", new List<IReadOnlyDictionary<string, object>>
+                                {
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"y2yyyy{TestTableName}" }
+                                    },
+                                    new Dictionary<string, object>
+                                    {
+                                        { "TableName", $"y2yyyyy{TestTableName}" }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            );
+        }
+
+        [Fact]
         public async Task GetProperties_WhenCalled_GetsTableStorageProperties()
         {
             var response = await TableServiceClient.GetPropertiesAsync();

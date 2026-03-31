@@ -9,9 +9,6 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
         public ComparisonFilter(string propertyName, object value)
             => (PropertyName, Value) = (propertyName, value);
 
-        public override int DiscreteFiltersCount
-            => 1;
-
         protected string PropertyName { get; }
         protected object Value { get; }
 

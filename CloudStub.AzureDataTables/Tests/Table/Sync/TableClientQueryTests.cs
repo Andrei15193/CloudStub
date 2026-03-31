@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using Azure;
 using Azure.Data.Tables;
@@ -13,10 +14,6 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 {
     public class TableClientQueryTests : BaseTableCloudStubTests
     {
-        // Include mapping fields, include case sensitivity checks, include mismatching types for properties
-        //
-        // Include discrete operation count tests (max 15 according to docs, iirc)
-        //
         // Include null comparison tests
 
         [Fact]
@@ -354,6 +351,32 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
+        public void Query_WhenUsingMoreThan50DiscreteFilterOperators_ReturnsMatchingEntities()
+        {
+            _AddTestData();
+
+            var result = CloudTable.Query<TableEntity>(
+                "PartitionKey ge 'partition-1' or ("
+                + string.Join(" and ", Enumerable.Range(1, 50).Select(number => $"property{number} eq 'value{number}'"))
+                + ")"
+            );
+
+            _AssertResult(
+                result,
+                ("partition-1", "row-1"),
+                ("partition-10", "row-10"),
+                ("partition-2", "row-2"),
+                ("partition-3", "row-3"),
+                ("partition-4", "row-4"),
+                ("partition-5", "row-5"),
+                ("partition-6", "row-6"),
+                ("partition-7", "row-7"),
+                ("partition-8", "row-8"),
+                ("partition-9", "row-9")
+            );
+        }
+
+        [Fact]
         public void Query_WhenUsingTakeCount_ReturnsOnlyFirstPage()
         {
             _AddTestData();
@@ -421,6 +444,53 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 ("<", "row"),
                 ("<.>", "test"),
                 ("<.>", "ÿÿÿ")
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingTakeCountAndFilter_ReturnsContinuationTokenForNextItemSatisfyingTheFilter()
+        {
+            CloudTable.CreateIfNotExists();
+
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "partition-1",
+                RowKey = "row-1"
+            });
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "partition-2",
+                RowKey = "row-2"
+            });
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "partition-3",
+                RowKey = "row-3"
+            });
+            CloudTable.AddEntity(new TestQueryEntity
+            {
+                PartitionKey = "partition-4",
+                RowKey = "row-4"
+            });
+
+            var pages = CloudTable
+                .Query<TableEntity>(
+                    entity => entity.PartitionKey == "partition-1" || entity.PartitionKey == "partition-3",
+                    maxPerPage: 1
+                )
+                .AsPages();
+
+            Assert.Collection(
+                pages,
+                firstPage => _AssertResult(
+                    firstPage,
+                    ("partition-1", "row-1")
+                ),
+                lastPage => _AssertResult(
+                    lastPage,
+                    $"{ResponseContinuationToken.EncodeContinuationToken("partition-3")} {ResponseContinuationToken.EncodeContinuationToken("row-3")}",
+                    ("partition-3", "row-3")
+                )
             );
         }
 
@@ -545,6 +615,239 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             );
         }
 
+        [Fact]
+        public void Query_WhenUsingProperties_SetsValuesForEach()
+        {
+            var guid = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            CloudTable.Create();
+
+            CloudTable.AddEntity(new TableEntity
+            {
+                { "PartitionKey", "partition-1" },
+                { "RowKey", "row-1" },
+                { nameof(TestQueryEntity.StringProp), "test" },
+                { nameof(TestQueryEntity.BinaryProp), new byte[] { 1, 2, 3 } },
+                { nameof(TestQueryEntity.Int32Prop), 3 },
+                { nameof(TestQueryEntity.Int64Prop), 3L },
+                { nameof(TestQueryEntity.DoubleProp), 3D },
+                { nameof(TestQueryEntity.GuidProp), guid },
+                { nameof(TestQueryEntity.BoolProp), true },
+                { nameof(TestQueryEntity.DateTimeProp), now },
+                { nameof(TestQueryEntity.DateTimeOffsetProp), (DateTimeOffset)now }
+            });
+
+            var entities = CloudTable.Query<TestQueryEntity>();
+
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Equal("partition-1", entity.PartitionKey),
+                () => Assert.Equal("row-1", entity.RowKey),
+                () => Assert.Equal("test", entity.StringProp),
+                () => Assert.Equal(new byte[] { 1, 2, 3 }, entity.BinaryProp),
+                () => Assert.Equal(3, entity.Int32Prop),
+                () => Assert.Equal(3L, entity.Int64Prop),
+                () => Assert.Equal(3D, entity.DoubleProp),
+                () => Assert.Equal(guid, entity.GuidProp),
+                () => Assert.True(entity.BoolProp),
+                () => Assert.Equal(now, entity.DateTimeProp),
+                () => Assert.Equal((DateTimeOffset)now, entity.DateTimeOffsetProp)
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingDifferentCasePropertyNames_DoesNotSetValues()
+        {
+            CloudTable.Create();
+
+            CloudTable.AddEntity(new TableEntity
+            {
+                { "PartitionKey", "partition-1" },
+                { "RowKey", "row-1" },
+                { nameof(TestQueryEntity.StringProp).ToUpperInvariant(), "test" },
+                { nameof(TestQueryEntity.BinaryProp).ToUpperInvariant(), new byte[] { 1, 2, 3 } },
+                { nameof(TestQueryEntity.Int32Prop).ToUpperInvariant(), 3 },
+                { nameof(TestQueryEntity.Int64Prop).ToUpperInvariant(), 3L },
+                { nameof(TestQueryEntity.DoubleProp).ToUpperInvariant(), 3D },
+                { nameof(TestQueryEntity.GuidProp).ToUpperInvariant(), Guid.NewGuid() },
+                { nameof(TestQueryEntity.BoolProp).ToUpperInvariant(), true },
+                { nameof(TestQueryEntity.DateTimeProp).ToUpperInvariant(), DateTime.UtcNow },
+                { nameof(TestQueryEntity.DateTimeOffsetProp).ToUpperInvariant(), DateTimeOffset.UtcNow }
+            });
+
+            var entities = CloudTable.Query<TestQueryEntity>();
+
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Equal("partition-1", entity.PartitionKey),
+                () => Assert.Equal("row-1", entity.RowKey),
+                () => Assert.Null(entity.StringProp),
+                () => Assert.Null(entity.BinaryProp),
+                () => Assert.Null(entity.Int32Prop),
+                () => Assert.Null(entity.Int64Prop),
+                () => Assert.Null(entity.DoubleProp),
+                () => Assert.Null(entity.GuidProp),
+                () => Assert.Null(entity.BoolProp),
+                () => Assert.Null(entity.DateTimeProp),
+                () => Assert.Null(entity.DateTimeOffsetProp)
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingFields_SetsValuesForEach()
+        {
+            var guid = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            CloudTable.Create();
+
+            CloudTable.AddEntity(new TableEntity
+            {
+                { "PartitionKey", "partition-1" },
+                { "RowKey", "row-1" },
+                { nameof(TestQueryEntityFields.StringField), "test" },
+                { nameof(TestQueryEntityFields.BinaryField), new byte[] { 1, 2, 3 } },
+                { nameof(TestQueryEntityFields.Int32Field), 3 },
+                { nameof(TestQueryEntityFields.Int64Field), 3L },
+                { nameof(TestQueryEntityFields.DoubleField), 3D },
+                { nameof(TestQueryEntityFields.GuidField), guid },
+                { nameof(TestQueryEntityFields.BoolField), true },
+                { nameof(TestQueryEntityFields.DateTimeField), now },
+                { nameof(TestQueryEntityFields.DateTimeOffsetField), (DateTimeOffset)now }
+            });
+
+            var entities = CloudTable.Query<TestQueryEntityFields>();
+
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Equal("partition-1", entity.PartitionKey),
+                () => Assert.Equal("row-1", entity.RowKey),
+                () => Assert.Equal("test", entity.StringField),
+                () => Assert.Equal(new byte[] { 1, 2, 3 }, entity.BinaryField),
+                () => Assert.Equal(3, entity.Int32Field),
+                () => Assert.Equal(3L, entity.Int64Field),
+                () => Assert.Equal(3D, entity.DoubleField),
+                () => Assert.Equal(guid, entity.GuidField),
+                () => Assert.True(entity.BoolField),
+                () => Assert.Equal(now, entity.DateTimeField),
+                () => Assert.Equal((DateTimeOffset)now, entity.DateTimeOffsetField)
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingDifferentCaseFieldNames_DoesNotSetValues()
+        {
+            CloudTable.Create();
+
+            CloudTable.AddEntity(new TableEntity
+            {
+                { "PartitionKey", "partition-1" },
+                { "RowKey", "row-1" },
+                { nameof(TestQueryEntityFields.StringField).ToUpperInvariant(), "test" },
+                { nameof(TestQueryEntityFields.BinaryField).ToUpperInvariant(), new byte[] { 1, 2, 3 } },
+                { nameof(TestQueryEntityFields.Int32Field).ToUpperInvariant(), 3 },
+                { nameof(TestQueryEntityFields.Int64Field).ToUpperInvariant(), 3L },
+                { nameof(TestQueryEntityFields.DoubleField).ToUpperInvariant(), 3D },
+                { nameof(TestQueryEntityFields.GuidField).ToUpperInvariant(), Guid.NewGuid() },
+                { nameof(TestQueryEntityFields.BoolField).ToUpperInvariant(), true },
+                { nameof(TestQueryEntityFields.DateTimeField).ToUpperInvariant(), DateTime.UtcNow },
+                { nameof(TestQueryEntityFields.DateTimeOffsetField).ToUpperInvariant(), DateTimeOffset.UtcNow }
+            });
+
+            var entities = CloudTable.Query<TestQueryEntityFields>();
+
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Equal("partition-1", entity.PartitionKey),
+                () => Assert.Equal("row-1", entity.RowKey),
+                () => Assert.Null(entity.StringField),
+                () => Assert.Null(entity.BinaryField),
+                () => Assert.Null(entity.Int32Field),
+                () => Assert.Null(entity.Int64Field),
+                () => Assert.Null(entity.DoubleField),
+                () => Assert.Null(entity.GuidField),
+                () => Assert.Null(entity.BoolField),
+                () => Assert.Null(entity.DateTimeField),
+                () => Assert.Null(entity.DateTimeOffsetField)
+            );
+        }
+
+        [Fact]
+        public void Query_WhenUsingPropertiesAndFieldsWithDifferentAccessModifiers_OnlySetsPublicMembers()
+        {
+            CloudTable.Create();
+
+            CloudTable.AddEntity(new TableEntity
+            {
+                { "PartitionKey", "partition-1" },
+                { "RowKey", "row-1" },
+
+                { "PublicProp", "public" },
+                { "ProtectedProp", "protected" },
+                { "InternalProp", "internal" },
+                { "PrivateProp", "private" },
+                { "ProtectedInternalProp", "protected internal" },
+                { "PrivateProtectedProp", "private protected" },
+
+                { "PublicField", "public" },
+                { "ProtectedField", "protected" },
+                { "InternalField", "internal" },
+                { "PrivateField", "private" },
+                { "ProtectedInternalField", "protected internal" },
+                { "PrivateProtectedField", "private protected" }
+            });
+
+            var entities = CloudTable.Query<TestQueryEntityAccessModifier>();
+
+            var entity = Assert.Single(entities);
+
+            Assert.Multiple(
+                () => Assert.Equal("partition-1", entity.PartitionKey),
+                () => Assert.Equal("row-1", entity.RowKey),
+
+                () => Assert.Equal("public", typeof(TestQueryEntityAccessModifier).GetProperty("PublicProp", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetProperty).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetProperty("ProtectedProp", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetProperty).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetProperty("InternalProp", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetProperty).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetProperty("PrivateProp", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetProperty).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetProperty("ProtectedInternalProp", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetProperty).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetProperty("PrivateProtectedProp", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetProperty).GetValue(entity)),
+
+                () => Assert.Equal("public", typeof(TestQueryEntityAccessModifier).GetField("PublicField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetField("ProtectedField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetField("InternalField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetField("PrivateField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetField("ProtectedInternalField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField).GetValue(entity)),
+                () => Assert.Null(typeof(TestQueryEntityAccessModifier).GetField("PrivateProtectedField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField).GetValue(entity))
+            );
+        }
+
+        [Theory]
+        [ClassData(typeof(TableDeserializationTestData))]
+        public void Query_WhenDeserializingProperty_MayParseOrThrowException(string propertyName, object value, object expectedResult)
+        {
+            CloudTable.Create();
+            CloudTable.AddEntity(new TableEntity
+            {
+                { "PartitionKey", $"partition" },
+                { "RowKey", "row" },
+                { propertyName, value },
+            });
+
+            if (expectedResult is Exception expectedException)
+            {
+                var exception = Assert.Throws(expectedResult.GetType(), () => CloudTable.Query<TestQueryEntity>().ToList());
+                Assert.Equal(expectedException.Message, exception.Message);
+                Assert.Contains(exception.Source, new[] { "System.Private.CoreLib", "Azure.Data.Tables" });
+            }
+            else
+            {
+                var entity = Assert.Single(CloudTable.Query<TestQueryEntity>());
+                var actualResult = typeof(TestQueryEntity)
+                    .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty)
+                    .GetValue(entity);
+                Assert.Equal(expectedResult, actualResult);
+            }
+        }
+
         private static object _GetFilterValue(object filterValue)
         {
             if (filterValue is int intFilterValue)
@@ -629,6 +932,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         private void _AssertResult<T>(Page<T> entities, params (string, string)[] expectedItems)
             where T : ITableEntity
             => _AssertResult(entities, Array.Empty<string>(), null, expectedItems);
+
+        private void _AssertResult<T>(Page<T> entities, string continuationToken, params (string, string)[] expectedItems)
+            where T : ITableEntity
+            => _AssertResult(entities, Array.Empty<string>(), continuationToken, expectedItems);
 
         private void _AssertResult<T>(Page<T> entities, IEnumerable<string> selectedProperties, string previousContinuationToken, params (string, string)[] expectedItems)
             where T : ITableEntity

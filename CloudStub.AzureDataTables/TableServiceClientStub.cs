@@ -19,6 +19,9 @@ namespace CloudStub.AzureDataTables
 {
     public class TableServiceClientStub : TableServiceClient
     {
+        internal const int TableNameMinimumLength = 3;
+        internal const int TableNameMaximumLength = 64;
+
         private static readonly IReadOnlyCollection<string> _reservedTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "tables" };
         private readonly string _accountName;
         private volatile TableServiceProperties _tableServiceProperties = new TableServiceProperties
@@ -65,7 +68,7 @@ namespace CloudStub.AzureDataTables
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!(3 <= tableName.Length && tableName.Length <= 63))
+            if (!(TableNameMinimumLength <= tableName.Length && tableName.Length < TableNameMaximumLength))
                 throw TableStubResponseFactory.JsonRequestFailedException(
                     HttpStatusCode.BadRequest,
                     "OutOfRangeInput",

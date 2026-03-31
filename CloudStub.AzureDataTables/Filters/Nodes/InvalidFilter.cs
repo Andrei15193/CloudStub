@@ -17,9 +17,6 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
         public InvalidFilterType Type { get; }
         public string ErrorMessage { get; }
 
-        public override int DiscreteFiltersCount
-            => 0;
-
         public sealed override IEnumerable<string> FilteredProperties
             => Array.Empty<string>();
 

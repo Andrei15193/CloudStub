@@ -9,9 +9,6 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
         public NotFilter(Filter filter)
             => _fitler = filter;
 
-        public override int DiscreteFiltersCount
-            => 1 + _fitler.DiscreteFiltersCount;
-
         public override IEnumerable<string> FilteredProperties
             => _fitler.FilteredProperties;
 
