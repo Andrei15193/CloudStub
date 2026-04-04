@@ -570,7 +570,7 @@ namespace CloudStub.AzureDataTables
 
             else if (value is float floatValue)
                 this[propertyName] = (
-                    int.MinValue <= floatValue && floatValue <= int.MaxValue && floatValue == float.Truncate(floatValue)
+                    int.MinValue <= floatValue && floatValue <= int.MaxValue && floatValue == Math.Truncate(floatValue)
                         ? (int)floatValue
                         : double.Parse(floatValue.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture)
                     as object
