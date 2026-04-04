@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Azure;
@@ -106,56 +107,408 @@ namespace CloudStub.AzureDataTables
                     setValueAction(isNullableType ? (ETag?)etag : etag);
                 }
 
-                else if (resolvedTargetType == typeof(string) && sourceValue is string stringValue)
-                    setValueAction(stringValue);
+                else if (resolvedTargetType == typeof(int))
+                    _SetInt32Value(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(bool) && sourceValue is bool boolValue)
-                    setValueAction(isNullableType ? (bool?)boolValue : boolValue);
+                else if (resolvedTargetType == typeof(long))
+                    _SetInt64Value(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(int) && sourceValue is int intForIntValue)
-                    setValueAction(isNullableType ? (int?)intForIntValue : intForIntValue);
+                else if (resolvedTargetType == typeof(double))
+                    _SetDoubleValue(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(long) && sourceValue is int intForLongValue)
-                    setValueAction(isNullableType ? (long?)intForLongValue : (long)intForLongValue);
-                else if (resolvedTargetType == typeof(long) && sourceValue is long longForLongValue)
-                    setValueAction(isNullableType ? (long?)longForLongValue : longForLongValue);
+                else if (resolvedTargetType == typeof(bool))
+                    _SetBooleanValue(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(float) && sourceValue is int intForFloatValue)
-                    setValueAction(isNullableType ? (float?)intForFloatValue : (float)intForFloatValue);
-                else if (resolvedTargetType == typeof(float) && sourceValue is long longForFloatValue)
-                    setValueAction(isNullableType ? (float?)longForFloatValue : (float)longForFloatValue);
+                else if (resolvedTargetType == typeof(DateTime))
+                    _SetDateTimeValue(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(double) && sourceValue is int intForDoubleValue)
-                    setValueAction(isNullableType ? (double?)intForDoubleValue : (double)intForDoubleValue);
-                else if (resolvedTargetType == typeof(double) && sourceValue is long longForDoubleValue)
-                    setValueAction(isNullableType ? (double?)longForDoubleValue : (double)longForDoubleValue);
-                else if (resolvedTargetType == typeof(double) && sourceValue is double doubleForDoubleValue)
-                    setValueAction(isNullableType ? (double?)doubleForDoubleValue : doubleForDoubleValue);
+                else if (resolvedTargetType == typeof(DateTimeOffset))
+                    _SetDateTimeOffsetValue(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(decimal) && sourceValue is int intForDecimalValue)
-                    setValueAction(isNullableType ? (decimal?)intForDecimalValue : (decimal)intForDecimalValue);
-                else if (resolvedTargetType == typeof(decimal) && sourceValue is long longForDecimalValue)
-                    setValueAction(isNullableType ? (decimal?)longForDecimalValue : (decimal)longForDecimalValue);
-                else if (resolvedTargetType == typeof(decimal) && sourceValue is double doubleForDecimalValue)
-                    setValueAction(isNullableType ? (decimal?)doubleForDecimalValue : (decimal)doubleForDecimalValue);
+                else if (resolvedTargetType == typeof(Guid))
+                    _SetGuidValue(resolvedTargetType, isNullableType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(DateTime) && sourceValue is DateTimeOffset dateTimeOffsetForDateTimeValue)
-                    setValueAction(isNullableType ? (DateTime?)dateTimeOffsetForDateTimeValue.UtcDateTime : dateTimeOffsetForDateTimeValue.UtcDateTime);
-                else if (resolvedTargetType == typeof(DateTimeOffset) && sourceValue is DateTimeOffset dateTimeOffsetForDateTimeOffsetValue)
-                    setValueAction(isNullableType ? (DateTimeOffset?)dateTimeOffsetForDateTimeOffsetValue : dateTimeOffsetForDateTimeOffsetValue);
+                else if (resolvedTargetType == typeof(byte[]))
+                    _SetBinaryValue(resolvedTargetType, sourceValue, setValueAction);
 
-                else if (resolvedTargetType == typeof(Guid) && sourceValue is Guid guidValue)
-                    setValueAction(isNullableType ? (Guid?)guidValue : guidValue);
-
-                else if (resolvedTargetType == typeof(byte[]) && sourceValue is byte[] byteArrayValue)
-                {
-                    var binaryArrayCopy = new byte[byteArrayValue.Length];
-                    Array.Copy(byteArrayValue, binaryArrayCopy, binaryArrayCopy.Length);
-                    setValueAction(binaryArrayCopy);
-                }
+                else if (resolvedTargetType == typeof(string))
+                    _SetStringValue(resolvedTargetType, sourceValue, setValueAction);
 
                 else
-                    setValueAction(Convert.ChangeType(sourceValue, targetType));
+                    throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for deserialization.");
+        }
+
+        private static void _SetInt32Value(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (sourceValue is int intValue)
+                setValueAction(isNullableType ? (int?)intValue : intValue);
+            else if (sourceValue is double)
+                throw new InvalidCastException(
+                    isNullableType
+                    ? "Unable to cast object of type 'System.Double' to type 'System.Nullable`1[System.Int32]'."
+                    : "Unable to cast object of type 'System.Double' to type 'System.Int32'.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is bool)
+                throw new InvalidCastException(
+                    isNullableType
+                    ? "Unable to cast object of type 'System.Boolean' to type 'System.Nullable`1[System.Int32]'."
+                    : "Unable to cast object of type 'System.Boolean' to type 'System.Int32'.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (
+                sourceValue is long
+                || sourceValue is string
+                || sourceValue is DateTimeOffset
+                || sourceValue is Guid
+                || sourceValue is byte[]
+            )
+                throw new InvalidCastException(
+                    isNullableType
+                    ? "Unable to cast object of type 'System.String' to type 'System.Nullable`1[System.Int32]'."
+                    : "Unable to cast object of type 'System.String' to type 'System.Int32'.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else
+                throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for int32 deserialization.");
+        }
+
+        private static void _SetInt64Value(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (sourceValue is long longValue)
+                setValueAction(isNullableType ? (long?)longValue : longValue);
+            else if (
+                sourceValue is int
+                || sourceValue is double
+                || sourceValue is bool
+            )
+                throw new ArgumentNullException("s")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is string stringSourceValue)
+                if (long.TryParse(stringSourceValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longParsedSourceValue))
+                    setValueAction(isNullableType ? (long?)longParsedSourceValue : longParsedSourceValue);
+                else
+                    throw new FormatException($"The input string '{stringSourceValue}' was not in a correct format.")
+                    {
+                        Source = "Azure.Data.Tables"
+                    };
+            else if (sourceValue is DateTimeOffset dateTimeOffsetSourceValue)
+                throw new FormatException($"The input string '{dateTimeOffsetSourceValue:yyyy-MM-ddTHH:mm:ss.FFFFFFFZ}' was not in a correct format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is Guid guidSourceValue)
+                throw new FormatException($"The input string '{guidSourceValue:D}' was not in a correct format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is byte[] binarySourceValue)
+                throw new FormatException($"The input string '{Convert.ToBase64String(binarySourceValue)}' was not in a correct format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else
+                throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for int64 deserialization.");
+        }
+
+        private static void _SetDoubleValue(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (sourceValue is int intSourceValue)
+                setValueAction(isNullableType ? (double?)intSourceValue : intSourceValue);
+            else if (sourceValue is long longSourceValue)
+                setValueAction(isNullableType ? (double?)longSourceValue : longSourceValue);
+            else if (sourceValue is double doubleSourceValue)
+                setValueAction(isNullableType ? (double?)doubleSourceValue : doubleSourceValue);
+            else if (sourceValue is bool booleanSourceValue)
+            {
+                var boolValue = booleanSourceValue ? 1D : 0D;
+                setValueAction(isNullableType ? (double?)boolValue : (double)boolValue);
+            }
+            else if (sourceValue is string stringSourceValue)
+                if (double.TryParse(stringSourceValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var doubleParsedSourceValue))
+                    setValueAction(isNullableType ? (double?)doubleParsedSourceValue : doubleParsedSourceValue);
+                else
+                    throw new FormatException($"The input string '{stringSourceValue}' was not in a correct format.")
+                    {
+                        Source = "Azure.Data.Tables"
+                    };
+            else if (sourceValue is DateTimeOffset dateTimeOffsetSourceValue)
+                throw new FormatException($"The input string '{dateTimeOffsetSourceValue:yyyy-MM-ddTHH:mm:ss.FFFFFFFZ}' was not in a correct format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is Guid guidSourceValue)
+                throw new FormatException($"The input string '{guidSourceValue:D}' was not in a correct format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is byte[] binarySourceValue)
+                throw new FormatException($"The input string '{Convert.ToBase64String(binarySourceValue)}' was not in a correct format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else
+                throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for double deserialization.");
+        }
+
+        private static void _SetBooleanValue(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (sourceValue is bool boolValue)
+                setValueAction(isNullableType ? (bool?)boolValue : boolValue);
+            else if (sourceValue is int)
+                throw new InvalidCastException(
+                    isNullableType
+                    ? "Unable to cast object of type 'System.Int32' to type 'System.Nullable`1[System.Boolean]'."
+                    : "Unable to cast object of type 'System.Int32' to type 'System.Boolean'.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is double)
+                throw new InvalidCastException(
+                    isNullableType
+                    ? "Unable to cast object of type 'System.Double' to type 'System.Nullable`1[System.Boolean]'."
+                    : "Unable to cast object of type 'System.Double' to type 'System.Boolean'.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (
+                sourceValue is long
+                || sourceValue is string
+                || sourceValue is DateTimeOffset
+                || sourceValue is Guid
+                || sourceValue is byte[]
+            )
+                throw new InvalidCastException(
+                    isNullableType
+                    ? "Unable to cast object of type 'System.String' to type 'System.Nullable`1[System.Boolean]'."
+                    : "Unable to cast object of type 'System.String' to type 'System.Boolean'.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else
+                throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for boolean deserialization.");
+        }
+
+        private static void _SetDateTimeValue(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (
+                sourceValue is int
+                || sourceValue is double
+                || sourceValue is bool
+            )
+                throw new ArgumentNullException("s")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is long)
+                throw new FormatException("String '3' was not recognized as a valid DateTime.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is DateTimeOffset dateTimeOffsetSourceValue)
+                setValueAction(isNullableType ? (DateTime?)dateTimeOffsetSourceValue.DateTime : dateTimeOffsetSourceValue.DateTime);
+            else
+            {
+                string dateTimeStringValue;
+                if (sourceValue is string stringSourceValue)
+                    dateTimeStringValue = stringSourceValue;
+                else if (sourceValue is Guid guidSourceValue)
+                    dateTimeStringValue = guidSourceValue.ToString("D");
+                else if (sourceValue is byte[] binarySourceValue)
+                    dateTimeStringValue = Convert.ToBase64String(binarySourceValue);
+                else
+                    throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for date time deserialization.");
+
+                for (var index = 0; index < dateTimeStringValue.Length; index++)
+                    if (
+                        !char.IsDigit(dateTimeStringValue[index])
+                        && dateTimeStringValue[index] != '-'
+                        && dateTimeStringValue[index] != ':'
+                        && dateTimeStringValue[index] != 'T'
+                        && dateTimeStringValue[index] != 'Z'
+                    )
+                        throw new FormatException($"The string '{dateTimeStringValue}' was not recognized as a valid DateTime. There is an unknown word starting at index '{index}'.")
+                        {
+                            Source = "Azure.Data.Tables"
+                        };
+
+                if (DateTime.TryParseExact(dateTimeStringValue, "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeParsedSourceValue))
+                    setValueAction(isNullableType ? (DateTime?)dateTimeParsedSourceValue : dateTimeParsedSourceValue);
+                else if (DateTime.TryParseExact(dateTimeStringValue, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out dateTimeParsedSourceValue))
+                    setValueAction(isNullableType ? (DateTime?)dateTimeParsedSourceValue : dateTimeParsedSourceValue);
+                else
+                    throw new FormatException($"String '{dateTimeStringValue}' was not recognized as a valid DateTime.")
+                    {
+                        Source = "Azure.Data.Tables"
+                    };
+            }
+        }
+
+        private static void _SetDateTimeOffsetValue(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (
+                sourceValue is int
+                || sourceValue is double
+                || sourceValue is bool
+            )
+                throw new ArgumentNullException("input")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is long)
+                throw new FormatException("String '3' was not recognized as a valid DateTime.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is DateTimeOffset dateTimeOffsetSourceValue)
+                setValueAction(isNullableType ? (DateTimeOffset?)dateTimeOffsetSourceValue : dateTimeOffsetSourceValue);
+            else
+            {
+                string dateTimeStringValue;
+                if (sourceValue is string stringSourceValue)
+                    dateTimeStringValue = stringSourceValue;
+                else if (sourceValue is Guid guidSourceValue)
+                    dateTimeStringValue = guidSourceValue.ToString("D");
+                else if (sourceValue is byte[] binarySourceValue)
+                    dateTimeStringValue = Convert.ToBase64String(binarySourceValue);
+                else
+                    throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for date time deserialization.");
+
+                for (var index = 0; index < dateTimeStringValue.Length; index++)
+                    if (
+                        !char.IsDigit(dateTimeStringValue[index])
+                        && dateTimeStringValue[index] != '-'
+                        && dateTimeStringValue[index] != ':'
+                        && dateTimeStringValue[index] != 'T'
+                        && dateTimeStringValue[index] != 'Z'
+                    )
+                        throw new FormatException($"The string '{dateTimeStringValue}' was not recognized as a valid DateTime. There is an unknown word starting at index '{index}'.")
+                        {
+                            Source = "Azure.Data.Tables"
+                        };
+
+                if (DateTimeOffset.TryParseExact(dateTimeStringValue, "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeOffsetParsedSourceValue))
+                    setValueAction(isNullableType ? (DateTimeOffset?)dateTimeOffsetParsedSourceValue : dateTimeOffsetParsedSourceValue);
+                else if (DateTimeOffset.TryParseExact(dateTimeStringValue, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out dateTimeOffsetParsedSourceValue))
+                    setValueAction(isNullableType ? (DateTimeOffset?)dateTimeOffsetParsedSourceValue : dateTimeOffsetParsedSourceValue);
+                else
+                    throw new FormatException($"String '{dateTimeStringValue}' was not recognized as a valid DateTime.")
+                    {
+                        Source = "Azure.Data.Tables"
+                    };
+            }
+        }
+
+        private static void _SetGuidValue(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)
+        {
+            if (
+                sourceValue is int
+                || sourceValue is double
+                || sourceValue is bool
+            )
+                throw new ArgumentNullException("input")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (sourceValue is Guid guidValue)
+                setValueAction(isNullableType ? (Guid?)guidValue : guidValue);
+            else if (sourceValue is string stringSourceValue)
+                if (Guid.TryParse(stringSourceValue, out var guidParsedSourceValue))
+                    setValueAction(isNullableType ? (Guid?)guidParsedSourceValue : guidParsedSourceValue);
+                else
+                    throw new FormatException("Unrecognized Guid format.")
+                    {
+                        Source = "Azure.Data.Tables"
+                    };
+            else if (
+                sourceValue is long
+                || sourceValue is DateTimeOffset
+                || sourceValue is byte[]
+            )
+                throw new FormatException("Unrecognized Guid format.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else
+                throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for date time deserialization.");
+        }
+
+        private static void _SetBinaryValue(Type resolvedTargetType, object sourceValue, Action<object> setValueAction)
+        {
+            if (sourceValue is byte[] binarySourceValue)
+            {
+                var binaryResultValue = new byte[binarySourceValue.Length];
+                Array.Copy(binarySourceValue, binaryResultValue, binaryResultValue.Length);
+                setValueAction(binaryResultValue);
+            }
+            else if (
+                sourceValue is int
+                || sourceValue is double
+                || sourceValue is bool
+            )
+                throw new ArgumentNullException("s")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else if (
+                sourceValue is Guid
+                || sourceValue is DateTimeOffset
+            )
+                throw new FormatException("The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            else
+            {
+                string binaryStringValue;
+                if (sourceValue is string stringSourceValue)
+                    binaryStringValue = stringSourceValue;
+                else if (sourceValue is long longSourceValue)
+                    binaryStringValue = longSourceValue.ToString(CultureInfo.InvariantCulture);
+                else
+                    throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for date time deserialization.");
+
+                byte[] binaryParsedValue;
+                try
+                {
+                    binaryParsedValue = Convert.FromBase64String(binaryStringValue);
+                }
+                catch
+                {
+                    throw new FormatException("The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.")
+                    {
+                        Source = "Azure.Data.Tables"
+                    };
+                }
+                setValueAction(binaryParsedValue);
+            }
+        }
+
+        private static void _SetStringValue(Type resolvedTargetType, object sourceValue, Action<object> setValueAction)
+        {
+            if (sourceValue is string stringSourceValue)
+                setValueAction(stringSourceValue);
+            else if (
+                sourceValue is int
+                || sourceValue is double
+                || sourceValue is bool
+            )
+                setValueAction(null);
+            else if (sourceValue is long longSourceValue)
+                setValueAction(longSourceValue.ToString(CultureInfo.InvariantCulture));
+            else if (sourceValue is Guid guidSourceValue)
+                setValueAction(guidSourceValue.ToString("D"));
+            else if (sourceValue is DateTimeOffset dateTimeOffsetSourceValue)
+                setValueAction(dateTimeOffsetSourceValue.ToString("yyyy-MM-ddTHH:mm:ss.FFFFFFFZ", CultureInfo.InvariantCulture));
+            else if (sourceValue is byte[] binarySourceValue)
+                setValueAction(Convert.ToBase64String(binarySourceValue));
+            else
+                throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for string deserialization.");
         }
     }
 
@@ -207,16 +560,29 @@ namespace CloudStub.AzureDataTables
                 return;
 
             if (
-              value is bool
-              || value is int
-              || value is long
-              || value is double
-              || value is Guid
-          )
+                value is bool
+                || value is int
+                || value is long
+                || value is double
+                || value is Guid
+            )
                 this[propertyName] = value;
 
             else if (value is float floatValue)
-                this[propertyName] = (double)floatValue;
+                this[propertyName] = (
+                    int.MinValue <= floatValue && floatValue <= int.MaxValue && floatValue == float.Truncate(floatValue)
+                        ? (int)floatValue
+                        : double.Parse(floatValue.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture)
+                    as object
+                );
+
+            else if (value is decimal decimalValue)
+                this[propertyName] = (
+                    int.MinValue <= decimalValue && decimalValue <= int.MaxValue && decimalValue == decimal.Truncate(decimalValue)
+                        ? (int)decimalValue
+                        : double.Parse(decimalValue.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture)
+                    as object
+                );
 
             else if (value is string stringValue)
             {
@@ -264,17 +630,6 @@ namespace CloudStub.AzureDataTables
                 if (binaryValueCopy.Length >= MaximumBinaryLength)
                     IsBinaryPropertyExceedingMaxLength = true;
             }
-
-            else if (value is decimal decimalValue)
-                if (decimal.Truncate(decimalValue) == decimalValue)
-                    if (int.MinValue <= decimalValue && decimalValue <= int.MaxValue)
-                        this[propertyName] = (int)decimalValue;
-                    else if (long.MinValue <= decimalValue && decimalValue <= long.MaxValue)
-                        this[propertyName] = (long)decimalValue;
-                    else
-                        this[propertyName] = (double)decimalValue;
-                else
-                    this[propertyName] = (double)decimalValue;
         }
 
         private static bool _KeyContainsInvalidCharacters(string keyValue)
