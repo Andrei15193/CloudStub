@@ -852,9 +852,7 @@ namespace CloudStub.AzureDataTables.Tests.Data
                 => testData._data;
 
             public TestData(string propertyName, object propertyValue, string filterOperator, object filterValue, bool returnsEntity)
-            {
-                _data = new[] { propertyName, propertyValue, filterOperator, filterValue, returnsEntity };
-            }
+                => _data = new[] { propertyName, propertyValue, filterOperator, filterValue, returnsEntity };
         }
     }
 }

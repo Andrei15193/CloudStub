@@ -55,22 +55,40 @@ namespace CloudStub.AzureDataTables.Filters
                         switch (tokens[start + 1].Type)
                         {
                             case FilterTokenType.Equals:
-                                return new EqualsFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.NotSupported, "One of the request inputs is not valid.");
+                                else
+                                    return new EqualsFilter(propertyName, value);
 
                             case FilterTokenType.NotEquals:
-                                return new NotEqualsFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.NotSupported, "One of the request inputs is not valid.");
+                                else
+                                    return new NotEqualsFilter(propertyName, value);
 
                             case FilterTokenType.LessThan:
-                                return new LessThanFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'LessThan' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new LessThanFilter(propertyName, value);
 
                             case FilterTokenType.LessThanOrEqualTo:
-                                return new LessThanOrEqualFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'LessThanOrEqual' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new LessThanOrEqualFilter(propertyName, value);
 
                             case FilterTokenType.GreaterThan:
-                                return new GreaterThanFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'GreaterThan' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new GreaterThanFilter(propertyName, value);
 
                             case FilterTokenType.GreaterThanOrEqualTo:
-                                return new GreaterThanOrEqualFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'GreaterThanOrEqual' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new GreaterThanOrEqualFilter(propertyName, value);
 
                             default:
                                 return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
@@ -84,22 +102,40 @@ namespace CloudStub.AzureDataTables.Filters
                         switch (tokens[start + 1].Type)
                         {
                             case FilterTokenType.Equals:
-                                return new EqualsFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.NotSupported, "One of the request inputs is not valid.");
+                                else
+                                    return new EqualsFilter(propertyName, value);
 
                             case FilterTokenType.NotEquals:
-                                return new NotEqualsFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.NotSupported, "One of the request inputs is not valid.");
+                                else
+                                    return new NotEqualsFilter(propertyName, value);
 
                             case FilterTokenType.LessThan:
-                                return new GreaterThanFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'LessThan' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new GreaterThanFilter(propertyName, value);
 
                             case FilterTokenType.LessThanOrEqualTo:
-                                return new GreaterThanOrEqualFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'LessThanOrEqual' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new GreaterThanOrEqualFilter(propertyName, value);
 
                             case FilterTokenType.GreaterThan:
-                                return new LessThanFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'GreaterThan' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new LessThanFilter(propertyName, value);
 
                             case FilterTokenType.GreaterThanOrEqualTo:
-                                return new LessThanOrEqualFilter(propertyName, value);
+                                if (value == null)
+                                    return new InvalidFilter(InvalidFilterType.SyntaxError, "The operator 'GreaterThanOrEqual' is not supported for the 'null' literal; only equality checks are supported.");
+                                else
+                                    return new LessThanOrEqualFilter(propertyName, value);
 
                             default:
                                 return new InvalidFilter(InvalidFilterType.SyntaxError, $"Syntax error at position {tokens[end - 1].End} in '{tokens[end - 1].Filter}'.");
@@ -199,6 +235,7 @@ namespace CloudStub.AzureDataTables.Filters
                 case FilterTokenType.Guid:
                 case FilterTokenType.Binary:
                 case FilterTokenType.String:
+                case FilterTokenType.Null:
                     return true;
 
                 default:

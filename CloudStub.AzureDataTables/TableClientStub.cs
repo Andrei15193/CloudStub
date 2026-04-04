@@ -246,7 +246,7 @@ namespace CloudStub.AzureDataTables
         public override Pageable<T> Query<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new PageableStub<T>(_GetTableItemsPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), select, cancellationToken), maxPerPage);
+            return new PageableStub<T>(_GetEntityPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), select, cancellationToken), maxPerPage);
         }
 
         public override Pageable<T> Query<T>(Expression<Func<T, bool>> filter, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
@@ -324,7 +324,7 @@ namespace CloudStub.AzureDataTables
             return SetAccessPolicy(tableAcl, cancellationToken);
         }
 
-        private PageFactory<T> _GetTableItemsPageFactory<T>(Filter filter, IEnumerable<string> selectedProperties, CancellationToken cancellationToken)
+        private PageFactory<T> _GetEntityPageFactory<T>(Filter filter, IEnumerable<string> selectedProperties, CancellationToken cancellationToken)
             => (continuationToken, pageSize) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -351,6 +351,14 @@ namespace CloudStub.AzureDataTables
                                 "InvalidInput",
                                 invalidFilter.ErrorMessage,
                                 new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                            );
+
+                        case InvalidFilterType.NotSupported:
+                            throw TableStubResponseFactory.JsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "InvalidInput",
+                                invalidFilter.ErrorMessage,
+                                new DefaultResponseHeaders()
                             );
 
                         default:

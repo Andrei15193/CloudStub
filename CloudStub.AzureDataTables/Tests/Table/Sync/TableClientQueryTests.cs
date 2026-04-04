@@ -14,8 +14,6 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 {
     public class TableClientQueryTests : BaseTableCloudStubTests
     {
-        // Include null comparison tests
-
         [Fact]
         public void Query_WhenThereAreNoFilters_ReturnsAllItems()
         {
@@ -302,6 +300,38 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 _AssertResult(entities, ("partition", "row"));
             else
                 Assert.Empty(entities);
+        }
+
+        [Theory]
+        [ClassData(typeof(TableQueryNullComparisonTestData))]
+        public void Query_WhenUsingComparisonFilterOperatorWithNullValue_ThrowsException(string propertyName, object propertyValue, string filterOperator, string expectedErrorMessage, IEnumerable<string> removedHeaders)
+        {
+            CloudTable.CreateIfNotExists();
+            CloudTable.AddEntity(new TableEntity(new Dictionary<string, object> { { propertyName, _GetFilterValue(propertyValue) } })
+            {
+                PartitionKey = "partition",
+                RowKey = "row",
+            });
+
+            var query = _GetFilter(propertyName, filterOperator, null);
+
+            Assertions.JsonResponseThrows(
+                () => CloudTable.Query<TableEntity>(query).ToList(),
+                response =>
+                {
+                    var headers = new Assertions.DefaultHeaders(response);
+                    foreach (var remvoedHeader in removedHeaders)
+                        headers.Remove(remvoedHeader);
+
+                    return new Assertions.UnsuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        ErrorCode = "InvalidInput",
+                        ErrorDescription = expectedErrorMessage,
+                        Headers = headers
+                    };
+                }
+            );
         }
 
         [Fact]
@@ -902,6 +932,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     return $"{propertyName} {filterOperator} datetime'{stringFilterValue.Substring("datetimeoffset-".Length)}'";
                 else if (stringFilterValue.StartsWith("binary-", StringComparison.OrdinalIgnoreCase))
                     return $"{propertyName} {filterOperator} x'{Convert.FromBase64String(stringFilterValue.Substring("binary-".Length)).Aggregate(new StringBuilder(), (result, @byte) => result.AppendFormat("{0:X2}", @byte))}'";
+
+            if (!(filterValue is object))
+                return $"{propertyName} {filterOperator} null";
 
             return $"{propertyName} {filterOperator} '{Convert.ToString(filterValue)}'";
         }

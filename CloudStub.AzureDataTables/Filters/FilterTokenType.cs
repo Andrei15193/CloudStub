@@ -12,6 +12,7 @@ namespace CloudStub.AzureDataTables.Filters
         Guid,
         Binary,
         String,
+        Null,
         GroupOpen,
         GroupClose,
         Equals,

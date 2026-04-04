@@ -194,7 +194,10 @@ namespace CloudStub.AzureDataTables.Filters
             }
 
             else if (_IsIdentifier(filter, start, end))
-                return new FilterToken(FilterTokenType.Identifier, filter, start, end, filter.Substring(start, end - start));
+                if (_IsEqualToCaseSensitive("null", filter, start, end))
+                    return new FilterToken(FilterTokenType.Null, filter, start, end, null);
+                else
+                    return new FilterToken(FilterTokenType.Identifier, filter, start, end, filter.Substring(start, end - start));
 
             else
                 return new FilterToken(FilterTokenType.Unknown, filter, start, end);

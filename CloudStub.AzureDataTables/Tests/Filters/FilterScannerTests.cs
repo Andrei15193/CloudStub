@@ -59,6 +59,7 @@ namespace CloudStub.AzureDataTables.Tests.Filters
         [InlineData("'test'", FilterTokenType.String)]
         [InlineData("'test''escaped'", FilterTokenType.String)]
         [InlineData("'test ( this ) is () not grouped'", FilterTokenType.String)]
+        [InlineData("null", FilterTokenType.Null)]
         [InlineData("datetime'2020-01-01T00:00:00'", FilterTokenType.DateTime)]
         [InlineData("datetime'invalid'", FilterTokenType.Unknown)]
         [InlineData("guid'eaffcc56-5569-4683-90d5-4c14955ed7dd'", FilterTokenType.Guid)]

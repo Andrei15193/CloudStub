@@ -6,7 +6,8 @@ namespace CloudStub.AzureDataTables.Filters.Nodes
     internal enum InvalidFilterType
     {
         SyntaxError,
-        NotImplemented
+        NotImplemented,
+        NotSupported
     }
 
     internal sealed class InvalidFilter : Filter
