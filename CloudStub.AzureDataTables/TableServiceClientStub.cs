@@ -306,7 +306,7 @@ namespace CloudStub.AzureDataTables
                     tables.AddRange(
                         Tables
                             .Keys
-                            .SkipWhile(tableName => continuationTokenTableName != null && string.Compare(tableName, continuationTokenTableName, StringComparison.OrdinalIgnoreCase) < 0)
+                            .Skip(ResponseContinuationToken.SuccessorSearch(Tables.Keys, continuationTokenTableName, Tables.Comparer))
                             .Select(tableName => new Dictionary<string, object> { { "TableName", tableName } })
                             .Where(table => filter.Apply(table))
                             .Take(pageSize + 1)

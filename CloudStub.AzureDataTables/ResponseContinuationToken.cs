@@ -13,6 +13,28 @@ namespace CloudStub.AzureDataTables
         private const char _tableNameContinuationTokenPaddingSeparator = '\u0001';
         private static readonly Regex _continuationTokenValueRegex = new Regex(@"^1!(?<length>\d+)!(?<value>.*)$", RegexOptions.Compiled);
 
+        public static int SuccessorSearch<T>(IList<T> sortedItems, T target, IComparer<T> comparer)
+        {
+            var start = 0;
+            var end = sortedItems.Count;
+
+            while (start < end)
+            {
+                var length = end - start;
+                var middle = start + length / 2;
+                var comparisonResult = comparer.Compare(sortedItems[middle], target);
+
+                if (comparisonResult == 0)
+                    start = end = middle;
+                else if (comparisonResult < 0)
+                    start = middle + 1;
+                else
+                    end = middle;
+            }
+
+            return start;
+        }
+
         public static string EncodeContinuationToken(string value)
         {
             var encodedValue = Convert

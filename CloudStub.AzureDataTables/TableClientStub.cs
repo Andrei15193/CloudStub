@@ -371,15 +371,7 @@ namespace CloudStub.AzureDataTables
                 using (_tableServiceClientStub.Tables.ReadLock())
                     if (_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
                         using (tableItem.ReadLock())
-                            rows.AddRange(
-                                tableItem
-                                    .SkipWhile(tablePartition => string.Compare(tablePartition.Key, continuationTokenPartitionKey, StringComparison.Ordinal) < 0)
-                                    .SelectMany(tablePartition => tablePartition.Value)
-                                    .SkipWhile(tableRow => string.Compare(tableRow.Key, continuationTokenRowKey, StringComparison.Ordinal) < 0)
-                                    .Select(tableRow => tableRow.Value)
-                                    .Where(tableRow => filter == null || filter.Apply(tableRow))
-                                    .Take(pageSize + 1)
-                            );
+                            rows.AddRange(_GetEntitiesPage(tableItem, continuationTokenPartitionKey, continuationTokenRowKey, filter, pageSize + 1));
 
                 var nextContinuationTokenPartitionKey = default(string);
                 var nextContinuationTokenRowKey = default(string);
@@ -420,5 +412,46 @@ namespace CloudStub.AzureDataTables
                 );
                 return page;
             };
+
+        private static IEnumerable<TableRowStub> _GetEntitiesPage(TableItemStub tableItem, string partitionKeyStart, string rowKeyStart, Filter filter, int pageSize)
+        {
+            var partitionIndex = ResponseContinuationToken.SuccessorSearch(tableItem.Keys, partitionKeyStart, tableItem.Comparer);
+            var count = 0;
+
+            if (partitionIndex < tableItem.Count && count < pageSize)
+            {
+                var partition = tableItem[tableItem.Keys[partitionIndex]];
+                var rowIndex = ResponseContinuationToken.SuccessorSearch(partition.Keys, rowKeyStart, partition.Comparer);
+                while (rowIndex < partition.Count && count < pageSize)
+                {
+                    var row = partition.Values[rowIndex];
+                    if (filter.Apply(row))
+                    {
+                        count++;
+                        yield return row;
+                    }
+                    rowIndex++;
+                }
+                partitionIndex++;
+            }
+
+            while (partitionIndex < tableItem.Count && count < pageSize)
+            {
+                var partition = tableItem[tableItem.Keys[partitionIndex]];
+                var rowIndex = 0;
+                while (rowIndex < partition.Count && count < pageSize)
+                {
+                    var row = partition.Values[rowIndex];
+                    if (filter == null || filter.Apply(row))
+                    {
+                        count++;
+                        yield return row;
+                    }
+
+                    rowIndex++;
+                }
+                partitionIndex++;
+            }
+        }
     }
 }
