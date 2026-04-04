@@ -244,13 +244,16 @@ namespace CloudStub.AzureDataTables
         }
 
         public override Pageable<T> Query<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return new PageableStub<T>(_GetEntityPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), select, cancellationToken), maxPerPage);
-        }
+            => new PageableStub<T>(_GetEntityPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), select, cancellationToken), maxPerPage);
 
         public override Pageable<T> Query<T>(Expression<Func<T, bool>> filter, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
             => Query<T>(CreateQueryFilter(filter), maxPerPage, select, cancellationToken);
+
+        public override AsyncPageable<T> QueryAsync<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+            => new AsyncPageableStub<T>(_GetEntityPageFactory<T>(FilterParser.Parse(FilterScanner.Scan(filter)), select, cancellationToken), maxPerPage);
+
+        public override AsyncPageable<T> QueryAsync<T>(Expression<Func<T, bool>> filter, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+            => QueryAsync<T>(CreateQueryFilter(filter), maxPerPage, select, cancellationToken);
 
         public override Response<IReadOnlyList<TableSignedIdentifier>> GetAccessPolicies(CancellationToken cancellationToken = default)
         {

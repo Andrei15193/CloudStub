@@ -5,23 +5,24 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using Azure;
 using Azure.Data.Tables;
 using CloudStub.AzureDataTables.Tests.Data;
 using Xunit;
 
-namespace CloudStub.AzureDataTables.Tests.Table.Sync
+namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
     public class TableClientQueryTests : BaseTableCloudStubTests
     {
         [Fact]
-        public void Query_WhenThereAreNoFilters_ReturnsAllItems()
+        public async Task QueryAsync_WhenThereAreNoFilters_ReturnsAllItems()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = CloudTable.QueryAsync<TableEntity>();
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-1", "row-1"),
                 ("partition-10", "row-10"),
@@ -37,9 +38,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenThereAreFiltersWithOr_ReturnsMatchingEntitiesWithDefinedRelatedProperties()
+        public async Task QueryAsync_WhenThereAreFiltersWithOr_ReturnsMatchingEntitiesWithDefinedRelatedProperties()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
             var dateTimeValue = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc);
             var dateTimeOffsetValue = new DateTimeOffset(2020, 1, 4, 0, 0, 0, TimeSpan.Zero);
@@ -57,9 +58,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.BinaryProp == binaryValue)
             });
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = CloudTable.QueryAsync<TableEntity>(query);
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-1", "row-1"),
                 ("partition-2", "row-2"),
@@ -74,9 +75,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingInvertedOrFilter_ReturnsMatchingEntitiesAndTheOnesWithoutDefinedRelatedProperties()
+        public async Task QueryAsync_WhenUsingInvertedOrFilter_ReturnsMatchingEntitiesAndTheOnesWithoutDefinedRelatedProperties()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
             var dateTimeValue = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc);
             var dateTimeOffsetValue = new DateTimeOffset(2020, 1, 4, 0, 0, 0, TimeSpan.Zero);
@@ -94,9 +95,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.BinaryProp != binaryValue)
                 })})";
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = CloudTable.QueryAsync<TableEntity>(query);
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-1", "row-1"),
                 ("partition-10", "row-10"),
@@ -112,28 +113,28 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingOrFilterFollowedByAndFilter_ReturnsEntitiesWhereEitherSideOfTheOrOperandsAreTrue()
+        public async Task QueryAsync_WhenUsingOrFilterFollowedByAndFilter_ReturnsEntitiesWhereEitherSideOfTheOrOperandsAreTrue()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
             var query = $"{TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.StringProp == "test")} or {TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.Int32Prop == 3)} and {TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.Int64Prop == 3)}";
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = CloudTable.QueryAsync<TableEntity>(query);
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-1", "row-1")
             );
         }
 
         [Fact]
-        public void Query_WhenUsingAndFilterFollowedByOrFilter_ReturnsEntitiesWhereEitherSidedOfTheOrOperandsAreTrue()
+        public async Task QueryAsync_WhenUsingAndFilterFollowedByOrFilter_ReturnsEntitiesWhereEitherSidedOfTheOrOperandsAreTrue()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
             var query = $"{TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.StringProp == "test")} and {TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.Int32Prop == 3)} or {TableClient.CreateQueryFilter<TestQueryEntity>(tableEntity => tableEntity.Int64Prop == 3)}";
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = CloudTable.QueryAsync<TableEntity>(query);
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-3", "row-3")
             );
@@ -209,16 +210,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [InlineData(nameof(TestQueryEntity.StringProp), "le", "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), "gt", "3")]
         [InlineData(nameof(TestQueryEntity.StringProp), "ge", "3")]
-        public void Query_WhenUsingFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
+        public async Task QueryAsync_WhenUsingFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName, string filterOperator, object filterValue)
         {
-            CloudTable.CreateIfNotExists();
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition",
                 RowKey = "row"
             });
 
-            var entities = CloudTable.Query<TableEntity>(_GetFilter(propertyName, filterOperator, filterValue));
+            var entities = await CloudTable.QueryAsync<TableEntity>(_GetFilter(propertyName, filterOperator, filterValue)).ToListAsync();
 
             Assert.Empty(entities);
         }
@@ -233,17 +234,17 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void Query_WhenUsingPropertyNameFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName)
+        public async Task QueryAsync_WhenUsingPropertyNameFilterOnNonExistentProperty_ReturnsNoEntities(string propertyName)
         {
-            CloudTable.CreateIfNotExists();
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition",
                 RowKey = "row"
             });
             var query = propertyName;
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = await CloudTable.QueryAsync<TableEntity>(query).ToListAsync();
 
             Assert.Empty(entities);
         }
@@ -258,10 +259,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [InlineData(nameof(TestQueryEntity.GuidProp))]
         [InlineData(nameof(TestQueryEntity.BinaryProp))]
         [InlineData(nameof(TestQueryEntity.StringProp))]
-        public void Query_WhenUsingPropertyNameFilterOnExistentProperty_ReturnsNotEntities(string propertyName)
+        public async Task QueryAsync_WhenUsingPropertyNameFilterOnExistentProperty_ReturnsNotEntities(string propertyName)
         {
-            CloudTable.CreateIfNotExists();
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition",
                 RowKey = "row",
@@ -277,37 +278,37 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             });
             var query = propertyName;
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = await CloudTable.QueryAsync<TableEntity>(query).ToListAsync();
 
             Assert.Empty(entities);
         }
 
         [Theory]
         [ClassData(typeof(TableQueryComparisonTestData))]
-        public void Query_WhenUsingComparisonFilterOperator_MayReturnEntities(string propertyName, object propertyValue, string filterOperator, object filterValue, bool returnsEntity)
+        public async Task QueryAsync_WhenUsingComparisonFilterOperator_MayReturnEntities(string propertyName, object propertyValue, string filterOperator, object filterValue, bool returnsEntity)
         {
-            CloudTable.CreateIfNotExists();
-            CloudTable.AddEntity(new TableEntity(new Dictionary<string, object> { { propertyName, _GetFilterValue(propertyValue) } })
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.AddEntityAsync(new TableEntity(new Dictionary<string, object> { { propertyName, _GetFilterValue(propertyValue) } })
             {
                 PartitionKey = "partition",
                 RowKey = "row",
             });
             var query = _GetFilter(propertyName, filterOperator, filterValue);
 
-            var entities = CloudTable.Query<TableEntity>(query);
+            var entities = CloudTable.QueryAsync<TableEntity>(query);
 
             if (returnsEntity)
-                _AssertResult(entities, ("partition", "row"));
+                await _AssertResultAsync(entities, ("partition", "row"));
             else
-                Assert.Empty(entities);
+                Assert.Empty(await entities.ToListAsync());
         }
 
         [Theory]
         [ClassData(typeof(TableQueryNullComparisonTestData))]
-        public void Query_WhenUsingComparisonFilterOperatorWithNullValue_ThrowsException(string propertyName, object propertyValue, string filterOperator, string expectedErrorMessage, IEnumerable<string> removedHeaders)
+        public async Task QueryAsync_WhenUsingComparisonFilterOperatorWithNullValue_ThrowsException(string propertyName, object propertyValue, string filterOperator, string expectedErrorMessage, IEnumerable<string> removedHeaders)
         {
-            CloudTable.CreateIfNotExists();
-            CloudTable.AddEntity(new TableEntity(new Dictionary<string, object> { { propertyName, _GetFilterValue(propertyValue) } })
+            await CloudTable.CreateIfNotExistsAsync();
+            await CloudTable.AddEntityAsync(new TableEntity(new Dictionary<string, object> { { propertyName, _GetFilterValue(propertyValue) } })
             {
                 PartitionKey = "partition",
                 RowKey = "row",
@@ -315,8 +316,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
             var query = _GetFilter(propertyName, filterOperator, null);
 
-            Assertions.JsonResponseThrows(
-                () => CloudTable.Query<TableEntity>(query).ToList(),
+            await Assertions.JsonResponseThrowsAsync(
+                async () => await CloudTable.QueryAsync<TableEntity>(query).ToListAsync(),
                 response =>
                 {
                     var headers = new Assertions.DefaultHeaders(response);
@@ -335,14 +336,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingAnInvalidFilter_ThrowsException()
+        public async Task QueryAsync_WhenUsingAnInvalidFilter_ThrowsException()
         {
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            var result = CloudTable.Query<TableEntity>("property1 eq 1'invalid'").AsPages();
+            var result = CloudTable.QueryAsync<TableEntity>("property1 eq 1'invalid'").AsPages();
 
-            Assertions.JsonResponseThrows(
-                () => result.First(),
+            await Assertions.JsonResponseThrowsAsync(
+                async () => await result.FirstAsync(),
                 response =>
                 {
                     var headers = new Assertions.DefaultHeaders(response);
@@ -362,14 +363,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory]
         [InlineData("property1 eq propery2")]
         [InlineData("1 eq 2")]
-        public void Query_WhenUsingUnsupportedFilter_ThrowsException(string filter)
+        public async Task QueryAsync_WhenUsingUnsupportedFilter_ThrowsException(string filter)
         {
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            var result = CloudTable.Query<TableEntity>(filter).AsPages();
+            var result = CloudTable.QueryAsync<TableEntity>(filter).AsPages();
 
-            Assertions.JsonResponseThrows(
-                () => result.First(),
+            await Assertions.JsonResponseThrowsAsync(
+                async () => await result.FirstAsync(),
                 response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.NotImplemented,
@@ -381,17 +382,17 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingMoreThan50DiscreteFilterOperators_ReturnsMatchingEntities()
+        public async Task QueryAsync_WhenUsingMoreThan50DiscreteFilterOperators_ReturnsMatchingEntities()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
-            var result = CloudTable.Query<TableEntity>(
+            var result = CloudTable.QueryAsync<TableEntity>(
                 "PartitionKey ge 'partition-1' or ("
                 + string.Join(" and ", Enumerable.Range(1, 50).Select(number => $"property{number} eq 'value{number}'"))
                 + ")"
             );
 
-            _AssertResult(
+            await _AssertResultAsync(
                 result,
                 ("partition-1", "row-1"),
                 ("partition-10", "row-10"),
@@ -407,14 +408,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingTakeCount_ReturnsOnlyFirstPage()
+        public async Task QueryAsync_WhenUsingTakeCount_ReturnsOnlyFirstPage()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
-            var entities = CloudTable.Query<TableEntity>(maxPerPage: 5);
+            var entities = CloudTable.QueryAsync<TableEntity>(maxPerPage: 5);
 
             _AssertResult(
-                entities.AsPages().First(),
+                await entities.AsPages().FirstAsync(),
                 ("partition-1", "row-1"),
                 ("partition-10", "row-10"),
                 ("partition-2", "row-2"),
@@ -424,13 +425,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingTakeCount_ReturnsContinuationTokenContainingPartitionAndRowKeysForNextPage()
+        public async Task QueryAsync_WhenUsingTakeCount_ReturnsContinuationTokenContainingPartitionAndRowKeysForNextPage()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
-            var entities = CloudTable.Query<TableEntity>(maxPerPage: 5);
+            var entities = CloudTable.QueryAsync<TableEntity>(maxPerPage: 5);
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-1", "row-1"),
                 ("partition-10", "row-10"),
@@ -446,30 +447,30 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingTakeCount_ReturnsContinuationTokenUsingBase64UrlEncoding()
+        public async Task QueryAsync_WhenUsingTakeCount_ReturnsContinuationTokenUsingBase64UrlEncoding()
         {
-            CloudTable.CreateIfNotExists();
+            await CloudTable.CreateIfNotExistsAsync();
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "<",
                 RowKey = "row"
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "<.>",
                 RowKey = "test"
             });
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "<.>",
                 RowKey = "ÿÿÿ"
             });
 
-            var entities = CloudTable.Query<TableEntity>(maxPerPage: 1);
+            var entities = CloudTable.QueryAsync<TableEntity>(maxPerPage: 1);
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("<", "row"),
                 ("<.>", "test"),
@@ -478,37 +479,38 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingTakeCountAndFilter_ReturnsContinuationTokenForNextItemSatisfyingTheFilter()
+        public async Task QueryAsync_WhenUsingTakeCountAndFilter_ReturnsContinuationTokenForNextItemSatisfyingTheFilter()
         {
-            CloudTable.CreateIfNotExists();
+            await CloudTable.CreateIfNotExistsAsync();
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-1",
                 RowKey = "row-1"
             });
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-2",
                 RowKey = "row-2"
             });
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-3",
                 RowKey = "row-3"
             });
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-4",
                 RowKey = "row-4"
             });
 
-            var pages = CloudTable
-                .Query<TableEntity>(
+            var pages = await CloudTable
+                .QueryAsync<TableEntity>(
                     entity => entity.PartitionKey == "partition-1" || entity.PartitionKey == "partition-3",
                     maxPerPage: 1
                 )
-                .AsPages();
+                .AsPages()
+                .ToListAsync();
 
             Assert.Collection(
                 pages,
@@ -525,40 +527,40 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingZeroTakeCount_ReturnsNoEntities()
+        public async Task QueryAsync_WhenUsingZeroTakeCount_ReturnsNoEntities()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
-            var entities = CloudTable.Query<TableEntity>(maxPerPage: 0);
+            var entities = await CloudTable.QueryAsync<TableEntity>(maxPerPage: 0).ToListAsync();
 
             Assert.Empty(entities);
         }
 
         [Fact(Skip = "Incomplete implementation")]
-        public void Query_TakeCountEqualTo1000_ReturnsSpecifiedNumberOfEntitiesInOnePage()
+        public async Task QueryAsync_TakeCountEqualTo1000_ReturnsSpecifiedNumberOfEntitiesInOnePage()
         {
-            CloudTable.Create();
+            await CloudTable.CreateIfNotExistsAsync();
             for (var transactionIndex = 0; transactionIndex < 20; transactionIndex++)
             {
                 var transactionActions = new List<TableTransactionAction>(100);
                 for (var index = 1; index <= 100; index++)
                     transactionActions.Add(new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition", $"row-{index + transactionIndex * 100}")));
 
-                CloudTable.SubmitTransaction(transactionActions);
+                await CloudTable.SubmitTransactionAsync(transactionActions);
             }
 
-            var entities = CloudTable.Query<TableEntity>(maxPerPage: 1000);
+            var entities = CloudTable.QueryAsync<TableEntity>(maxPerPage: 1000);
 
-            Assert.Equal(1000, entities.AsPages().First().Values.Count);
+            Assert.Equal(1000, (await entities.AsPages().FirstAsync()).Values.Count);
         }
 
         [Fact]
-        public void Query_TakeCountLessThan0_ThrowsException()
+        public async Task QueryAsync_TakeCountLessThan0_ThrowsException()
         {
-            CloudTable.Create();
+            await CloudTable.CreateIfNotExistsAsync();
 
-            Assertions.JsonResponseThrows(
-                () => CloudTable.Query<TableEntity>(maxPerPage: -1).AsPages().First(),
+            await Assertions.JsonResponseThrowsAsync(
+                async () => await CloudTable.QueryAsync<TableEntity>(maxPerPage: -1).AsPages().FirstAsync(),
                 response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.BadRequest,
@@ -570,12 +572,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_TakeCountGreaterThan1000_ThrowsException()
+        public async Task QueryAsync_TakeCountGreaterThan1000_ThrowsException()
         {
-            CloudTable.Create();
+            await CloudTable.CreateIfNotExistsAsync();
 
-            Assertions.JsonResponseThrows(
-                () => CloudTable.Query<TableEntity>(maxPerPage: 1001).AsPages().First(),
+            await Assertions.JsonResponseThrowsAsync(
+                async () => await CloudTable.QueryAsync<TableEntity>(maxPerPage: 1001).AsPages().FirstAsync(),
                 response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.BadRequest,
@@ -587,25 +589,25 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingSelectColumns_ReturnsEntitiesWithSpecifiedColumns()
+        public async Task QueryAsync_WhenUsingSelectColumns_ReturnsEntitiesWithSpecifiedColumns()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
             var query = TableClient.CreateQueryFilter<TableEntity>(tableEntity => tableEntity.PartitionKey == "partition-1" || tableEntity.PartitionKey == "partition-2");
 
-            var entities = CloudTable.Query<TableEntity>(query, select: new[]
+            var entities = CloudTable.QueryAsync<TableEntity>(query, select: new[]
             {
                 nameof(TestQueryEntity.PartitionKey),
                 nameof(TestQueryEntity.RowKey),
                 nameof(TestQueryEntity.Int32Prop)
             });
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 new string[] { nameof(TestQueryEntity.PartitionKey), nameof(TestQueryEntity.RowKey), nameof(TestQueryEntity.Int32Prop) },
                 ("partition-1", "row-1"), ("partition-2", "row-2")
             );
             Assert.Collection(
-                entities,
+                await entities.ToListAsync(),
                 firstEntity =>
                 {
                     Assert.True(firstEntity.TryGetValue(nameof(TestQueryEntity.Int32Prop), out var numberProperty));
@@ -624,13 +626,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingStronglyTypedEntities_ReturnsAllEntities()
+        public async Task QueryAsync_WhenUsingStronglyTypedEntities_ReturnsAllEntities()
         {
-            _AddTestData();
+            await _AddTestDataAsync();
 
-            var entities = CloudTable.Query<TestQueryEntity>();
+            var entities = CloudTable.QueryAsync<TestQueryEntity>();
 
-            _AssertResult(
+            await _AssertResultAsync(
                 entities,
                 ("partition-1", "row-1"),
                 ("partition-10", "row-10"),
@@ -646,13 +648,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingProperties_SetsValuesForEach()
+        public async Task QueryAsync_WhenUsingProperties_SetsValuesForEach()
         {
             var guid = Guid.NewGuid();
             var now = DateTime.UtcNow;
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            CloudTable.AddEntity(new TableEntity
+            await CloudTable.AddEntityAsync(new TableEntity
             {
                 { "PartitionKey", "partition-1" },
                 { "RowKey", "row-1" },
@@ -667,7 +669,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntity.DateTimeOffsetProp), (DateTimeOffset)now }
             });
 
-            var entities = CloudTable.Query<TestQueryEntity>();
+            var entities = await CloudTable.QueryAsync<TestQueryEntity>().ToListAsync();
 
             var entity = Assert.Single(entities);
             Assert.Multiple(
@@ -686,11 +688,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingDifferentCasePropertyNames_DoesNotSetValues()
+        public async Task QueryAsync_WhenUsingDifferentCasePropertyNames_DoesNotSetValues()
         {
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            CloudTable.AddEntity(new TableEntity
+            await CloudTable.AddEntityAsync(new TableEntity
             {
                 { "PartitionKey", "partition-1" },
                 { "RowKey", "row-1" },
@@ -705,7 +707,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntity.DateTimeOffsetProp).ToUpperInvariant(), DateTimeOffset.UtcNow }
             });
 
-            var entities = CloudTable.Query<TestQueryEntity>();
+            var entities = await CloudTable.QueryAsync<TestQueryEntity>().ToListAsync();
 
             var entity = Assert.Single(entities);
             Assert.Multiple(
@@ -724,13 +726,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingFields_SetsValuesForEach()
+        public async Task QueryAsync_WhenUsingFields_SetsValuesForEach()
         {
             var guid = Guid.NewGuid();
             var now = DateTime.UtcNow;
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            CloudTable.AddEntity(new TableEntity
+            await CloudTable.AddEntityAsync(new TableEntity
             {
                 { "PartitionKey", "partition-1" },
                 { "RowKey", "row-1" },
@@ -745,7 +747,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntityFields.DateTimeOffsetField), (DateTimeOffset)now }
             });
 
-            var entities = CloudTable.Query<TestQueryEntityFields>();
+            var entities = await CloudTable.QueryAsync<TestQueryEntityFields>().ToListAsync();
 
             var entity = Assert.Single(entities);
             Assert.Multiple(
@@ -764,11 +766,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingDifferentCaseFieldNames_DoesNotSetValues()
+        public async Task QueryAsync_WhenUsingDifferentCaseFieldNames_DoesNotSetValues()
         {
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            CloudTable.AddEntity(new TableEntity
+            await CloudTable.AddEntityAsync(new TableEntity
             {
                 { "PartitionKey", "partition-1" },
                 { "RowKey", "row-1" },
@@ -783,7 +785,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntityFields.DateTimeOffsetField).ToUpperInvariant(), DateTimeOffset.UtcNow }
             });
 
-            var entities = CloudTable.Query<TestQueryEntityFields>();
+            var entities = await CloudTable.QueryAsync<TestQueryEntityFields>().ToListAsync();
 
             var entity = Assert.Single(entities);
             Assert.Multiple(
@@ -802,11 +804,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void Query_WhenUsingPropertiesAndFieldsWithDifferentAccessModifiers_OnlySetsPublicMembers()
+        public async Task QueryAsync_WhenUsingPropertiesAndFieldsWithDifferentAccessModifiers_OnlySetsPublicMembers()
         {
-            CloudTable.Create();
+            await CloudTable.CreateAsync();
 
-            CloudTable.AddEntity(new TableEntity
+            await CloudTable.AddEntityAsync(new TableEntity
             {
                 { "PartitionKey", "partition-1" },
                 { "RowKey", "row-1" },
@@ -826,7 +828,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { "PrivateProtectedField", "private protected" }
             });
 
-            var entities = CloudTable.Query<TestQueryEntityAccessModifier>();
+            var entities = await CloudTable.QueryAsync<TestQueryEntityAccessModifier>().ToListAsync();
 
             var entity = Assert.Single(entities);
 
@@ -852,10 +854,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
         [Theory]
         [ClassData(typeof(TableDeserializationTestData))]
-        public void Query_WhenDeserializingProperty_MayParseOrThrowException(string propertyName, object value, object expectedResult)
+        public async Task QueryAsync_WhenDeserializingProperty_MayParseOrThrowException(string propertyName, object value, object expectedResult)
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TableEntity
+            await CloudTable.CreateAsync();
+            await CloudTable.AddEntityAsync(new TableEntity
             {
                 { "PartitionKey", $"partition" },
                 { "RowKey", "row" },
@@ -864,13 +866,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
             if (expectedResult is Exception expectedException)
             {
-                var exception = Assert.Throws(expectedResult.GetType(), () => CloudTable.Query<TestQueryEntity>().ToList());
+                var exception = await Assert.ThrowsAsync(expectedResult.GetType(), async () => await CloudTable.QueryAsync<TestQueryEntity>().ToListAsync());
                 Assert.Equal(expectedException.Message, exception.Message);
                 Assert.Contains(exception.Source, new[] { "System.Private.CoreLib", "Azure.Data.Tables" });
             }
             else
             {
-                var entities = CloudTable.Query<TestQueryEntity>();
+                var entities = await CloudTable.QueryAsync<TestQueryEntity>().ToListAsync();
                 var entity = Assert.Single(entities);
                 var actualResult = typeof(TestQueryEntity)
                     .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty)
@@ -940,18 +942,18 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             return $"{propertyName} {filterOperator} '{Convert.ToString(filterValue)}'";
         }
 
-        private void _AssertResult<T>(Pageable<T> entities, params (string, string)[] expectedItems)
+        private Task _AssertResultAsync<T>(AsyncPageable<T> entities, params (string, string)[] expectedItems)
             where T : ITableEntity
-            => _AssertResult(entities, Array.Empty<string>(), expectedItems);
+            => _AssertResultAsync(entities, Array.Empty<string>(), expectedItems);
 
-        private void _AssertResult<T>(Pageable<T> entities, IEnumerable<string> selectedProperties, params (string, string)[] expectedItems)
+        private async Task _AssertResultAsync<T>(AsyncPageable<T> entities, IEnumerable<string> selectedProperties, params (string, string)[] expectedItems)
             where T : ITableEntity
         {
             var processedItemsCount = 0;
             var previousContinuationToken = default(string);
 
             Assert.Multiple(
-                entities
+                await entities
                 .AsPages()
                 .Select(page => new Action(() =>
                 {
@@ -959,7 +961,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     processedItemsCount += page.Values.Count;
                     previousContinuationToken = page.ContinuationToken;
                 }))
-                .ToArray()
+                .ToArrayAsync()
             );
         }
 
@@ -1085,74 +1087,74 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             return result;
         }
 
-        private void _AddTestData()
+        private async Task _AddTestDataAsync()
         {
-            CloudTable.CreateIfNotExists();
+            await CloudTable.CreateIfNotExistsAsync();
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-1",
                 RowKey = "row-1",
                 StringProp = "test"
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-2",
                 RowKey = "row-2",
                 Int32Prop = 3
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-3",
                 RowKey = "row-3",
                 Int64Prop = 3
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-4",
                 RowKey = "row-4",
                 DoubleProp = 3
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-5",
                 RowKey = "row-5",
                 BinaryProp = Enumerable.Range(0, byte.MaxValue).Select(value => (byte)value).ToArray()
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-6",
                 RowKey = "row-6",
                 DateTimeProp = new DateTime(2020, 1, 4, 0, 0, 0, DateTimeKind.Utc)
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-7",
                 RowKey = "row-7",
                 DateTimeOffsetProp = new DateTimeOffset(2020, 1, 4, 0, 0, 0, TimeSpan.Zero)
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-8",
                 RowKey = "row-8",
                 GuidProp = Guid.Parse("f32e99d4-05c7-4ed4-b75a-66d47e9d9e63")
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-9",
                 RowKey = "row-9",
                 BoolProp = true
             });
 
-            CloudTable.AddEntity(new TestQueryEntity
+            await CloudTable.AddEntityAsync(new TestQueryEntity
             {
                 PartitionKey = "partition-10",
                 RowKey = "row-10"
