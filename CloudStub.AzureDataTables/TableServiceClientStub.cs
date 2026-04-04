@@ -300,11 +300,13 @@ namespace CloudStub.AzureDataTables
                     );
 
                 var tables = new List<IReadOnlyDictionary<string, object>>(pageSize + 1);
+                var continuationTokenTableName = ResponseContinuationToken.DecodeTableNameContinuationToken(continuationToken);
+
                 using (Tables.ReadLock())
                     tables.AddRange(
                         Tables
                             .Keys
-                            .SkipWhile(tableName => continuationToken != null && string.Compare(tableName, continuationToken, StringComparison.OrdinalIgnoreCase) <= 0)
+                            .SkipWhile(tableName => continuationTokenTableName != null && string.Compare(tableName, continuationTokenTableName, StringComparison.OrdinalIgnoreCase) < 0)
                             .Select(tableName => new Dictionary<string, object> { { "TableName", tableName } })
                             .Where(table => filter.Apply(table))
                             .Take(pageSize + 1)
@@ -313,8 +315,11 @@ namespace CloudStub.AzureDataTables
                 var nextContinuationToken = default(string);
                 if (tables.Count > pageSize)
                 {
+                    var nextTable = tables.Last();
                     tables.RemoveAt(tables.Count - 1);
-                    nextContinuationToken = (string)tables.Last()["TableName"];
+
+                    if (tables.Count > 0)
+                        nextContinuationToken = ResponseContinuationToken.EncodeTableNameContinuationToken((string)nextTable["TableName"]);
                 }
 
                 var tableItems = new List<TableItem>(tables.Count);
@@ -324,7 +329,11 @@ namespace CloudStub.AzureDataTables
                     tableItems,
                     nextContinuationToken,
                     TableStubResponseFactory.EntitiesResponse(
-                        new DefaultResponseHeaders(),
+                        new DefaultResponseHeaders(headers =>
+                        {
+                            if (nextContinuationToken != null)
+                                headers.Add("x-ms-continuation-NextTableName", nextContinuationToken);
+                        }),
                         "https://cloudstubdev.table.core.windows.net/$metadata#Tables",
                         tables
                     )

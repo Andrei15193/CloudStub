@@ -31,8 +31,13 @@ namespace CloudStub.AzureDataTables
             return EncodeContinuationToken(continuationToken.Substring(0, Math.Min(value.Length, TableServiceClientStub.TableNameMaximumLength)));
         }
 
-        public static string DecodeTableNameContinuationToken(string value)
-            => DecodeContinuationToken(value)[0].Split(_tableNameContinuationTokenPaddingSeparator)[0];
+        public static string DecodeTableNameContinuationToken(string continuationToken)
+        {
+            if (string.IsNullOrWhiteSpace(continuationToken))
+                return null;
+
+            return DecodeContinuationToken(continuationToken)[0].Split(_tableNameContinuationTokenPaddingSeparator)[0];
+        }
 
         public static (string PartitionKey, string RowKey) DecodeRowContinuationToken(string continuationToken)
         {
