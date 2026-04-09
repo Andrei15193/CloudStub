@@ -22,6 +22,7 @@ namespace CloudStub.AzureDataTables.Tests
         public const string ETagDateTimeFormat = @"'W/""datetime\''" + DateTimeValueFormat + @"'\'""'";
         private static readonly IReadOnlyCollection<string> _nonRedactedHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
+            "Connection",
             "Cache-Control",
             "Transfer-Encoding",
             "Server",
@@ -87,6 +88,18 @@ namespace CloudStub.AzureDataTables.Tests
                 () => AssertInfo(response, responseAssertOptions, responseAssertOptions.ErrorPhrase),
                 () => AssertHeaders(response, responseAssertOptions),
                 () => AssertUnsuccessfulXmlContent(response, responseAssertOptions)
+            );
+
+            return response;
+        }
+
+        public static Response InvalidUrlResponse(Response response, UnsuccessfulResponseAssertOptions responseAssertOptions)
+        {
+            Assert.NotNull(response);
+            Assert.Multiple(
+                () => AssertInfo(response, responseAssertOptions, responseAssertOptions.ErrorPhrase),
+                () => AssertHeaders(response, responseAssertOptions),
+                () => AssertInvalidUrlContent(response)
             );
 
             return response;
@@ -160,6 +173,40 @@ namespace CloudStub.AzureDataTables.Tests
             return exception;
         }
 
+        public static async Task<RequestFailedException> InvalidUrlThrowsAsync(Func<Task> action, Func<Response, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+        {
+            var exception = await Assert.ThrowsAsync<RequestFailedException>(action);
+            var rawResponse = exception.GetRawResponse();
+
+            var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+            Assert.Multiple(
+                () => AssertExceptionInfo(exception, responseAssertOptions),
+                () => AssertInvalidUrlExceptionMessage(exception, responseAssertOptions),
+                () => Assert.True(rawResponse?.IsError),
+                () => InvalidUrlResponse(rawResponse, responseAssertOptions)
+            );
+
+            return exception;
+        }
+
+        public static RequestFailedException InvalidUrlThrows(Action action, Func<Response, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+        {
+            var exception = Assert.Throws<RequestFailedException>(action);
+            var rawResponse = exception.GetRawResponse();
+
+            var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+            Assert.Multiple(
+                () => AssertExceptionInfo(exception, responseAssertOptions),
+                () => AssertInvalidUrlExceptionMessage(exception, responseAssertOptions),
+                () => Assert.True(rawResponse?.IsError),
+                () => InvalidUrlResponse(rawResponse, responseAssertOptions)
+            );
+
+            return exception;
+        }
+
         private static void AssertInfo(Response response, ResponseAssertOptions responseAssertOptions, string reasonPhrase = null)
         {
             var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
@@ -225,8 +272,18 @@ namespace CloudStub.AzureDataTables.Tests
                     }
                 },
 
-                () => Assert.NotNull(response.Headers.RequestId),
-                () => Assert.True(Guid.TryParseExact(response.Headers.RequestId, "D", out _))
+                () =>
+                {
+                    if (responseAssertOptions.WithoutRequestId)
+                        Assert.Null(response.Headers.RequestId);
+                    else
+                        Assert.NotNull(response.Headers.RequestId);
+                },
+                () =>
+                {
+                    if (!responseAssertOptions.WithoutRequestId)
+                        Assert.True(Guid.TryParseExact(response.Headers.RequestId, "D", out _));
+                }
             );
         }
 
@@ -432,6 +489,18 @@ namespace CloudStub.AzureDataTables.Tests
             }
         }
 
+        private static void AssertInvalidUrlContent(Response response)
+        {
+            string content;
+            using (var contentStreamReader = new StreamReader(response.Content.ToStream()))
+                content = contentStreamReader.ReadToEnd();
+
+            Assert.Equal(
+                "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\"><HTML><HEAD><TITLE>Bad Request</TITLE><META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD><BODY><h2>Bad Request - Invalid URL</h2><hr><p>HTTP Error 400. The request URL is invalid.</p></BODY></HTML>",
+                content.Replace("\r\n", string.Empty)
+            );
+        }
+
         private static void AssertExceptionInfo(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
         {
             Assert.Multiple(
@@ -545,8 +614,40 @@ Headers:
             }
         }
 
+        private static void AssertInvalidUrlExceptionMessage(RequestFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
+        {
+            var utcNow = DateTimeOffset.UtcNow;
+            var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
+            var rawResponse = exception.GetRawResponse();
+
+            string content;
+            using (var contentStreamReader = new StreamReader(rawResponse.Content.ToStream()))
+                content = contentStreamReader.ReadToEnd();
+            Assert.NotEmpty(content);
+
+            Assert.Equal(
+                $@"Service request failed.
+Status: {responseAssertOptions.StatusCode:D} ({responseAssertOptions.ErrorPhrase ?? spelledOutStatusCode})
+
+Content:
+".Replace("\r", string.Empty)
++ content
++ $@"
+
+Headers:
+{string.Join("\n",
+from header in rawResponse.Headers
+let headerValue = (_nonRedactedHeaderNames.Contains(header.Name) ? header.Value : "REDACTED")
+select $"{header.Name}: {headerValue}"
+)}
+".Replace("\r", string.Empty),
+                exception.Message
+            );
+        }
+
         public class ResponseAssertOptions
         {
+            public bool WithoutRequestId { get; set; }
             public HttpStatusCode StatusCode { get; set; }
             public IDictionary<string, string> Headers { get; set; }
         }
@@ -624,6 +725,30 @@ Headers:
                 Remove("Cache-Control");
                 Remove("X-Content-Type-Options");
                 Remove("Content-Type");
+            }
+        }
+
+        public class DeletedHeaders : DefaultHeaders
+        {
+            public DeletedHeaders(Response response) : base(response)
+            {
+                Remove("Cache-Control");
+            }
+        }
+
+        public class InvalidUrlHeaders : DefaultHeaders
+        {
+            public InvalidUrlHeaders(Response response) : base(response)
+            {
+                this["Server"] = "Microsoft-HTTPAPI/2.0";
+                this["Content-Type"] = "text/html; charset=us-ascii";
+
+                Remove("Cache-Control");
+                Remove("x-ms-version");
+                Remove("X-Content-Type-Options");
+                Remove("x-ms-request-id");
+                Remove("x-ms-client-request-id");
+                Remove("Transfer-Encoding");
             }
         }
     }

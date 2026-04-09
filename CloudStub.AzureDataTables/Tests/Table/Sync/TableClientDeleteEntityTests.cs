@@ -1,0 +1,495 @@
+﻿using System;
+using System.Net;
+using Azure;
+using Azure.Data.Tables;
+using CloudStub.AzureDataTables.Tests.Data;
+using Xunit;
+
+namespace CloudStub.AzureDataTables.Tests.Table.Sync
+{
+    public class TableClientDeleteEntityTests : BaseTableCloudStubTests
+    {
+        [Fact]
+        public void DeleteEntity_WhenTableDoesNotExist_ReturnsUnsuccessfulResponse()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            };
+
+            var response = CloudTable.DeleteEntity(testEntity);
+
+            Assertions.UnsuccessfulJsonResponse(
+                response,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    Headers = new Assertions.DeletedHeaders(response),
+                    ErrorCode = "TableNotFound",
+                    ErrorDescription = "The table specified does not exist."
+                }
+            );
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenEntityIsNull_ThrowsException()
+        {
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.DeleteEntity(null));
+            Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenEntityDoesNotExist_ReturnsUnsuccessfulResponse()
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = new string('t', 1 << 10 + 1),
+                RowKey = new string('t', 1 << 10 + 1)
+            };
+            CloudTable.Create();
+
+            var response = CloudTable.DeleteEntity(testEntity);
+
+            Assertions.UnsuccessfulJsonResponse(
+                response,
+                new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    Headers = new Assertions.DefaultHeaders(response),
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "The specified resource does not exist."
+                }
+            );
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenETagsIsUnspecified_DeletesEntity()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string-prop",
+                Int32Prop = 4
+            };
+            var testEntityToRemove = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+            CloudTable.Create();
+            CloudTable.AddEntity(testEntity);
+
+            var response = CloudTable.DeleteEntity(testEntityToRemove);
+
+            Assertions.EmptyResponse(
+                response,
+                new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(response)
+                }
+            );
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenETagMatches_DeletesEntity()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string-prop",
+                Int32Prop = 4
+            };
+            CloudTable.Create();
+            var response = CloudTable.AddEntity(testEntity);
+            Assert.NotEqual(ETag.All, response.Headers.ETag.Value);
+
+            var testEntityToRemove = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+
+            response = CloudTable.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value);
+
+            Assertions.EmptyResponse(
+                response,
+                new Assertions.SuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(response)
+                }
+            );
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenETagMismatches_ThrowsException()
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                ETag = ETag.All
+            };
+            CloudTable.Create();
+            var response = CloudTable.AddEntity(testEntity);
+            Assert.NotEqual(ETag.All, response.Headers.ETag.Value);
+
+            var testEntityToRemove = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+            CloudTable.UpdateEntity(
+                new TestEntity
+                {
+                    PartitionKey = testEntity.PartitionKey,
+                    RowKey = testEntity.RowKey,
+                    Int32Prop = 16,
+                    Int64Prop = 16
+                },
+                response.Headers.ETag.Value,
+                TableUpdateMode.Replace
+            );
+
+            Assertions.JsonResponseThrows(
+                () => CloudTable.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value),
+                deleteEntityResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.PreconditionFailed,
+                    Headers = new Assertions.DefaultHeaders(deleteEntityResponse),
+                    ErrorCode = "UpdateConditionNotSatisfied",
+                    ErrorDescription = "The update condition specified in the request was not satisfied."
+                }
+            );
+            Assert.Single(CloudTable.Query<TableEntity>());
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenPartitionKeyIsNull_ThrowsException()
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = null,
+                RowKey = "row-key"
+            };
+            CloudTable.Create();
+
+            var exception = Assert.Throws<ArgumentNullException>(
+                "partitionKey",
+                () => CloudTable.DeleteEntity(testEntity)
+            );
+
+            Assert.Equal(new ArgumentNullException("partitionKey").Message, exception.Message);
+        }
+
+        [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
+        public void DeleteEntity_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = partitionKey,
+                RowKey = "row-key"
+            };
+            CloudTable.Create();
+
+            switch (partitionKey)
+            {
+                case "/":
+                case "\\":
+                    Assertions.JsonResponseThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.DeletedHeaders(response),
+                            ErrorCode = "InvalidInput",
+                            ErrorDescription = "Bad Request - Error in query syntax."
+                        }
+                    );
+                    break;
+
+                case "\u0000":
+                    Assertions.InvalidUrlThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            WithoutRequestId = true,
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.InvalidUrlHeaders(response)
+                            {
+                                { "Connection", "close" },
+                                { "Content-Length", "324" }
+                            }
+                        }
+                    );
+                    break;
+
+                case "\u0001":
+                case "\u0002":
+                case "\u0003":
+                case "\u0004":
+                case "\u0005":
+                case "\u0006":
+                case "\u0007":
+                case "\u0008":
+                case "\u0009":
+                case "\u000A":
+                case "\u000B":
+                case "\u000C":
+                case "\u000D":
+                case "\u000E":
+                case "\u000F":
+                case "\u0010":
+                case "\u0011":
+                case "\u0012":
+                case "\u0013":
+                case "\u0014":
+                case "\u0015":
+                case "\u0016":
+                case "\u0017":
+                case "\u0018":
+                case "\u0019":
+                case "\u001A":
+                case "\u001B":
+                case "\u001C":
+                case "\u001D":
+                case "\u001E":
+                case "\u001F":
+                case "\u007F":
+                case "\u0081":
+                case "\u008D":
+                case "\u008F":
+                case "\u0090":
+                case "\u009D":
+                    Assertions.InvalidUrlThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            WithoutRequestId = true,
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.InvalidUrlHeaders(response)
+                            {
+                                { "Content-Length", "312" }
+                            }
+                        }
+                    );
+                    break;
+
+                default:
+                    Assertions.JsonResponseThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.DefaultHeaders(response),
+                            ErrorCode = "OutOfRangeInput",
+                            ErrorDescription = "One of the request inputs is out of range."
+                        }
+                    );
+                    break;
+            }
+        }
+
+        [Fact]
+        public void DeleteEntity_WhenRowKeyIsNull_ThrowsException()
+        {
+            var testEntity = new TableEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = null
+            };
+            CloudTable.Create();
+
+            var exception = Assert.Throws<ArgumentNullException>(
+                "rowKey",
+                () => CloudTable.DeleteEntity(testEntity)
+            );
+
+            Assert.Equal(new ArgumentNullException("rowKey").Message, exception.Message);
+        }
+
+        [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
+        public void DeleteEntity_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = rowKey
+            };
+            CloudTable.Create();
+
+            switch (rowKey)
+            {
+                case "/":
+                case "\\":
+                    Assertions.JsonResponseThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.DeletedHeaders(response),
+                            ErrorCode = "InvalidInput",
+                            ErrorDescription = "Bad Request - Error in query syntax."
+                        }
+                    );
+                    break;
+
+                case "\u0000":
+                    Assertions.InvalidUrlThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            WithoutRequestId = true,
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.InvalidUrlHeaders(response)
+                            {
+                                { "Connection", "close" },
+                                { "Content-Length", "324" }
+                            }
+                        }
+                    );
+                    break;
+
+                case "\u0001":
+                case "\u0002":
+                case "\u0003":
+                case "\u0004":
+                case "\u0005":
+                case "\u0006":
+                case "\u0007":
+                case "\u0008":
+                case "\u0009":
+                case "\u000A":
+                case "\u000B":
+                case "\u000C":
+                case "\u000D":
+                case "\u000E":
+                case "\u000F":
+                case "\u0010":
+                case "\u0011":
+                case "\u0012":
+                case "\u0013":
+                case "\u0014":
+                case "\u0015":
+                case "\u0016":
+                case "\u0017":
+                case "\u0018":
+                case "\u0019":
+                case "\u001A":
+                case "\u001B":
+                case "\u001C":
+                case "\u001D":
+                case "\u001E":
+                case "\u001F":
+                case "\u007F":
+                case "\u0081":
+                case "\u008D":
+                case "\u008F":
+                case "\u0090":
+                case "\u009D":
+                    Assertions.InvalidUrlThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            WithoutRequestId = true,
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.InvalidUrlHeaders(response)
+                            {
+                                { "Content-Length", "312" }
+                            }
+                        }
+                    );
+                    break;
+
+                default:
+                    Assertions.JsonResponseThrows(
+                        () => CloudTable.DeleteEntity(testEntity),
+                        response => new Assertions.UnsuccessfulResponseAssertOptions
+                        {
+                            StatusCode = HttpStatusCode.BadRequest,
+                            Headers = new Assertions.DefaultHeaders(response),
+                            ErrorCode = "OutOfRangeInput",
+                            ErrorDescription = "One of the request inputs is out of range."
+                        }
+                    );
+                    break;
+            }
+        }
+
+        [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
+        public void DeleteEntity_WhenStringPropertyIsInvalid_DeletesEntity(string stringPropValue)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            };
+            var testEntityToRemove = new TestEntity
+            {
+                PartitionKey = testEntity.PartitionKey,
+                RowKey = testEntity.RowKey,
+                StringProp = stringPropValue
+            };
+            CloudTable.Create();
+            CloudTable.AddEntity(testEntity);
+
+            CloudTable.DeleteEntity(testEntityToRemove);
+
+            Assert.Empty(CloudTable.Query<TableEntity>());
+        }
+
+        [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
+        public void DeleteEntity_WhenBinaryPropertyIsInvalid_DeletesEntity(byte[] binaryPropValue)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            };
+            var testEntityToRemove = new TestEntity
+            {
+                PartitionKey = testEntity.PartitionKey,
+                RowKey = testEntity.RowKey,
+                BinaryProp = binaryPropValue
+            };
+            CloudTable.Create();
+            CloudTable.AddEntity(testEntity);
+
+            CloudTable.DeleteEntity(testEntityToRemove);
+
+            Assert.Empty(CloudTable.Query<TableEntity>());
+        }
+
+        [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
+        public void DeleteEntity_WhenDateTimePropertyIsInvalid_DeletesEntity(DateTime dateTimePropValue)
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            };
+            var testEntityToRemove = new TestEntity
+            {
+                PartitionKey = testEntity.PartitionKey,
+                RowKey = testEntity.RowKey,
+                DateTimeProp = dateTimePropValue
+            };
+            CloudTable.Create();
+            CloudTable.AddEntity(testEntity);
+
+            CloudTable.DeleteEntity(testEntityToRemove);
+
+            Assert.Empty(CloudTable.Query<TableEntity>());
+        }
+    }
+}
