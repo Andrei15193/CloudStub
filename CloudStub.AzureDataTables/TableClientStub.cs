@@ -133,36 +133,43 @@ namespace CloudStub.AzureDataTables
                          new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
                     );
 
-                if (!tableItem.TryGetValue(entity.PartitionKey, out var tablePartition))
+                using (tableItem.UpgradableReadLock())
                 {
-                    tablePartition = new TablePartitionStub();
-                    tableItem.Add(entity.PartitionKey, tablePartition);
-                }
+                    var partitionExists = tableItem.TryGetValue(entity.PartitionKey, out var tablePartition);
 
-                if (tablePartition.ContainsKey(entity.RowKey))
-                    throw TableStubResponseFactory.JsonRequestFailedException(
-                        HttpStatusCode.Conflict,
-                        "EntityAlreadyExists",
-                        "The specified entity already exists.",
-                        new DefaultResponseHeaders
-                        {
-                            { "Preference-Applied", "return-no-content" }
-                        }
-                    );
+                    if (partitionExists && tablePartition.ContainsKey(entity.RowKey))
+                        throw TableStubResponseFactory.JsonRequestFailedException(
+                            HttpStatusCode.Conflict,
+                            "EntityAlreadyExists",
+                            "The specified entity already exists.",
+                            new DefaultResponseHeaders
+                            {
+                                { "Preference-Applied", "return-no-content" }
+                            }
+                        );
 
-                tablePartition.Add(entity.RowKey, mappedEntity);
-
-                return TableStubResponseFactory.NoContentResponse(
-                    new NoContentResponseHeaders()
+                    using (tableItem.WriteLock())
                     {
-                        { "ETag", mappedEntity.ETag },
-                        { "Location", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" },
-                        { "Preference-Applied", "return-no-content" },
-                        { "DataServiceId", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" }
-                    }
+                        if (!partitionExists)
+                        {
+                            tablePartition = new TablePartitionStub();
+                            tableItem.Add(entity.PartitionKey, tablePartition);
+                        }
 
-                );
+                        tablePartition.Add(entity.RowKey, mappedEntity);
+                    }
+                }
             }
+
+            return TableStubResponseFactory.NoContentResponse(
+                new NoContentResponseHeaders()
+                {
+                    { "ETag", mappedEntity.ETag },
+                    { "Location", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" },
+                    { "Preference-Applied", "return-no-content" },
+                    { "DataServiceId", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" }
+                }
+            );
         }
 
         public override async Task<Response> AddEntityAsync<T>(T entity, CancellationToken cancellationToken = default)
@@ -197,8 +204,87 @@ namespace CloudStub.AzureDataTables
 
         public override Response DeleteEntity(string partitionKey, string rowKey, ETag ifMatch = default, CancellationToken cancellationToken = default)
         {
+            if (partitionKey == null)
+                throw new ArgumentNullException("partitionKey")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (rowKey == null)
+                throw new ArgumentNullException("rowKey")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
             cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+
+            if (partitionKey.Contains((char)0) || rowKey.Contains((char)0))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Bad Request - Invalid URL</h2>\r\n<hr><p>HTTP Error 400. The request URL is invalid.</p>\r\n</BODY></HTML>\r\n",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Connection", "close" },
+                        { "Content-Length", "324" }
+                    }
+                );
+
+            if (partitionKey.Contains('/') || partitionKey.Contains('\\') || rowKey.Contains('/') || rowKey.Contains('\\'))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "InvalidInput",
+                    "Bad Request - Error in query syntax.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            if (partitionKey.Any(_IsInvalidUriCharacter) || rowKey.Any(_IsInvalidUriCharacter))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\"><HTML><HEAD><TITLE>Bad Request</TITLE><META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD><BODY><h2>Bad Request - Invalid URL</h2><hr><p>HTTP Error 400. The request URL is invalid.</p></BODY></HTML>",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Content-Length", "312" }
+                    }
+                );
+
+            if (partitionKey.Any(TableRowStub.IsReservedKeyCharacter) || rowKey.Any(TableRowStub.IsReservedKeyCharacter))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "OutOfRangeInput",
+                    "One of the request inputs is out of range."
+                );
+
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                    return TableStubResponseFactory.UnsuccessfulJsonResponse(
+                        HttpStatusCode.NotFound,
+                        "TableNotFound",
+                        "The table specified does not exist.",
+                         new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                    );
+
+                using (tableItem.UpgradableReadLock())
+                {
+                    if (!tableItem.TryGetValue(partitionKey, out var tablePartition) || !tablePartition.TryGetValue(rowKey, out var tableEntity))
+                        return TableStubResponseFactory.UnsuccessfulJsonResponse(
+                            HttpStatusCode.NotFound,
+                            "ResourceNotFound",
+                            "The specified resource does not exist."
+                        );
+
+                    if (ifMatch != default && ifMatch != ETag.All && ifMatch != new ETag(tableEntity.ETag))
+                        throw TableStubResponseFactory.JsonRequestFailedException(
+                            HttpStatusCode.PreconditionFailed,
+                            "UpdateConditionNotSatisfied",
+                            "The update condition specified in the request was not satisfied."
+                        );
+
+                    using (tableItem.WriteLock())
+                        tablePartition.Remove(rowKey);
+                }
+            }
+
+            return TableStubResponseFactory.NoContentResponse();
         }
 
         public override async Task<Response> DeleteEntityAsync(string partitionKey, string rowKey, ETag ifMatch = default, CancellationToken cancellationToken = default)
@@ -209,8 +295,13 @@ namespace CloudStub.AzureDataTables
 
         public override Response DeleteEntity(ITableEntity entity, ETag ifMatch = default, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity))
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
+            return DeleteEntity(entity.PartitionKey, entity.RowKey, ifMatch, cancellationToken);
         }
 
         public override async Task<Response> DeleteEntityAsync(ITableEntity entity, ETag ifMatch = default, CancellationToken cancellationToken = default)
@@ -456,5 +547,16 @@ namespace CloudStub.AzureDataTables
                 partitionIndex++;
             }
         }
+
+        private static bool _IsInvalidUriCharacter(char @char)
+            => (
+                (0x00 <= @char && @char <= 0x001F)
+                || @char == 0x007F
+                || @char == 0x0081
+                || @char == 0x008D
+                || @char == 0x008F
+                || @char == 0x0090
+                || @char == 0x009D
+            );
     }
 }

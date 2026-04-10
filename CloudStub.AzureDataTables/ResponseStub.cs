@@ -31,6 +31,7 @@ namespace CloudStub.AzureDataTables
                 Array.Empty<string>(),
                 new string[]
                 {
+                    "Connection",
                     "Cache-Control",
                     "Transfer-Encoding",
                     "Server",

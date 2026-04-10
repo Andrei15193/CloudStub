@@ -99,7 +99,7 @@ namespace CloudStub.AzureDataTables.Tests
             Assert.Multiple(
                 () => AssertInfo(response, responseAssertOptions, responseAssertOptions.ErrorPhrase),
                 () => AssertHeaders(response, responseAssertOptions),
-                () => AssertInvalidUrlContent(response)
+                () => AssertInvalidUrlContent(response, responseAssertOptions)
             );
 
             return response;
@@ -489,15 +489,15 @@ namespace CloudStub.AzureDataTables.Tests
             }
         }
 
-        private static void AssertInvalidUrlContent(Response response)
+        private static void AssertInvalidUrlContent(Response response, UnsuccessfulResponseAssertOptions responseAssertOptions)
         {
             string content;
             using (var contentStreamReader = new StreamReader(response.Content.ToStream()))
                 content = contentStreamReader.ReadToEnd();
 
             Assert.Equal(
-                "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\"><HTML><HEAD><TITLE>Bad Request</TITLE><META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD><BODY><h2>Bad Request - Invalid URL</h2><hr><p>HTTP Error 400. The request URL is invalid.</p></BODY></HTML>",
-                content.Replace("\r\n", string.Empty)
+                responseAssertOptions.ErrorDescription,
+                content
             );
         }
 

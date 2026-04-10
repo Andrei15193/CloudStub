@@ -60,6 +60,39 @@ namespace CloudStub.AzureDataTables
 
     internal class TableRowStub : Dictionary<string, object>
     {
+        private static readonly IReadOnlyCollection<char> _reservedKeyCharacters = new HashSet<char> { '#', '?', '\t', '\n', '\r', '/', '\\' };
+
+        public static bool IsReservedKeyCharacter(char character)
+            => (
+                (0x0000 <= character && character <= 0x001F)
+                || (0x007F <= character && character <= 0x009F)
+                || _reservedKeyCharacters.Contains(character)
+            );
+
+        private static string _GenerateETag(out DateTimeOffset timestamp)
+        {
+            timestamp = DateTimeOffset.UtcNow;
+            return $@"W/""datetime'{timestamp:yyyy-MM-ddTHH:mm:ss.FFFFFFFZ}'""";
+        }
+
+        public TableRowStub()
+        {
+            this["odata.etag"] = _GenerateETag(out var timestamp);
+            this["Timestamp"] = timestamp;
+        }
+
+        public string ETag
+        {
+            get => (string)this["odata.etag"];
+            set => this["odata.etag"] = value;
+        }
+
+        public DateTimeOffset Timestamp
+        {
+            get => (DateTimeOffset)this["Timestamp"];
+            set => this["Timestamp"] = value;
+        }
+
         public T MapToEntity<T>(IEnumerable<string> selectedProperties)
         {
             if (typeof(T) == typeof(TableEntity) && !(selectedProperties?.Any() ?? false))
@@ -518,7 +551,6 @@ namespace CloudStub.AzureDataTables
         private const int MaximumStringLength = 1 << 15 + 1;
         private const int MaximumBinaryLength = 1 << 16 + 1;
         private static DateTimeOffset MinimumDateTimeOffset = new DateTimeOffset(1601, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        private static readonly IReadOnlyCollection<char> ReservedKeyCharacters = new HashSet<char> { '#', '?', '\t', '\n', '\r', '/', '\\' };
 
         public ValidatedTableRowStub(T entity)
         {
@@ -537,13 +569,7 @@ namespace CloudStub.AzureDataTables
                     if (property.GetIndexParameters().Length == 0)
                         _TrySetValue(property.Name, property.GetValue(entity));
             }
-
-            this["odata.etag"] = ETag = _GenerateETag(out var timestamp);
-            this["Timestamp"] = Timestamp = timestamp;
         }
-
-        public string ETag { get; private set; }
-        public DateTimeOffset Timestamp { get; private set; }
 
         public bool IsPartitionKeyInvalid { get; private set; }
         public bool IsRowKeyInvalid { get; private set; }
@@ -556,7 +582,7 @@ namespace CloudStub.AzureDataTables
 
         private void _TrySetValue(string propertyName, object value)
         {
-            if (value == null)
+            if (value == null || propertyName == "ETag" || propertyName == "odata.etag" || propertyName == "Timestamp")
                 return;
 
             if (
@@ -633,17 +659,7 @@ namespace CloudStub.AzureDataTables
         }
 
         private static bool _KeyContainsInvalidCharacters(string keyValue)
-            => keyValue.Any(@char =>
-                (0x0000 <= @char && @char <= 0x001F)
-                || ((char)0x007F <= @char && @char <= 0x009F)
-                || ReservedKeyCharacters.Contains(@char)
-            );
-
-        private static string _GenerateETag(out DateTimeOffset timestamp)
-        {
-            timestamp = DateTimeOffset.UtcNow;
-            return $@"W/""datetime'{timestamp:yyyy-MM-ddTHH:mm:ss.FFFFFFFZ}'""";
-        }
+            => keyValue.Any(IsReservedKeyCharacter);
     }
 
 

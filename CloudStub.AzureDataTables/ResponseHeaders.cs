@@ -65,4 +65,20 @@ namespace CloudStub.AzureDataTables
             Remove("X-Content-Type-Options");
         }
     }
+
+    internal class InvlaidUrlResponseHeaders : DefaultResponseHeaders
+    {
+        public InvlaidUrlResponseHeaders()
+        {
+            this["Server"] = "Microsoft-HTTPAPI/2.0";
+            this["Content-Type"] = "text/html; charset=us-ascii";
+
+            Remove("Cache-Control");
+            Remove("x-ms-version");
+            Remove("X-Content-Type-Options");
+            Remove("x-ms-request-id");
+            Remove("x-ms-client-request-id");
+            Remove("Transfer-Encoding");
+        }
+    }
 }

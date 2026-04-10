@@ -120,6 +120,24 @@ namespace CloudStub.AzureDataTables
                 Source = "Azure.Data.Tables"
             };
 
+        public static RequestFailedException InvalidUriException(HttpStatusCode statusCode, string htmlErrorDescription, ResponseHeaders headers)
+        {
+            return new RequestFailedException(
+                new ResponseStub(
+                    statusCode,
+                    Regex.Replace(statusCode.ToString(), "(?<=[a-z])[A-Z]", " $0"),
+                    htmlErrorDescription,
+                    headers
+                )
+                {
+                    IsError = true
+                }
+            )
+            {
+                Source = "Azure.Data.Tables"
+            };
+        }
+
         private class RequestFailedDetailsParserStub : RequestFailedDetailsParser
         {
             private readonly string _errorCode;

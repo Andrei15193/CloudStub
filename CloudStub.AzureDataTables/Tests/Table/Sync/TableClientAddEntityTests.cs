@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using Azure;
 using Azure.Data.Tables;
 using CloudStub.AzureDataTables.Tests.Data;
 using Xunit;
@@ -58,17 +59,21 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = "row-key:1"
             });
 
-            Assertions.EmptyResponse(response, new Assertions.SuccessfulResponseAssertOptions
-            {
-                StatusCode = HttpStatusCode.NoContent,
-                Headers = new Assertions.NoContentHeaders(response)
+            Assert.Multiple(
+                () => Assert.NotEqual(default, response.Headers.ETag),
+                () => Assert.NotEqual(ETag.All, response.Headers.ETag),
+                () => Assertions.EmptyResponse(response, new Assertions.SuccessfulResponseAssertOptions
                 {
-                    { "ETag", response.Headers.ETag.ToString() },
-                    { "Location", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
-                    { "Preference-Applied", "return-no-content" },
-                    { "DataServiceId", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
-                }
-            });
+                    StatusCode = HttpStatusCode.NoContent,
+                    Headers = new Assertions.NoContentHeaders(response)
+                    {
+                        { "ETag", response.Headers.ETag.ToString() },
+                        { "Location", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
+                        { "Preference-Applied", "return-no-content" },
+                        { "DataServiceId", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
+                    }
+                })
+            );
         }
 
         [Fact]
@@ -133,15 +138,23 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestEntity.DecimalProp), (int)testEntity.DecimalProp }
             };
 
-            Assert.Equal(expectedProps.Count, entity.Count);
             Assert.Multiple(
-                expectedProps
-                    .Select(expectedProp => new Action(() =>
-                    {
-                        Assert.True(entity.TryGetValue(expectedProp.Key, out var value), $"Expected property '{expectedProp.Key}' was not found in the actual entity.");
-                        Assert.Equal(expectedProp.Value, value);
-                    }))
-                    .ToArray()
+                () => Assert.NotEqual(default, response.Headers.ETag),
+                () => Assert.NotEqual(ETag.All, response.Headers.ETag),
+                () => Assert.Equal(response.Headers.ETag, entity.ETag),
+                () =>
+                {
+                    Assert.Equal(expectedProps.Count, entity.Count);
+                    Assert.Multiple(
+                        expectedProps
+                            .Select(expectedProp => new Action(() =>
+                            {
+                                Assert.True(entity.TryGetValue(expectedProp.Key, out var value), $"Expected property '{expectedProp.Key}' was not found in the actual entity.");
+                                Assert.Equal(expectedProp.Value, value);
+                            }))
+                            .ToArray()
+                    );
+                }
             );
         }
 
@@ -150,7 +163,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         {
             CloudTable.Create();
 
-            CloudTable.AddEntity(new TableEntity
+            var response = CloudTable.AddEntity(new TableEntity
             {
                 { nameof(TestEntity.PartitionKey), "partition-key:1" },
                 { nameof(TestEntity.RowKey), "row-key:1" },
@@ -160,11 +173,18 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             var entities = CloudTable.Query<TableEntity>().ToList();
             var entity = Assert.Single(entities);
             Assert.Multiple(
-                () => Assert.True(entity.ContainsKey(nameof(TestEntity.PartitionKey))),
-                () => Assert.True(entity.ContainsKey(nameof(TestEntity.RowKey))),
-                () => Assert.True(entity.ContainsKey(nameof(TestEntity.Timestamp))),
-                () => Assert.True(entity.ContainsKey("odata.etag")),
-                () => Assert.False(entity.ContainsKey(nameof(TestEntity.Int32Prop)))
+                () => Assert.NotEqual(default, response.Headers.ETag),
+                () => Assert.NotEqual(ETag.All, response.Headers.ETag),
+                () => Assert.Equal(response.Headers.ETag, entity.ETag),
+                () => Assert.Multiple(
+                    () => Assert.True(entity.ContainsKey(nameof(TestEntity.PartitionKey))),
+                    () => Assert.True(entity.ContainsKey(nameof(TestEntity.RowKey))),
+                    () => Assert.True(entity.ContainsKey(nameof(TestEntity.Timestamp))),
+                    () => Assert.True(entity.ContainsKey("odata.etag")),
+                    () => Assert.Equal(response.Headers.ETag, new ETag((string)entity["odata.etag"])),
+                    () => Assert.Equal(response.Headers.ETag, entity.ETag),
+                    () => Assert.False(entity.ContainsKey(nameof(TestEntity.Int32Prop)))
+                )
             );
         }
 
@@ -428,7 +448,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
             var entities = CloudTable.Query<TableEntity>().ToList();
             var entity = Assert.Single(entities);
+
             Assert.Multiple(
+                () => Assert.NotEqual(default, response.Headers.ETag),
+                () => Assert.NotEqual(ETag.All, response.Headers.ETag),
+                () => Assert.Equal(response.Headers.ETag, entity.ETag),
                 () => Assert.Equal(now.UtcDateTime, entity.GetDateTimeOffset(nameof(TestEntity.DateTimeOffsetProp))),
                 () => Assert.Equal(TimeSpan.Zero, entity.GetDateTimeOffset(nameof(TestEntity.DateTimeOffsetProp))?.Offset),
                 () => Assertions.EmptyResponse(response, new Assertions.SuccessfulResponseAssertOptions
