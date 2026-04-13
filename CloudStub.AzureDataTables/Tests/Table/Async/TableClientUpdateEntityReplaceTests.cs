@@ -13,7 +13,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
     public class TableClientUpdateEntityReplaceTests : BaseTableCloudStubTests
     {
         [Fact]
-        public async Task UpdateReplaceAsync_WhenTableDoesNotExist_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.JsonResponseThrowsAsync(
                 () => CloudTable.UpdateEntityAsync(
@@ -42,7 +42,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenEntityIsNull_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenEntityIsNull_ThrowsException()
         {
             var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpdateEntityAsync<TableEntity>(null, ETag.All, TableUpdateMode.Replace));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
@@ -50,7 +50,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenETagIsMissing_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenETagIsMissing_ThrowsException()
         {
             var exception = await Assert.ThrowsAsync<ArgumentException>(
                 "ifMatch",
@@ -69,7 +69,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenETagsIsWildcard_ReplacesEntity()
+        public async Task UpdateEntityReplaceAsync_WhenETagsIsWildcard_ReplacesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -114,7 +114,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenETagsMatch_ReplacesEntity()
+        public async Task UpdateEntityReplaceAsync_WhenETagsMatch_ReplacesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -159,7 +159,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreRemoved()
+        public async Task UpdateEntityReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreRemoved()
         {
             await CloudTable.CreateAsync();
             var tableResult = await CloudTable.AddEntityAsync(
@@ -214,7 +214,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenEntityDoesNotExist_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenEntityDoesNotExist_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -236,7 +236,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenETagsMismatch_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenETagsMismatch_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -265,7 +265,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenPartitionKeyIsNull_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenPartitionKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -284,7 +284,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpdateReplaceAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        public async Task UpdateEntityReplaceAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             var testEntity = new TableEntity
             {
@@ -394,7 +394,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpdateReplaceAsync_WhenRowKeyIsNull_ThrowsException()
+        public async Task UpdateEntityReplaceAsync_WhenRowKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -413,7 +413,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpdateReplaceAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        public async Task UpdateEntityReplaceAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             var testEntity = new TestEntity
             {
@@ -523,7 +523,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpdateReplaceAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
+        public async Task UpdateEntityReplaceAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
             var testEntity = new TestEntity
             {
@@ -562,7 +562,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpdateReplaceAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
+        public async Task UpdateEntityReplaceAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
             var testEntity = new TestEntity
             {
@@ -594,7 +594,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpdateReplaceAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
+        public async Task UpdateEntityReplaceAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
             var testEntity = new TestEntity
             {

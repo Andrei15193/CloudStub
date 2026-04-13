@@ -6,7 +6,6 @@ using Xunit;
 
 namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Sync
 {
-    // Not covered for GH-20
     public class StubCloudTableEntityInsertOrMergeTableOperationTests : BaseStubCloudTableTests
     {
         [Fact]
@@ -50,7 +49,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Sync
         }
 
         [Fact]
-        public void Execute_InsertOperation_InsertsEntity()
+        public void Execute_InsertOrMergeOperation_InsertsEntity()
         {
             var startTime = DateTimeOffset.UtcNow;
             var tableEntity = new TableEntity
@@ -60,7 +59,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Sync
             };
             CloudTable.Create();
 
-            var tableResult = CloudTable.Execute(TableOperation.Insert(tableEntity));
+            var tableResult = CloudTable.Execute(TableOperation.InsertOrMerge(tableEntity));
 
             var resultEntity = Assert.IsAssignableFrom<ITableEntity>(tableResult.Result);
             Assert.Equal(204, tableResult.HttpStatusCode);
@@ -79,7 +78,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Sync
         }
 
         [Fact]
-        public void Execute_InserOperationWhenEntityHasOtherProperties_InsertsEntity()
+        public void Execute_InsertOrMergeOperationWhenEntityHasOtherProperties_InsertsEntity()
         {
             var testEntity = new TestEntity
             {
@@ -97,7 +96,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Sync
             };
             CloudTable.Create();
 
-            CloudTable.Execute(TableOperation.Insert(testEntity));
+            CloudTable.Execute(TableOperation.InsertOrMerge(testEntity));
 
             var entities = GetAllEntities();
             var entity = Assert.Single(entities);

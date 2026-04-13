@@ -215,7 +215,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         {
             CloudTable.Create();
 
-            var exception = Assertions.JsonResponseThrows(
+            Assertions.JsonResponseThrows(
                 () => CloudTable.AddEntity(new TableEntity
                 {
                     PartitionKey = partitionKey,
@@ -406,7 +406,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         ErrorDescription = $"The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.",
                         Headers = headers
                     };
-                });
+                }
+            );
         }
 
         [Fact]

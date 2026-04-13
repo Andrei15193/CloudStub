@@ -11,7 +11,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
     public class TableClientUpdateEntityMergeTests : BaseTableCloudStubTests
     {
         [Fact]
-        public void UpdateMerge_WhenTableDoesNotExist_ThrowsException()
+        public void UpdateEntityMerge_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.JsonResponseThrows(
                 () => CloudTable.UpdateEntity(
@@ -40,7 +40,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenEntityIsNull_ThrowsException()
+        public void UpdateEntityMerge_WhenEntityIsNull_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.UpdateEntity<TableEntity>(null, ETag.All, TableUpdateMode.Merge));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
@@ -48,7 +48,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenETagIsDefault_ThrowsException()
+        public void UpdateEntityMerge_WhenETagIsDefault_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentException>(
                 "ifMatch",
@@ -67,7 +67,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenETagsIsWildcard_MergesEntity()
+        public void UpdateEntityMerge_WhenETagsIsWildcard_MergesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -114,7 +114,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenETagsMatch_MergesEntity()
+        public void UpdateEntityMerge_WhenETagsMatch_MergesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -162,7 +162,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
+        public void UpdateEntityMerge_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
         {
             CloudTable.Create();
             var response = CloudTable.AddEntity(new TableEntity(
@@ -203,7 +203,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenEntityDoesNotExist_ThrowsException()
+        public void UpdateEntityMerge_WhenEntityDoesNotExist_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -225,7 +225,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenETagsMismatch_ThrowsException()
+        public void UpdateEntityMerge_WhenETagsMismatch_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -254,7 +254,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenPartitionKeyIsNull_ThrowsException()
+        public void UpdateEntityMerge_WhenPartitionKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -273,7 +273,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public void UpdateMerge_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        public void UpdateEntityMerge_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             var testEntity = new TableEntity
             {
@@ -383,7 +383,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateMerge_WhenRowKeyIsNull_ThrowsException()
+        public void UpdateEntityMerge_WhenRowKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -402,7 +402,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public void UpdateMerge_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        public void UpdateEntityMerge_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             var testEntity = new TestEntity
             {
@@ -512,7 +512,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
-        public void UpdateMerge_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
+        public void UpdateEntityMerge_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
             var testEntity = new TestEntity
             {
@@ -551,7 +551,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
-        public void UpdateMerge_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
+        public void UpdateEntityMerge_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
             var testEntity = new TestEntity
             {
@@ -583,7 +583,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
-        public void UpdateMerge_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
+        public void UpdateEntityMerge_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
             var testEntity = new TestEntity
             {
