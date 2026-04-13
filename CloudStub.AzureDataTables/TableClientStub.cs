@@ -190,8 +190,145 @@ namespace CloudStub.AzureDataTables
 
         public override Response UpdateEntity<T>(T entity, ETag ifMatch, TableUpdateMode mode = TableUpdateMode.Merge, CancellationToken cancellationToken = default)
         {
+            if (entity == null)
+                throw new ArgumentNullException("entity")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
+            if (entity.PartitionKey == null)
+                throw new ArgumentNullException("PartitionKey")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (entity.RowKey == null)
+                throw new ArgumentNullException("RowKey")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (ifMatch == default)
+                throw new ArgumentException("Value cannot be empty.", "ifMatch")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
+
             cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+
+            if (entity.PartitionKey.Contains((char)0) || entity.RowKey.Contains((char)0))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Bad Request - Invalid URL</h2>\r\n<hr><p>HTTP Error 400. The request URL is invalid.</p>\r\n</BODY></HTML>\r\n",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Connection", "close" },
+                        { "Content-Length", "324" }
+                    }
+                );
+
+            if (entity.PartitionKey.Contains('/') || entity.PartitionKey.Contains('\\') || entity.RowKey.Contains('/') || entity.RowKey.Contains('\\'))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "InvalidInput",
+                    "Bad Request - Error in query syntax.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            if (entity.PartitionKey.Any(_IsInvalidUriCharacter) || entity.RowKey.Any(_IsInvalidUriCharacter))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\"><HTML><HEAD><TITLE>Bad Request</TITLE><META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD><BODY><h2>Bad Request - Invalid URL</h2><hr><p>HTTP Error 400. The request URL is invalid.</p></BODY></HTML>",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Content-Length", "312" }
+                    }
+                );
+
+            if (entity.PartitionKey.Any(TableRowStub.IsReservedKeyCharacter) || entity.RowKey.Any(TableRowStub.IsReservedKeyCharacter))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "OutOfRangeInput",
+                    "One of the request inputs is out of range."
+                );
+
+            var mappedEntity = new ValidatedTableRowStub<T>(entity);
+            if (mappedEntity.NotSupportedDateTimeValue != null)
+                throw new NotSupportedException($"DateTime {mappedEntity.NotSupportedDateTimeValue} has a Kind of {mappedEntity.NotSupportedDateTimeValue?.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.")
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (mappedEntity.IsStringPropertyExceedingMaxLength || mappedEntity.IsBinaryPropertyExceedingMaxLength)
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "PropertyValueTooLarge",
+                    "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    new DefaultResponseHeaders()
+                );
+            if (mappedEntity.InvalidDateTimeProperty != null)
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "OutOfRangeInput",
+                    $"The '{mappedEntity.InvalidDateTimeProperty?.Key}' parameter of value '{mappedEntity.InvalidDateTimeProperty?.Value:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.NotFound,
+                        "TableNotFound",
+                        "The table specified does not exist.",
+                         new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                    );
+
+                using (tableItem.UpgradableReadLock())
+                {
+                    if (!tableItem.TryGetValue(entity.PartitionKey, out var tablePartition) || !tablePartition.TryGetValue(entity.RowKey, out var tableEntity))
+                        throw TableStubResponseFactory.JsonRequestFailedException(
+                            HttpStatusCode.NotFound,
+                            "ResourceNotFound",
+                            "The specified resource does not exist.",
+                            new DefaultResponseHeaders()
+                        );
+
+                    if (ifMatch != default && ifMatch != ETag.All && ifMatch != new ETag(tableEntity.ETag))
+                        throw TableStubResponseFactory.JsonRequestFailedException(
+                            HttpStatusCode.PreconditionFailed,
+                            "UpdateConditionNotSatisfied",
+                            "The update condition specified in the request was not satisfied."
+                        );
+
+                    using (tableItem.WriteLock())
+                        switch (mode)
+                        {
+                            case TableUpdateMode.Merge:
+                                foreach (var existingEntityProperty in tableEntity)
+                                    if (!mappedEntity.ContainsKey(existingEntityProperty.Key))
+                                        mappedEntity.Add(existingEntityProperty.Key, existingEntityProperty.Value);
+
+                                tablePartition[entity.RowKey] = mappedEntity;
+                                break;
+
+                            case TableUpdateMode.Replace:
+                                tablePartition[entity.RowKey] = mappedEntity;
+                                break;
+
+                            default:
+                                throw new NotImplementedException($"Unhandled '{mode}' table update mode.");
+                        }
+                }
+            }
+
+            return TableStubResponseFactory.NoContentResponse(
+                new NoContentResponseHeaders()
+                {
+                        { "ETag", mappedEntity.ETag }
+                }
+            );
         }
 
         public override async Task<Response> UpdateEntityAsync<T>(T entity, ETag ifMatch, TableUpdateMode mode = TableUpdateMode.Merge, CancellationToken cancellationToken = default)
