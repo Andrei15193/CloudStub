@@ -11,22 +11,6 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Async
 {
     public class StubCloudTableTests : BaseTableCloudStubTests
     {
-        [Fact(Skip = "Include this for CloudTableStub tests")]
-        public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()
-        {
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(new TableEntity("partition-key", "row-key"));
-            await CloudTable.DeleteAsync();
-
-            if (!TestRunContext.InMemory)
-                await Task.Delay(TimeSpan.FromMinutes(1));
-            await CloudTable.CreateAsync();
-
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
-
-            Assert.Empty(entities);
-        }
-
         [Fact]
         public void AccountName_GetsTheSameNameWhichWasProvided()
         {

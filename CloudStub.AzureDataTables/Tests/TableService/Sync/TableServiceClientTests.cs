@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using Azure.Data.Tables.Sas;
@@ -10,26 +9,8 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.TableService.Sync
 {
-    // TODO:
-    // Add tests for continuation token (valid and invalid scenarios)
     public class StubCloudTableTests : BaseTableCloudStubTests
     {
-        [Fact(Skip = "Include this for CloudTableStub tests")]
-        public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()
-        {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TableEntity("partition-key", "row-key"));
-            CloudTable.Delete();
-
-            if (!TestRunContext.InMemory)
-                Thread.Sleep(TimeSpan.FromMinutes(1));
-            CloudTable.Create();
-
-            var entities = CloudTable.Query<TableEntity>();
-
-            Assert.Empty(entities);
-        }
-
         [Fact]
         public void AccountName_GetsTheSameNameWhichWasProvided()
         {

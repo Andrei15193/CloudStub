@@ -24,7 +24,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             Assert.Equal(TableAccountName, CloudTable.AccountName);
         }
 
-        [Fact(Skip = "Remove skip after implementing add entity operation")]
+        [Fact]
         public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()
         {
             CloudTable.Create();

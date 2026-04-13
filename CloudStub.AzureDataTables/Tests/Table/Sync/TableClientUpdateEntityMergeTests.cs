@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using Azure;
 using Azure.Data.Tables;
@@ -7,40 +8,202 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Sync
 {
-    public class TableClientDeleteEntityTests : BaseTableCloudStubTests
+    public class TableClientUpdateEntityMergeTests : BaseTableCloudStubTests
     {
         [Fact]
-        public void DeleteEntity_WhenTableDoesNotExist_ReturnsUnsuccessfulResponse()
+        public void UpdateMerge_WhenTableDoesNotExist_ThrowsException()
         {
-            var testEntity = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key"
-            };
-
-            var response = CloudTable.DeleteEntity(testEntity);
-
-            Assertions.UnsuccessfulJsonResponse(
-                response,
-                new Assertions.UnsuccessfulResponseAssertOptions
+            Assertions.JsonResponseThrows(
+                () => CloudTable.UpdateEntity(
+                    new TestEntity
+                    {
+                        PartitionKey = "partition-key",
+                        RowKey = "row-key"
+                    },
+                    ETag.All,
+                    TableUpdateMode.Merge
+                ),
+                rawResponse =>
                 {
-                    StatusCode = HttpStatusCode.NotFound,
-                    Headers = new Assertions.DeletedHeaders(response),
-                    ErrorCode = "TableNotFound",
-                    ErrorDescription = "The table specified does not exist."
+                    var headers = new Assertions.DefaultHeaders(rawResponse);
+                    headers.Remove("Cache-Control");
+
+                    return new Assertions.UnsuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.NotFound,
+                        ErrorCode = "TableNotFound",
+                        ErrorDescription = "The table specified does not exist.",
+                        Headers = headers
+                    };
                 }
             );
         }
 
         [Fact]
-        public void DeleteEntity_WhenEntityIsNull_ThrowsException()
+        public void UpdateMerge_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.DeleteEntity(null));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.UpdateEntity<TableEntity>(null, ETag.All, TableUpdateMode.Merge));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+            Assert.Equal("Azure.Data.Tables", exception.Source);
         }
 
         [Fact]
-        public void DeleteEntity_WhenEntityDoesNotExist_ReturnsUnsuccessfulResponse()
+        public void UpdateMerge_WhenETagIsDefault_ThrowsException()
+        {
+            var exception = Assert.Throws<ArgumentException>(
+                "ifMatch",
+                () => CloudTable.UpdateEntity(
+                    new TableEntity
+                    {
+                        PartitionKey = "partition-key",
+                        RowKey = "row-key"
+                    },
+                    default,
+                    TableUpdateMode.Merge
+                )
+            );
+            Assert.Equal(new ArgumentException("Value cannot be empty.", "ifMatch").Message, exception.Message);
+            Assert.Equal("Azure.Data.Tables", exception.Source);
+        }
+
+        [Fact]
+        public void UpdateMerge_WhenETagsIsWildcard_MergesEntity()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string-prop",
+                Int32Prop = 4
+            };
+            var updatedTestEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+            CloudTable.Create();
+            CloudTable.AddEntity(testEntity);
+
+            var response = CloudTable.UpdateEntity(updatedTestEntity, ETag.All, TableUpdateMode.Merge);
+
+            var entities = CloudTable.Query<TableEntity>();
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
+                () => Assert.Contains(nameof(TestEntity.RowKey), entity),
+                () => Assert.Contains(nameof(TestEntity.Timestamp), entity),
+                () => Assert.Contains("odata.etag", entity),
+                () => Assert.Equal("string-prop", entity[nameof(TestEntity.StringProp)]),
+                () => Assert.Equal(8, entity[nameof(TestEntity.Int32Prop)]),
+                () => Assert.Equal(8L, entity[nameof(TestEntity.Int64Prop)]),
+
+                () => Assertions.EmptyResponse(
+                    response,
+                    new Assertions.ResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.NoContent,
+                        Headers = new Assertions.NoContentHeaders(response)
+                        {
+                            { "ETag", response.Headers.ETag.ToString() }
+                        }
+                    }
+                )
+            );
+        }
+
+        [Fact]
+        public void UpdateMerge_WhenETagsMatch_MergesEntity()
+        {
+            var testEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                StringProp = "string-prop",
+                Int32Prop = 4
+            };
+            CloudTable.Create();
+            var response = CloudTable.AddEntity(testEntity);
+            var updatedTestEntity = new TestEntity
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key",
+                Int32Prop = 8,
+                Int64Prop = 8
+            };
+
+            response = CloudTable.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Merge);
+
+            var entities = CloudTable.Query<TableEntity>();
+            var entity = Assert.Single(entities);
+
+            Assert.Multiple(
+                () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
+                () => Assert.Contains(nameof(TestEntity.RowKey), entity),
+                () => Assert.Contains(nameof(TestEntity.Timestamp), entity),
+                () => Assert.Contains("odata.etag", entity),
+                () => Assert.Equal("string-prop", entity[nameof(TestEntity.StringProp)]),
+                () => Assert.Equal(8, entity[nameof(TestEntity.Int32Prop)]),
+                () => Assert.Equal(8L, entity[nameof(TestEntity.Int64Prop)]),
+
+                () => Assertions.EmptyResponse(
+                    response,
+                    new Assertions.ResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.NoContent,
+                        Headers = new Assertions.NoContentHeaders(response)
+                        {
+                            { "ETag", response.Headers.ETag.ToString() }
+                        }
+                    }
+                )
+            );
+        }
+
+        [Fact]
+        public void UpdateMerge_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
+        {
+            CloudTable.Create();
+            var response = CloudTable.AddEntity(new TableEntity(
+                new Dictionary<string, object>
+                {
+                    { nameof(TestEntity.Int32Prop), 1 }
+                }
+            )
+            {
+                PartitionKey = "partition-key",
+                RowKey = "row-key"
+            });
+
+            CloudTable.UpdateEntity(
+                new TableEntity(
+                    new Dictionary<string, object>
+                    {
+                        { nameof(TestEntity.Int32Prop), null }
+                    }
+                )
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                },
+                ETag.All,
+                TableUpdateMode.Merge
+            );
+
+            var entities = CloudTable.Query<TableEntity>();
+            var entity = Assert.Single(entities);
+            Assert.Multiple(
+                () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
+                () => Assert.Contains(nameof(TestEntity.RowKey), entity),
+                () => Assert.Contains(nameof(TestEntity.Timestamp), entity),
+                () => Assert.Contains("odata.etag", entity),
+                () => Assert.Equal(1, entity[nameof(TestEntity.Int32Prop)])
+            );
+        }
+
+        [Fact]
+        public void UpdateMerge_WhenEntityDoesNotExist_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -49,11 +212,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             };
             CloudTable.Create();
 
-            var response = CloudTable.DeleteEntity(testEntity);
-
-            Assertions.UnsuccessfulJsonResponse(
-                response,
-                new Assertions.UnsuccessfulResponseAssertOptions
+            Assertions.JsonResponseThrows(
+                () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
+                response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.NotFound,
                     Headers = new Assertions.DefaultHeaders(response),
@@ -64,73 +225,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void DeleteEntity_WhenETagsIsUnspecified_DeletesEntity()
-        {
-            var testEntity = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                StringProp = "string-prop",
-                Int32Prop = 4
-            };
-            var testEntityToRemove = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Int32Prop = 8,
-                Int64Prop = 8
-            };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
-
-            var response = CloudTable.DeleteEntity(testEntityToRemove);
-
-            Assertions.EmptyResponse(
-                response,
-                new Assertions.SuccessfulResponseAssertOptions
-                {
-                    StatusCode = HttpStatusCode.NoContent,
-                    Headers = new Assertions.NoContentHeaders(response)
-                }
-            );
-        }
-
-        [Fact]
-        public void DeleteEntity_WhenETagMatches_DeletesEntity()
-        {
-            var testEntity = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                StringProp = "string-prop",
-                Int32Prop = 4
-            };
-            CloudTable.Create();
-            var response = CloudTable.AddEntity(testEntity);
-            Assert.NotEqual(ETag.All, response.Headers.ETag.Value);
-
-            var testEntityToRemove = new TestEntity
-            {
-                PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Int32Prop = 8,
-                Int64Prop = 8
-            };
-
-            response = CloudTable.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value);
-
-            Assertions.EmptyResponse(
-                response,
-                new Assertions.SuccessfulResponseAssertOptions
-                {
-                    StatusCode = HttpStatusCode.NoContent,
-                    Headers = new Assertions.NoContentHeaders(response)
-                }
-            );
-        }
-
-        [Fact]
-        public void DeleteEntity_WhenETagMismatches_ThrowsException()
+        public void UpdateMerge_WhenETagsMismatch_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -139,42 +234,27 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             };
             CloudTable.Create();
             var response = CloudTable.AddEntity(testEntity);
-            Assert.NotEqual(ETag.All, response.Headers.ETag.Value);
-
-            var testEntityToRemove = new TestEntity
+            var updatedTestEntity = new TableEntity
             {
                 PartitionKey = "partition-key",
-                RowKey = "row-key",
-                Int32Prop = 8,
-                Int64Prop = 8
+                RowKey = "row-key"
             };
-            CloudTable.UpdateEntity(
-                new TestEntity
-                {
-                    PartitionKey = testEntity.PartitionKey,
-                    RowKey = testEntity.RowKey,
-                    Int32Prop = 16,
-                    Int64Prop = 16
-                },
-                response.Headers.ETag.Value,
-                TableUpdateMode.Replace
-            );
+            CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge);
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value),
-                deleteEntityResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                () => CloudTable.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Merge),
+                updateResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.PreconditionFailed,
-                    Headers = new Assertions.DefaultHeaders(deleteEntityResponse),
+                    Headers = new Assertions.DefaultHeaders(updateResponse),
                     ErrorCode = "UpdateConditionNotSatisfied",
                     ErrorDescription = "The update condition specified in the request was not satisfied."
                 }
             );
-            Assert.Single(CloudTable.Query<TableEntity>());
         }
 
         [Fact]
-        public void DeleteEntity_WhenPartitionKeyIsNull_ThrowsException()
+        public void UpdateMerge_WhenPartitionKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -184,15 +264,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             CloudTable.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
-                "partitionKey",
-                () => CloudTable.DeleteEntity(testEntity)
+                "PartitionKey",
+                () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge)
             );
 
-            Assert.Equal(new ArgumentNullException("partitionKey").Message, exception.Message);
+            Assert.Equal(new ArgumentNullException("PartitionKey").Message, exception.Message);
+            Assert.Equal("Azure.Data.Tables", exception.Source);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public void DeleteEntity_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        public void UpdateMerge_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             var testEntity = new TableEntity
             {
@@ -206,7 +287,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -219,7 +300,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -272,7 +353,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -288,7 +369,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -302,7 +383,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void DeleteEntity_WhenRowKeyIsNull_ThrowsException()
+        public void UpdateMerge_WhenRowKeyIsNull_ThrowsException()
         {
             var testEntity = new TableEntity
             {
@@ -312,15 +393,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             CloudTable.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
-                "rowKey",
-                () => CloudTable.DeleteEntity(testEntity)
+                "RowKey",
+                () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge)
             );
 
-            Assert.Equal(new ArgumentNullException("rowKey").Message, exception.Message);
+            Assert.Equal(new ArgumentNullException("RowKey").Message, exception.Message);
+            Assert.Equal("Azure.Data.Tables", exception.Source);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public void DeleteEntity_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        public void UpdateMerge_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             var testEntity = new TestEntity
             {
@@ -334,7 +416,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -347,7 +429,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -400,7 +482,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -416,7 +498,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -430,69 +512,111 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
-        public void DeleteEntity_WhenStringPropertyIsInvalid_DeletesEntity(string stringPropValue)
+        public void UpdateMerge_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            var testEntityToRemove = new TestEntity
+            var updatedTestEntity = new TestEntity
             {
                 PartitionKey = testEntity.PartitionKey,
                 RowKey = testEntity.RowKey,
-                StringProp = stringPropValue
+                StringProp = stringPropValue,
+                ETag = testEntity.ETag
             };
             CloudTable.Create();
             CloudTable.AddEntity(testEntity);
 
-            CloudTable.DeleteEntity(testEntityToRemove);
-
-            Assert.Empty(CloudTable.Query<TableEntity>());
+            Assertions.JsonResponseThrows(
+                () => CloudTable.UpdateEntity(
+                    new TestEntity
+                    {
+                        PartitionKey = "partition-key",
+                        RowKey = "row-key",
+                        StringProp = stringPropValue
+                    },
+                    ETag.All,
+                    TableUpdateMode.Merge
+                ),
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                }
+            );
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
-        public void DeleteEntity_WhenBinaryPropertyIsInvalid_DeletesEntity(byte[] binaryPropValue)
+        public void UpdateMerge_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
-                RowKey = "row-key"
-            };
-            var testEntityToRemove = new TestEntity
-            {
-                PartitionKey = testEntity.PartitionKey,
-                RowKey = testEntity.RowKey,
-                BinaryProp = binaryPropValue
+                RowKey = "row-key",
             };
             CloudTable.Create();
             CloudTable.AddEntity(testEntity);
 
-            CloudTable.DeleteEntity(testEntityToRemove);
-
-            Assert.Empty(CloudTable.Query<TableEntity>());
+            Assertions.JsonResponseThrows(
+                () => CloudTable.UpdateEntity(
+                    new TestEntity
+                    {
+                        PartitionKey = "partition-key",
+                        RowKey = "row-key",
+                        BinaryProp = binaryPropValue
+                    },
+                    ETag.All,
+                    TableUpdateMode.Merge
+                ),
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    Headers = new Assertions.DefaultHeaders(rawResponse)
+                }
+            );
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
-        public void DeleteEntity_WhenDateTimePropertyIsInvalid_DeletesEntity(DateTime dateTimePropValue)
+        public void UpdateMerge_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
             var testEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            var testEntityToRemove = new TestEntity
-            {
-                PartitionKey = testEntity.PartitionKey,
-                RowKey = testEntity.RowKey,
-                DateTimeProp = dateTimePropValue
-            };
             CloudTable.Create();
             CloudTable.AddEntity(testEntity);
 
-            CloudTable.DeleteEntity(testEntityToRemove);
+            Assertions.JsonResponseThrows(
+                () => CloudTable.UpdateEntity(
+                    new TestEntity
+                    {
+                        PartitionKey = "partition-key",
+                        RowKey = "row-key",
+                        DateTimeProp = dateTimePropValue
+                    },
+                    ETag.All,
+                    TableUpdateMode.Merge
+                ),
+                rawResponse =>
+                {
+                    var headers = new Assertions.DefaultHeaders(rawResponse);
+                    headers.Remove("Cache-Control");
 
-            Assert.Empty(CloudTable.Query<TableEntity>());
+                    return new Assertions.UnsuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        ErrorCode = "OutOfRangeInput",
+                        ErrorDescription = $"The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                        Headers = headers
+                    };
+                });
         }
     }
 }

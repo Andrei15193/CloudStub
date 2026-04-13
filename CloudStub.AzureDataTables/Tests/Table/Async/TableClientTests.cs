@@ -6,14 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
-using Azure.Data.Tables.Sas;
 using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
-    public class TableClientOperationsTests : BaseTableCloudStubTests
+    public class TableClientTests : BaseTableCloudStubTests
     {
-        [Fact(Skip = "Remove skip after implementing add entity operation")]
+        [Fact]
         public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()
         {
             await CloudTable.CreateAsync();

@@ -18,8 +18,6 @@ namespace CloudStub.AzureDataTables
 {
     public class TableClientStub : TableClient
     {
-        // Add binary search when a continuation token is provided
-
         private readonly TableServiceClientStub _tableServiceClientStub;
         private readonly string _tableName;
 
