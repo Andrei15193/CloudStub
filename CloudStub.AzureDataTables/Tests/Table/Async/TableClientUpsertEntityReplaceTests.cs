@@ -12,7 +12,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
     public class TableClientUpsertEntityReplaceTests : BaseTableCloudStubTests
     {
         [Fact]
-        public async Task UpsertEntityReplace_WhenTableDoesNotExist_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.JsonResponseThrowsAsync(
                 () => CloudTable.UpsertEntityAsync(
@@ -40,21 +40,21 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenEntityIsNull_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenEntityIsNull_ThrowsException()
         {
             var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpsertEntityAsync<TableEntity>(null, TableUpdateMode.Replace));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenUpdateModeIsNotSupported_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenUpdateModeIsNotSupported_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpsertEntityAsync<TableEntity>(null, (TableUpdateMode)(-1)));
-            Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => CloudTable.UpsertEntityAsync(new TableEntity("partition-key", "row-key"), (TableUpdateMode)(-1)));
+            Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenEntityDoesNotExist_InsertsEntity()
+        public async Task UpsertEntityReplaceAsync_WhenEntityDoesNotExist_InsertsEntity()
         {
             var tableEntity = new TableEntity
             {
@@ -84,7 +84,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenEntityHasOtherProperties_InsertsEntity()
+        public async Task UpsertEntityReplaceAsync_WhenEntityHasOtherProperties_InsertsEntity()
         {
             var testEntity = new TestEntity
             {
@@ -124,7 +124,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_InsertOrReplaceOperation_RepleacesEntity()
+        public async Task UpsertEntityReplaceAsync_InsertOrReplaceOperation_RepleacesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -168,7 +168,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
+        public async Task UpsertEntityReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
         {
             await CloudTable.CreateAsync();
 
@@ -198,7 +198,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenDynamicEntityHasNullProperties_TheyAreRemovedWhenEntityAlreadyExists()
+        public async Task UpsertEntityReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreRemovedWhenEntityAlreadyExists()
         {
             await CloudTable.CreateAsync();
             await CloudTable.AddEntityAsync(new TableEntity(
@@ -238,7 +238,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_InsertOrReplaceOperationWhenPartitionKeyIsNull_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_InsertOrReplaceOperationWhenPartitionKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -254,7 +254,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityReplace_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        public async Task UpsertEntityReplaceAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             var testEntity = new TableEntity
             {
@@ -364,7 +364,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenPartitionKeyExceedsLimit_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenPartitionKeyExceedsLimit_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -388,7 +388,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenRowKeyIsNull_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenRowKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -401,7 +401,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityReplace_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        public async Task UpsertEntityReplaceAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             var testEntity = new TestEntity
             {
@@ -511,7 +511,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityReplace_WhenRowKeyExceedsLimit_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenRowKeyExceedsLimit_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -535,7 +535,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityReplace_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
+        public async Task UpsertEntityReplaceAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
             await CloudTable.CreateAsync();
 
@@ -560,7 +560,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityReplace_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
+        public async Task UpsertEntityReplaceAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
             await CloudTable.CreateAsync();
 
@@ -585,7 +585,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityReplace_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
+        public async Task UpsertEntityReplaceAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
             await CloudTable.CreateAsync();
 

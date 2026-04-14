@@ -48,7 +48,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void UpdateEntityReplace_WhenETagIsMissing_ThrowsException()
+        public void UpdateEntityReplace_WhenETagIsDefault_ThrowsException()
         {
             var exception = Assert.Throws<ArgumentException>(
                 "ifMatch",
@@ -64,6 +64,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             );
             Assert.Equal(new ArgumentException("Value cannot be empty.", "ifMatch").Message, exception.Message);
             Assert.Equal("Azure.Data.Tables", exception.Source);
+        }
+
+        [Fact]
+        public void UpdateEntityReplace_WhenUpdateModeIsNotSupported_ThrowsException()
+        {
+            var exception = Assert.Throws<ArgumentException>(() => CloudTable.UpdateEntity(new TableEntity("partition-key", "row-key"), ETag.All, (TableUpdateMode)(-1)));
+            Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
         [Fact]
@@ -249,7 +256,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = "row-key"
             };
             CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace);
-            
+
             Assertions.JsonResponseThrows(
                 () => CloudTable.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace),
                 updateResponse => new Assertions.UnsuccessfulResponseAssertOptions

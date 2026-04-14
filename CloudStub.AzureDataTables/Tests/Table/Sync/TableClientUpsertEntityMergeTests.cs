@@ -45,10 +45,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         }
 
         [Fact]
-        public void TableOperation_WhenUpdateModeIsNotSupported_ThrowsException()
+        public void UpsertEntityMerge_WhenUpdateModeIsNotSupported_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.UpsertEntity<TableEntity>(null, (TableUpdateMode)(-1)));
-            Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+            var exception = Assert.Throws<ArgumentException>(() => CloudTable.UpsertEntity(new TableEntity("partition-key", "row-key"), (TableUpdateMode)(-1)));
+            Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
         [Fact]

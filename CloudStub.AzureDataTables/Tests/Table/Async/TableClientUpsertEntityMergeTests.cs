@@ -47,10 +47,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task TableOperation_WhenUpdateModeIsNotSupported_ThrowsException()
+        public async Task UpsertEntityMergeAsync_WhenUpdateModeIsNotSupported_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpsertEntityAsync<TableEntity>(null, (TableUpdateMode)(-1)));
-            Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => CloudTable.UpsertEntityAsync(new TableEntity("partition-key", "row-key"), (TableUpdateMode)(-1)));
+            Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
         [Fact]
