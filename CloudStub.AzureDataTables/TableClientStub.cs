@@ -194,7 +194,7 @@ namespace CloudStub.AzureDataTables
                 {
                     Source = "Azure.Data.Tables"
                 };
-            if (!Enum.IsDefined(mode))
+            if (!Enum.IsDefined(typeof(TableUpdateMode), mode))
                 throw new ArgumentException($"Unexpected value for mode: {mode}")
                 {
                     Source = "Azure.Data.Tables"
@@ -340,7 +340,7 @@ namespace CloudStub.AzureDataTables
                 {
                     Source = "Azure.Data.Tables"
                 };
-            if (!Enum.IsDefined(mode))
+            if (!Enum.IsDefined(typeof(TableUpdateMode), mode))
                 throw new ArgumentException($"Unexpected value for mode: {mode}")
                 {
                     Source = "Azure.Data.Tables"
@@ -459,7 +459,7 @@ namespace CloudStub.AzureDataTables
             return TableStubResponseFactory.NoContentResponse(
                 new NoContentResponseHeaders()
                 {
-                        { "ETag", mappedEntity.ETag }
+                    { "ETag", mappedEntity.ETag }
                 }
             );
         }
@@ -594,6 +594,18 @@ namespace CloudStub.AzureDataTables
         {
             cancellationToken.ThrowIfCancellationRequested();
             throw new NotImplementedException();
+        }
+
+        public override Response<IReadOnlyList<Response>> SubmitTransaction(IEnumerable<TableTransactionAction> transactionActions, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Response<IReadOnlyList<Response>>> SubmitTransactionAsync(IEnumerable<TableTransactionAction> transactionActions, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return base.SubmitTransaction(transactionActions, cancellationToken);
         }
 
         public override async Task<NullableResponse<T>> GetEntityIfExistsAsync<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
