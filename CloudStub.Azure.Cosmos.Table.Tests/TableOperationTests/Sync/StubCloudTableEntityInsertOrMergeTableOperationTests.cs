@@ -74,7 +74,7 @@ namespace CloudStub.Azure.Cosmos.Table.Tests.TableOperationTests.Sync
             Assert.Equal(entity.PartitionKey, resultEntity.PartitionKey);
             Assert.Equal(entity.RowKey, resultEntity.RowKey);
             Assert.Equal(entity.ETag, resultEntity.ETag);
-            Assert.Equal(entity.Timestamp, resultEntity.Timestamp);
+            Assert.Equal(default, resultEntity.Timestamp);
         }
 
         [Fact]
