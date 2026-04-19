@@ -10,7 +10,7 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
-    public class TableClientTests : BaseTableCloudStubTests
+    public class TableClientAsyncTests : BaseTableCloudStubTests
     {
         [Fact]
         public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()

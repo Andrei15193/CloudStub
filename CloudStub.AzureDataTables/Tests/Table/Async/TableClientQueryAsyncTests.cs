@@ -13,7 +13,7 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
-    public class TableClientQueryTests : BaseTableCloudStubTests
+    public class TableClientQueryAsyncTests : BaseTableCloudStubTests
     {
         [Fact]
         public async Task QueryAsync_WhenThereAreNoFilters_ReturnsAllItems()

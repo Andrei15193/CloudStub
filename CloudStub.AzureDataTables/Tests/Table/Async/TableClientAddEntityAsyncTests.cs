@@ -10,7 +10,7 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
-    public class TableClientAddEntityTests : BaseTableCloudStubTests
+    public class TableClientAddEntityAsyncTests : BaseTableCloudStubTests
     {
         [Fact]
         public async Task AddEntityAsync_WhenTableDoesNotExist_ThrowsException()

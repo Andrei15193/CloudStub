@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -9,10 +9,10 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
-    public class TableClientUpsertEntityMergeTests : BaseTableCloudStubTests
+    public class TableClientUpsertEntityReplaceAsyncTests : BaseTableCloudStubTests
     {
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenTableDoesNotExist_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.JsonResponseThrowsAsync(
                 () => CloudTable.UpsertEntityAsync(
@@ -21,7 +21,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         PartitionKey = "partition-key",
                         RowKey = "row-key"
                     },
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 ),
                 rawResponse =>
                 {
@@ -40,21 +40,21 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenEntityIsNull_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenEntityIsNull_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpsertEntityAsync<TableEntity>(null, TableUpdateMode.Merge));
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpsertEntityAsync<TableEntity>(null, TableUpdateMode.Replace));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenUpdateModeIsNotSupported_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenUpdateModeIsNotSupported_ThrowsException()
         {
             var exception = await Assert.ThrowsAsync<ArgumentException>(() => CloudTable.UpsertEntityAsync(new TableEntity("partition-key", "row-key"), (TableUpdateMode)(-1)));
             Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenEntityDoesNotExist_InsertsEntity()
+        public async Task UpsertEntityReplaceAsync_WhenEntityDoesNotExist_InsertsEntity()
         {
             var tableEntity = new TableEntity
             {
@@ -63,7 +63,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
             };
             await CloudTable.CreateAsync();
 
-            var response = await CloudTable.UpsertEntityAsync(tableEntity, TableUpdateMode.Merge);
+            var response = await CloudTable.UpsertEntityAsync(tableEntity, TableUpdateMode.Replace);
 
             var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
@@ -84,7 +84,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenEntityHasOtherProperties_InsertsEntity()
+        public async Task UpsertEntityReplaceAsync_WhenEntityHasOtherProperties_InsertsEntity()
         {
             var testEntity = new TestEntity
             {
@@ -102,7 +102,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
             };
             await CloudTable.CreateAsync();
 
-            await CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge);
+            await CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace);
 
             var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
@@ -124,7 +124,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenEntityExists_MergesEntities()
+        public async Task UpsertEntityReplaceAsync_InsertOrReplaceOperation_RepleacesEntity()
         {
             var testEntity = new TestEntity
             {
@@ -143,7 +143,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
             await CloudTable.CreateAsync();
             await CloudTable.AddEntityAsync(testEntity);
 
-            var response = await CloudTable.UpsertEntityAsync(updatedTestEntity, TableUpdateMode.Merge);
+            var response = await CloudTable.UpsertEntityAsync(updatedTestEntity, TableUpdateMode.Replace);
 
             var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
@@ -153,7 +153,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 () => Assert.Equal("row-key", entity.RowKey),
                 () => Assert.Contains(nameof(TestEntity.Timestamp), entity),
                 () => Assert.Contains("odata.etag", entity),
-                () => Assert.Equal("string value", entity[nameof(TestEntity.StringProp)]),
+                () => Assert.DoesNotContain(nameof(TestEntity.StringProp), entity),
                 () => Assert.Equal(8, entity[nameof(TestEntity.Int32Prop)]),
                 () => Assert.Equal(8L, entity[nameof(TestEntity.Int64Prop)]),
                 () => Assertions.EmptyResponse(response, new Assertions.SuccessfulResponseAssertOptions
@@ -168,7 +168,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
+        public async Task UpsertEntityReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
         {
             await CloudTable.CreateAsync();
 
@@ -183,7 +183,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                     PartitionKey = "partition-key",
                     RowKey = "row-key"
                 },
-                TableUpdateMode.Merge
+                TableUpdateMode.Replace
             );
 
             var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
@@ -198,7 +198,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenDynamicEntityHasNullProperties_TheyAreIgnoredWhenEntityAlreadyExists()
+        public async Task UpsertEntityReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreRemovedWhenEntityAlreadyExists()
         {
             await CloudTable.CreateAsync();
             await CloudTable.AddEntityAsync(new TableEntity(
@@ -223,7 +223,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                     PartitionKey = "partition-key",
                     RowKey = "row-key"
                 },
-                TableUpdateMode.Merge
+                TableUpdateMode.Replace
             );
 
             var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
@@ -233,12 +233,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 () => Assert.Equal("row-key", entity.RowKey),
                 () => Assert.Contains(nameof(TestEntity.Timestamp), entity),
                 () => Assert.Contains("odata.etag", entity),
-                () => Assert.Equal(1, entity[nameof(TestEntity.Int32Prop)])
+                () => Assert.DoesNotContain(nameof(TestEntity.Int32Prop), entity)
             );
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenPartitionKeyIsNull_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_InsertOrReplaceOperationWhenPartitionKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -246,7 +246,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 "PartitionKey",
                 () => CloudTable.UpsertEntityAsync(
                     new TableEntity(null, "row-key"),
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 )
             );
 
@@ -254,7 +254,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityMergeAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
+        public async Task UpsertEntityReplaceAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
             var testEntity = new TableEntity
             {
@@ -268,7 +268,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 case "/":
                 case "\\":
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -281,7 +281,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 case "\u0000":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -334,7 +334,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 case "\u0090":
                 case "\u009D":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -350,7 +350,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 default:
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -364,7 +364,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenPartitionKeyExceedsLimit_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenPartitionKeyExceedsLimit_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -375,7 +375,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         PartitionKey = new string('t', 1 << 10 + 1),
                         RowKey = "row-key"
                     },
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 ),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
@@ -388,20 +388,20 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenRowKeyIsNull_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenRowKeyIsNull_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "RowKey",
-                () => CloudTable.UpsertEntityAsync(new TableEntity("partition-key", null), TableUpdateMode.Merge)
+                () => CloudTable.UpsertEntityAsync(new TableEntity("partition-key", null), TableUpdateMode.Replace)
             );
 
             Assert.Equal(new ArgumentNullException("RowKey").Message, exception.Message);
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityMergeAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
+        public async Task UpsertEntityReplaceAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
             var testEntity = new TestEntity
             {
@@ -415,7 +415,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 case "/":
                 case "\\":
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -428,7 +428,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 case "\u0000":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -481,7 +481,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 case "\u0090":
                 case "\u009D":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -497,7 +497,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 default:
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Merge),
+                        () => CloudTable.UpsertEntityAsync(testEntity, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -511,7 +511,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Fact]
-        public async Task UpsertEntityMergeAsync_WhenRowKeyExceedsLimit_ThrowsException()
+        public async Task UpsertEntityReplaceAsync_WhenRowKeyExceedsLimit_ThrowsException()
         {
             await CloudTable.CreateAsync();
 
@@ -522,7 +522,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         PartitionKey = "partition-key",
                         RowKey = new string('t', 1 << 10 + 1)
                     },
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 ),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
@@ -535,7 +535,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityMergeAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
+        public async Task UpsertEntityReplaceAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
             await CloudTable.CreateAsync();
 
@@ -547,7 +547,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         RowKey = "row-key",
                         StringProp = stringPropValue
                     },
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 ),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
@@ -560,7 +560,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityMergeAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
+        public async Task UpsertEntityReplaceAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
             await CloudTable.CreateAsync();
 
@@ -572,7 +572,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         RowKey = "row-key",
                         BinaryProp = binaryPropValue
                     },
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 ),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
@@ -585,7 +585,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
-        public async Task UpsertEntityMergeAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
+        public async Task UpsertEntityReplaceAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
             await CloudTable.CreateAsync();
 
@@ -597,7 +597,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         RowKey = "row-key",
                         DateTimeProp = dateTimePropValue
                     },
-                    TableUpdateMode.Merge
+                    TableUpdateMode.Replace
                 ),
                 rawResponse =>
                 {

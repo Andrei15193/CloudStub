@@ -10,7 +10,7 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Async
 {
-    public class TableClientUpdateEntityReplaceTests : BaseTableCloudStubTests
+    public class TableClientUpdateEntityReplaceAsyncTests : BaseTableCloudStubTests
     {
         [Fact]
         public async Task UpdateEntityReplaceAsync_WhenTableDoesNotExist_ThrowsException()

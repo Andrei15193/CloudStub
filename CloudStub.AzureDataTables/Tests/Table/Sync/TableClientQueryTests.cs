@@ -857,7 +857,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             CloudTable.Create();
             CloudTable.AddEntity(new TableEntity
             {
-                { "PartitionKey", $"partition" },
+                { "PartitionKey", "partition" },
                 { "RowKey", "row" },
                 { propertyName, value },
             });
