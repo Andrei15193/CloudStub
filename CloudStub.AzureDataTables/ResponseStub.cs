@@ -118,4 +118,31 @@ namespace CloudStub.AzureDataTables
             return false;
         }
     }
+
+    internal class ResponseStub<T> : Response<T>
+    {
+        private readonly Response _response;
+        private readonly T _value;
+
+        public ResponseStub(Response response)
+        {
+            _response = response;
+            HasValue = false;
+        }
+
+        public ResponseStub(Response response, T value)
+        {
+            _response = response;
+            _value = value;
+            HasValue = true;
+        }
+
+        public override bool HasValue { get; }
+
+        public override T Value
+            => HasValue ? _value : throw new InvalidOperationException("Status: 404, Service returned no content") { Source = "Azure.Data.Tables" };
+
+        public override Response GetRawResponse()
+            => _response;
+    }
 }

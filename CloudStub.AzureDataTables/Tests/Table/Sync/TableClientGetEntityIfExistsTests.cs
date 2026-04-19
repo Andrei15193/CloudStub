@@ -29,7 +29,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         ErrorDescription = "The table specified does not exist."
                     }
                 ),
-                () => Assert.False(result.HasValue)
+                () => Assert.False(result.HasValue),
+                () =>
+                {
+                    var exception = Assert.Throws<InvalidOperationException>(() => result.Value);
+                    Assert.Equal(new InvalidOperationException("Status: 404, Service returned no content").Message, exception.Message);
+                    Assert.Equal("Azure.Data.Tables", exception.Source);
+                }
             );
         }
 
@@ -312,7 +318,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         ErrorDescription = "The specified resource does not exist."
                     }
                 ),
-                () => Assert.False(result.HasValue)
+                () => Assert.False(result.HasValue),
+                () =>
+                {
+                    var exception = Assert.Throws<InvalidOperationException>(() => result.Value);
+                    Assert.Equal(new InvalidOperationException("Status: 404, Service returned no content").Message, exception.Message);
+                    Assert.Equal("Azure.Data.Tables", exception.Source);
+                }
             );
         }
 
@@ -432,7 +444,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                                     ErrorDescription = "The specified resource does not exist."
                                 }
                             ),
-                            () => Assert.False(result.HasValue)
+                            () => Assert.False(result.HasValue),
+                            () =>
+                            {
+                                var exception = Assert.Throws<InvalidOperationException>(() => result.Value);
+                                Assert.Equal(new InvalidOperationException("Status: 404, Service returned no content").Message, exception.Message);
+                                Assert.Equal("Azure.Data.Tables", exception.Source);
+                            }
                         );
                     }
                     break;
@@ -555,7 +573,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                                     ErrorDescription = "The specified resource does not exist."
                                 }
                             ),
-                            () => Assert.False(result.HasValue)
+                            () => Assert.False(result.HasValue),
+                            () =>
+                            {
+                                var exception = Assert.Throws<InvalidOperationException>(() => result.Value);
+                                Assert.Equal(new InvalidOperationException("Status: 404, Service returned no content").Message, exception.Message);
+                                Assert.Equal("Azure.Data.Tables", exception.Source);
+                            }
                         );
                     }
                     break;

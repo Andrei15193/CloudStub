@@ -116,11 +116,20 @@ namespace CloudStub.AzureDataTables
                 var entity = Activator.CreateInstance<T>();
 
                 foreach (var field in typeof(T).GetFields())
-                    if (selectedProperties == null || selectedProperties.Contains(field.Name, StringComparer.OrdinalIgnoreCase))
+                    if (
+                        selectedProperties == null
+                        || selectedProperties.Contains(field.Name, StringComparer.OrdinalIgnoreCase)
+                        || (field.Name == nameof(ITableEntity.ETag) && selectedProperties.Contains("odata.etag", StringComparer.OrdinalIgnoreCase))
+                    )
                         _TrySetProperty(field.Name, field.FieldType, value => field.SetValue(entity, value));
 
                 foreach (var property in typeof(T).GetProperties())
-                    if (property.CanWrite && (selectedProperties == null || selectedProperties.Contains(property.Name, StringComparer.OrdinalIgnoreCase)))
+                    if (
+                        property.CanWrite && (
+                            selectedProperties == null
+                            || selectedProperties.Contains(property.Name, StringComparer.OrdinalIgnoreCase))
+                            || (property.Name == nameof(ITableEntity.ETag) && selectedProperties.Contains("odata.etag", StringComparer.OrdinalIgnoreCase))
+                        )
                         _TrySetProperty(property.Name, property.PropertyType, value => property.SetValue(entity, value));
 
                 return entity;
@@ -166,9 +175,6 @@ namespace CloudStub.AzureDataTables
 
                 else if (resolvedTargetType == typeof(string))
                     _SetStringValue(resolvedTargetType, sourceValue, setValueAction);
-
-                else
-                    throw new InvalidOperationException($"Unhanled {resolvedTargetType} target type for deserialization.");
         }
 
         private static void _SetInt32Value(Type resolvedTargetType, bool isNullableType, object sourceValue, Action<object> setValueAction)

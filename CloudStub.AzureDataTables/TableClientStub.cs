@@ -245,8 +245,6 @@ namespace CloudStub.AzureDataTables
                     Source = "Azure.Data.Tables"
                 };
 
-            cancellationToken.ThrowIfCancellationRequested();
-
             if (mappedEntity.IsPartitionKeyExceedingMaxLength || mappedEntity.IsRowKeyExceedingMaxLength || mappedEntity.IsStringPropertyExceedingMaxLength || mappedEntity.IsBinaryPropertyExceedingMaxLength)
                 throw TableStubResponseFactory.JsonRequestFailedException(
                     HttpStatusCode.BadRequest,
@@ -390,8 +388,6 @@ namespace CloudStub.AzureDataTables
                 {
                     Source = "Azure.Data.Tables"
                 };
-
-            cancellationToken.ThrowIfCancellationRequested();
 
             if (mappedEntity.IsStringPropertyExceedingMaxLength || mappedEntity.IsBinaryPropertyExceedingMaxLength)
                 throw TableStubResponseFactory.JsonRequestFailedException(
@@ -580,8 +576,92 @@ namespace CloudStub.AzureDataTables
 
         public override Response<T> GetEntity<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
         {
+            if (partitionKey == null)
+                throw new NullReferenceException()
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (rowKey == null)
+                throw new NullReferenceException()
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
             cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+
+            if (partitionKey.Contains((char)0) || rowKey.Contains((char)0))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Bad Request - Invalid URL</h2>\r\n<hr><p>HTTP Error 400. The request URL is invalid.</p>\r\n</BODY></HTML>\r\n",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Connection", "close" },
+                        { "Content-Length", "324" }
+                    }
+                );
+
+            if (partitionKey.Contains('/') || partitionKey.Contains('\\') || rowKey.Contains('/') || rowKey.Contains('\\'))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "InvalidInput",
+                    "Bad Request - Error in query syntax.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            if (partitionKey.Any(_IsInvalidUriCharacter) || rowKey.Any(_IsInvalidUriCharacter))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\"><HTML><HEAD><TITLE>Bad Request</TITLE><META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD><BODY><h2>Bad Request - Invalid URL</h2><hr><p>HTTP Error 400. The request URL is invalid.</p></BODY></HTML>",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Content-Length", "312" }
+                    }
+                );
+
+            if (partitionKey.Any(TableRowStub.IsReservedKeyCharacter) || rowKey.Any(TableRowStub.IsReservedKeyCharacter))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.NotFound,
+                    "ResourceNotFound",
+                    "The specified resource does not exist.",
+                    new DefaultResponseHeaders()
+                );
+
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                    throw TableStubResponseFactory.JsonRequestFailedException(
+                        HttpStatusCode.NotFound,
+                        "TableNotFound",
+                        "The table specified does not exist.",
+                         new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                    );
+
+                using (tableItem.ReadLock())
+                {
+                    if (!tableItem.TryGetValue(partitionKey, out var tablePartition) || !tablePartition.TryGetValue(rowKey, out var tableEntity))
+                        throw TableStubResponseFactory.JsonRequestFailedException(
+                            HttpStatusCode.NotFound,
+                            "ResourceNotFound",
+                            "The specified resource does not exist.",
+                            new DefaultResponseHeaders()
+                        );
+
+                    var resultEntity = tableEntity.MapToEntity<T>(select?.Concat(Enumerable.Repeat("odata.etag", 1)));
+                    return new ResponseStub<T>(
+                        TableStubResponseFactory.EntityResponse(
+                            new DefaultResponseHeaders()
+                            {
+                                { "ETag", tableEntity.ETag }
+                            },
+                            $"https://cloudstubdev.table.core.windows.net/$metadata#{_tableName}/@Element{(select?.Any() ?? false ? "&$select=" + string.Join(",", select) : string.Empty)}",
+                            tableEntity.ETag,
+                            tableEntity,
+                            select
+                        ),
+                        resultEntity
+                    );
+                }
+            }
         }
 
         public override async Task<Response<T>> GetEntityAsync<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
@@ -592,8 +672,104 @@ namespace CloudStub.AzureDataTables
 
         public override NullableResponse<T> GetEntityIfExists<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
         {
+            if (partitionKey == null)
+                throw new NullReferenceException()
+                {
+                    Source = "Azure.Data.Tables"
+                };
+            if (rowKey == null)
+                throw new NullReferenceException()
+                {
+                    Source = "Azure.Data.Tables"
+                };
+
             cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+
+            if (partitionKey.Contains((char)0) || rowKey.Contains((char)0))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Bad Request - Invalid URL</h2>\r\n<hr><p>HTTP Error 400. The request URL is invalid.</p>\r\n</BODY></HTML>\r\n",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Connection", "close" },
+                        { "Content-Length", "324" }
+                    }
+                );
+
+            if (partitionKey.Contains('/') || partitionKey.Contains('\\') || rowKey.Contains('/') || rowKey.Contains('\\'))
+                throw TableStubResponseFactory.JsonRequestFailedException(
+                    HttpStatusCode.BadRequest,
+                    "InvalidInput",
+                    "Bad Request - Error in query syntax.",
+                    new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                );
+
+            if (partitionKey.Any(_IsInvalidUriCharacter) || rowKey.Any(_IsInvalidUriCharacter))
+                throw TableStubResponseFactory.InvalidUriException(
+                    HttpStatusCode.BadRequest,
+                    "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\"><HTML><HEAD><TITLE>Bad Request</TITLE><META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD><BODY><h2>Bad Request - Invalid URL</h2><hr><p>HTTP Error 400. The request URL is invalid.</p></BODY></HTML>",
+                    new InvlaidUrlResponseHeaders
+                    {
+                        { "Content-Length", "312" }
+                    }
+                );
+
+            if (partitionKey.Any(TableRowStub.IsReservedKeyCharacter) || rowKey.Any(TableRowStub.IsReservedKeyCharacter))
+                return new ResponseStub<T>(
+                    TableStubResponseFactory.UnsuccessfulJsonResponse(
+                        HttpStatusCode.NotFound,
+                        "ResourceNotFound",
+                        "The specified resource does not exist.",
+                        new DefaultResponseHeaders()
+                    )
+                );
+
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                    return new ResponseStub<T>(
+                        TableStubResponseFactory.UnsuccessfulJsonResponse(
+                            HttpStatusCode.NotFound,
+                            "TableNotFound",
+                            "The table specified does not exist.",
+                            new DefaultResponseHeaders(headers => headers.Remove("Cache-Control"))
+                        )
+                    );
+
+                using (tableItem.ReadLock())
+                {
+                    if (!tableItem.TryGetValue(partitionKey, out var tablePartition) || !tablePartition.TryGetValue(rowKey, out var tableEntity))
+                        return new ResponseStub<T>(
+                            TableStubResponseFactory.UnsuccessfulJsonResponse(
+                                HttpStatusCode.NotFound,
+                                "ResourceNotFound",
+                                "The specified resource does not exist.",
+                                new DefaultResponseHeaders()
+                            )
+                        );
+
+                    var resultEntity = tableEntity.MapToEntity<T>(select?.Concat(Enumerable.Repeat("odata.etag", 1)));
+                    return new ResponseStub<T>(
+                        TableStubResponseFactory.EntityResponse(
+                            new DefaultResponseHeaders()
+                            {
+                                { "ETag", tableEntity.ETag }
+                            },
+                            $"https://cloudstubdev.table.core.windows.net/$metadata#{_tableName}/@Element{(select?.Any() ?? false ? "&$select=" + string.Join(",", select) : string.Empty)}",
+                            tableEntity.ETag,
+                            tableEntity,
+                            select
+                        ),
+                        resultEntity
+                    );
+                }
+            }
+        }
+
+        public override async Task<NullableResponse<T>> GetEntityIfExistsAsync<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return GetEntityIfExists<T>(partitionKey, rowKey, select, cancellationToken);
         }
 
         public override Response<IReadOnlyList<Response>> SubmitTransaction(IEnumerable<TableTransactionAction> transactionActions, CancellationToken cancellationToken = default)
@@ -606,12 +782,6 @@ namespace CloudStub.AzureDataTables
         {
             await Task.Yield();
             return base.SubmitTransaction(transactionActions, cancellationToken);
-        }
-
-        public override async Task<NullableResponse<T>> GetEntityIfExistsAsync<T>(string partitionKey, string rowKey, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
-        {
-            await Task.Yield();
-            return GetEntityIfExists<T>(partitionKey, rowKey, select, cancellationToken);
         }
 
         public override Pageable<T> Query<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
@@ -651,7 +821,7 @@ namespace CloudStub.AzureDataTables
                     .ToList();
             }
 
-            return Response.FromValue(signedIdentifiersCopy, TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(signedIdentifiersCopy)));
+            return new ResponseStub<IReadOnlyList<TableSignedIdentifier>>(TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(signedIdentifiersCopy)), signedIdentifiersCopy);
         }
 
         public override async Task<Response<IReadOnlyList<TableSignedIdentifier>>> GetAccessPoliciesAsync(CancellationToken cancellationToken = default)

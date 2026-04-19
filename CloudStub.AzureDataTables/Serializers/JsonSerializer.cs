@@ -56,6 +56,68 @@ namespace CloudStub.AzureDataTables.Serializers
                 return streamReader.ReadToEnd();
         }
 
+        internal static string SerializeEntity(string metadata, string etag, IReadOnlyDictionary<string, object> entity, IEnumerable<string> selectedProperties = null)
+        {
+            var stream = new MemoryStream();
+            using (var jsonWriter = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
+            {
+                jsonWriter.WriteStartObject();
+
+                jsonWriter.WriteString("odata.metadata", metadata);
+                jsonWriter.WriteString("odata.etag", etag);
+
+                foreach (var property in entity.Where(property => property.Key != "odata.etag" && (selectedProperties?.Contains(property.Key, StringComparer.OrdinalIgnoreCase) ?? true)))
+                    if (property.Value == null)
+                        jsonWriter.WriteNull(property.Key);
+                    else if (property.Value is bool boolValue)
+                        jsonWriter.WriteBoolean(property.Key, boolValue);
+                    else if (property.Value is int intValue)
+                        jsonWriter.WriteNumber(property.Key, intValue);
+                    else if (property.Value is long longValue)
+                    {
+                        jsonWriter.WriteString(property.Key, longValue.ToString("0", CultureInfo.InvariantCulture));
+                        jsonWriter.WriteString($"{property.Key}@odata.type", "Edm.Int64");
+                    }
+                    else if (property.Value is double doubleValue)
+                        jsonWriter.WriteNumber(property.Key, doubleValue);
+                    else if (property.Value is DateTime dateTime)
+                    {
+                        jsonWriter.WriteString(property.Key, dateTime.ToString("yyyy-MM-ddTHH:mm:ss.FFFFFFFZ"));
+                        if (!property.Key.Equals("Timestamp", StringComparison.OrdinalIgnoreCase))
+                            jsonWriter.WriteString($"{property.Key}@odata.type", "Edm.DateTime");
+                    }
+                    else if (property.Value is DateTimeOffset dateTimeValue)
+                    {
+                        jsonWriter.WriteString(property.Key, dateTimeValue.ToString("yyyy-MM-ddTHH:mm:ss.FFFFFFFZ"));
+                        if (!property.Key.Equals("Timestamp", StringComparison.OrdinalIgnoreCase))
+                            jsonWriter.WriteString($"{property.Key}@odata.type", "Edm.DateTime");
+                    }
+                    else if (property.Value is Guid guidValue)
+                    {
+                        jsonWriter.WriteString(property.Key, guidValue.ToString("D"));
+                        jsonWriter.WriteString($"{property.Key}@odata.type", "Edm.Guid");
+                    }
+                    else if (property.Value is byte[] binaryValue)
+                    {
+                        jsonWriter.WriteString(property.Key, Convert.ToBase64String(binaryValue));
+                        jsonWriter.WriteString($"{property.Key}@odata.type", "Edm.Binary");
+                    }
+                    else
+                        jsonWriter.WriteString(property.Key, (string)property.Value);
+
+                if (selectedProperties != null)
+                    foreach (var property in selectedProperties)
+                        if (!entity.ContainsKey(property))
+                            jsonWriter.WriteNull(property);
+
+                jsonWriter.WriteEndObject();
+            }
+
+            stream.Seek(0L, SeekOrigin.Begin);
+            using (var streamReader = new StreamReader(stream))
+                return streamReader.ReadToEnd();
+        }
+
         internal static string SerializeEntities(string metadata, IEnumerable<IReadOnlyDictionary<string, object>> entities, IEnumerable<string> selectedProperties = null)
         {
             var stream = new MemoryStream();

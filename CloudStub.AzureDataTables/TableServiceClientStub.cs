@@ -101,7 +101,7 @@ namespace CloudStub.AzureDataTables
                 using (Tables.WriteLock())
                     Tables.Add(tableName, new TableItemStub());
 
-                return Response.FromValue(TableModelFactory.TableItem(tableName), TableStubResponseFactory.TableCreatedResponse(Uri, tableName));
+                return new ResponseStub<TableItem>(TableStubResponseFactory.TableCreatedResponse(Uri, tableName), TableModelFactory.TableItem(tableName));
             }
         }
 
@@ -151,8 +151,7 @@ namespace CloudStub.AzureDataTables
             using (Tables.UpgradableReadLock())
             {
                 if (Tables.ContainsKey(tableName))
-                    return Response.FromValue(
-                        TableModelFactory.TableItem(tableName),
+                    return new ResponseStub<TableItem>(
                         TableStubResponseFactory.UnsuccessfulJsonResponse(
                             HttpStatusCode.Conflict,
                             "TableAlreadyExists",
@@ -161,14 +160,14 @@ namespace CloudStub.AzureDataTables
                             {
                                 { "Preference-Applied", "return-no-content" }
                             }
-                        )
+                        ),
+                        TableModelFactory.TableItem(tableName)
                     );
 
                 using (Tables.WriteLock())
                     Tables.Add(tableName, new TableItemStub());
 
-                return Response.FromValue(
-                    TableModelFactory.TableItem(tableName),
+                return new ResponseStub<TableItem>(
                     TableStubResponseFactory.NoContentResponse(
                         new NoContentResponseHeaders
                         {
@@ -176,7 +175,8 @@ namespace CloudStub.AzureDataTables
                             { "Preference-Applied", "return-no-content" },
                             { "DataServiceId", $"{Uri}Tables('{tableName}')"}
                         }
-                    )
+                    ),
+                    TableModelFactory.TableItem(tableName)
                 );
             }
         }
@@ -228,7 +228,7 @@ namespace CloudStub.AzureDataTables
             using (Tables.ReadLock())
                 tableServiceProperties = _CopyTableServiceProperties(_tableServiceProperties);
 
-            return Response.FromValue(tableServiceProperties, TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(tableServiceProperties)));
+            return new ResponseStub<TableServiceProperties>(TableStubResponseFactory.SuccessfulXmlResponse(XmlSeriaizer.Serialize(tableServiceProperties)), tableServiceProperties);
         }
 
         public override async Task<Response<TableServiceProperties>> GetPropertiesAsync(CancellationToken cancellationToken = default)
