@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using Azure;
+using Azure.Data.Tables;
 using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests
@@ -40,6 +41,22 @@ namespace CloudStub.AzureDataTables.Tests
                 () => AssertInfo(response, responseAssertOptions),
                 () => AssertHeaders(response, responseAssertOptions),
                 () => AssertEmptyContent(response)
+            );
+
+            return response;
+        }
+
+        public static Response TableTransactionResponse(Response response, ResponseAssertOptions responseAssertOptions, IEnumerable<Response> operationResponses)
+        {
+            Assert.NotNull(response);
+            Assert.Multiple(
+                () => AssertInfo(response, responseAssertOptions),
+                () => Assert.Multiple(
+                    () => AssertHeaders(response, responseAssertOptions),
+                    () => Assert.StartsWith("multipart/mixed; boundary=batchresponse_", response.Headers.ContentType),
+                    () => Assert.True(Guid.TryParseExact(response.Headers.ContentType.Substring("multipart/mixed; boundary=batchresponse_".Length), "D", out var _))
+                ),
+                () => AssertTableTransactionContent(response, operationResponses)
             );
 
             return response;
@@ -122,6 +139,23 @@ namespace CloudStub.AzureDataTables.Tests
             return exception;
         }
 
+        public static async Task<TableTransactionFailedException> TransactionJsonResponseThrowsAsync(Func<Task> action, Func<Response, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+        {
+            var exception = await Assert.ThrowsAsync<TableTransactionFailedException>(action);
+            var rawResponse = exception.GetRawResponse();
+
+            var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+            Assert.Multiple(
+                () => AssertExceptionInfo(exception, responseAssertOptions),
+                () => AssertTransactionExceptionInfo(exception, responseAssertOptions),
+                () => Assert.Null(rawResponse),
+                () => Assert.Equal(responseAssertOptions.FailedEntityIndex, exception.FailedTransactionActionIndex)
+            );
+
+            return exception;
+        }
+
         public static RequestFailedException JsonResponseThrows(Action action, Func<Response, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
         {
             var exception = Assert.Throws<RequestFailedException>(action);
@@ -134,6 +168,23 @@ namespace CloudStub.AzureDataTables.Tests
                 () => AssertJsonExceptionMessage(exception, responseAssertOptions),
                 () => Assert.True(rawResponse?.IsError),
                 () => UnsuccessfulJsonResponse(rawResponse, responseAssertOptions)
+            );
+
+            return exception;
+        }
+
+        public static TableTransactionFailedException TransactionJsonResponseThrows(Action action, Func<Response, UnsuccessfulResponseAssertOptions> responseAssertOptionsFactory)
+        {
+            var exception = Assert.Throws<TableTransactionFailedException>(action);
+            var rawResponse = exception.GetRawResponse();
+
+            var responseAssertOptions = responseAssertOptionsFactory(exception.GetRawResponse());
+
+            Assert.Multiple(
+                () => AssertExceptionInfo(exception, responseAssertOptions),
+                () => AssertTransactionExceptionInfo(exception, responseAssertOptions),
+                () => Assert.Null(rawResponse),
+                () => Assert.Equal(responseAssertOptions.FailedEntityIndex, exception.FailedTransactionActionIndex)
             );
 
             return exception;
@@ -212,12 +263,17 @@ namespace CloudStub.AzureDataTables.Tests
             var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
 
             Assert.Multiple(
-                () => Assert.Equal((int)responseAssertOptions.StatusCode, response.Status),
+                () => Assert.Equal(responseAssertOptions.StatusCode, (HttpStatusCode)response.Status),
                 () => Assert.Equal(reasonPhrase ?? spelledOutStatusCode, response.ReasonPhrase),
                 () =>
                 {
-                    Assert.NotNull(response.ClientRequestId);
-                    Assert.True(Guid.TryParseExact(response.ClientRequestId, "D", out _), "Expected ClientRequestId to be a valid GUID.");
+                    if (responseAssertOptions.WithoutClientRequestId)
+                        Assert.Null(response.ClientRequestId);
+                    else
+                    {
+                        Assert.NotNull(response.ClientRequestId);
+                        Assert.True(Guid.TryParseExact(response.ClientRequestId, "D", out _), "Expected ClientRequestId to be a valid GUID.");
+                    }
                 }
             );
         }
@@ -248,8 +304,16 @@ namespace CloudStub.AzureDataTables.Tests
                         }))
                         .ToArray()
                 ),
-                () => Assert.NotNull(response.Headers.Date),
-                () => Assert.InRange(response.Headers.Date.Value, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
+                () =>
+                {
+                    if (!responseAssertOptions.WithoutDate)
+                        Assert.NotNull(response.Headers.Date);
+                },
+                () =>
+                {
+                    if (!responseAssertOptions.WithoutDate)
+                        Assert.InRange(response.Headers.Date.Value, utcNow.AddSeconds(-3), utcNow.AddMinutes(1));
+                },
 
                 () =>
                 {
@@ -296,6 +360,69 @@ namespace CloudStub.AzureDataTables.Tests
             {
                 var content = contentReader.ReadToEnd();
                 Assert.Empty(content);
+            }
+        }
+
+        private static void AssertTableTransactionContent(Response response, IEnumerable<Response> operationResponses)
+        {
+            Assert.NotNull(response.Content);
+            Assert.NotNull(response.ContentStream);
+
+            using (var contentReader = new StreamReader(response.Content.ToStream()))
+            {
+                var content = contentReader.ReadToEnd();
+                var contentLines = content.Split("\r\n");
+
+                Assert.Multiple(
+                    () =>
+                    {
+                        var boundaryTag = response.Headers.ContentType.Substring("multipart/mixed; boundary=".Length);
+                        Assert.Equal($"--{boundaryTag}", contentLines.First());
+
+                        Assert.Equal($"--{boundaryTag}--", contentLines.ElementAt(contentLines.Length - 2));
+                        Assert.Empty(contentLines.Last());
+                    },
+                    () =>
+                    {
+                        Assert.StartsWith("Content-Type: multipart/mixed; boundary=changesetresponse_", contentLines.ElementAt(1));
+                        Assert.True(Guid.TryParseExact(contentLines.ElementAt(1).Substring("Content-Type: multipart/mixed; boundary=changesetresponse_".Length), "D", out var _));
+                        Assert.Empty(contentLines.ElementAt(2));
+
+                        var operationBoundaryTag = contentLines.ElementAt(1).Substring("Content-Type: multipart/mixed; boundary=".Length);
+                        Assert.Equal($"--{operationBoundaryTag}", contentLines.ElementAt(3));
+                        Assert.Equal($"--{operationBoundaryTag}--", contentLines.ElementAt(contentLines.Length - 3));
+
+                        var operationsContents = content
+                            .Split($"--{operationBoundaryTag}--")
+                            .First()
+                            .Split($"--{operationBoundaryTag}")
+                            .Skip(1);
+
+                        Assert.Equal(operationResponses.Count(), operationsContents.Count());
+                        foreach (var (operationResponse, actualOperationContent) in operationResponses.Zip(operationsContents, (operationResponse, operationContent) => (operationResponse, operationContent)))
+                        {
+                            var expectedOperationContent = string.Join(
+                                "\r\n",
+                                new[]
+                                {
+                                    string.Empty,
+                                    "Content-Type: application/http",
+                                    "Content-Transfer-Encoding: binary",
+                                    string.Empty,
+                                    "HTTP/1.1 204 No Content"
+                                }
+                                .Concat(operationResponse.Headers.Select(header => $"{header.Name}: {header.Value}"))
+                                .Concat(new[]
+                                {
+                                    string.Empty,
+                                    string.Empty,
+                                    string.Empty
+                                })
+                            );
+                            Assert.Equal(expectedOperationContent, actualOperationContent);
+                        }
+                    }
+                );
             }
         }
 
@@ -508,9 +635,78 @@ namespace CloudStub.AzureDataTables.Tests
                 () => Assert.Null(exception.HelpLink),
                 () => Assert.Equal(-2146233088, exception.HResult),
                 () => Assert.Null(exception.InnerException),
-                () => Assert.Empty(exception.Data),
+                () =>
+                {
+                    if (responseAssertOptions.FailedEntityIndex.HasValue)
+                        Assert.Multiple(
+                            () => Assert.Single(exception.Data),
+                            () => Assert.Equal(responseAssertOptions.FailedEntityIndex.ToString(), exception.Data["FailedEntity"])
+                        );
+                    else
+                        Assert.Empty(exception.Data);
+                },
                 () => Assert.Equal(responseAssertOptions.ExceptionErrorCode, exception.ErrorCode),
                 () => Assert.Equal(responseAssertOptions.StatusCode, (HttpStatusCode)exception.Status)
+            );
+        }
+
+        private static void AssertTransactionExceptionInfo(TableTransactionFailedException exception, UnsuccessfulResponseAssertOptions responseAssertOptions)
+        {
+            var spelledOutStatusCode = Regex.Replace(responseAssertOptions.StatusCode.ToString(), "(?<=[a-z])[A-Z]", " $0");
+
+            var exceptionMessageLines = exception.Message.Split('\n').AsEnumerable();
+            if (exceptionMessageLines.ElementAt(0).EndsWith("'") && exceptionMessageLines.ElementAt(1).StartsWith("'"))
+            {
+                exceptionMessageLines = Enumerable
+                    .Repeat(exceptionMessageLines.ElementAt(0) + "\n" + exceptionMessageLines.ElementAt(1), 1)
+                    .Concat(exceptionMessageLines.Skip(2));
+            }
+            exceptionMessageLines = exceptionMessageLines.Take(3).Concat(Enumerable.Repeat(string.Join('\n', exceptionMessageLines.Skip(3)), 1));
+
+            Assert.Collection(
+                exceptionMessageLines,
+                errorDescription => Assert.Equal(responseAssertOptions.ErrorDescription, errorDescription),
+                requestIdInformation =>
+                {
+                    Assert.StartsWith("RequestId:", requestIdInformation);
+                    Assert.True(Guid.TryParseExact(requestIdInformation.Substring("RequestId:".Length), "D", out var _));
+                },
+                requestTimeInformation =>
+                {
+                    Assert.StartsWith("Time:", requestTimeInformation);
+                    Assert.True(DateTimeOffset.TryParseExact(requestTimeInformation.Substring("Time:".Length), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var _));
+                },
+                errorDetails =>
+                {
+                    if (responseAssertOptions.FailedEntityIndex.HasValue)
+                        Assert.Equal(
+                            string.Join(
+                                '\n',
+                                $" The index of the entity that caused the error can be found in FailedTransactionActionIndex.",
+                                $"Status: {responseAssertOptions.StatusCode:D} ({spelledOutStatusCode})",
+                                $"ErrorCode: {responseAssertOptions.ErrorCode}",
+                                string.Empty,
+                                "Additional Information:",
+                                $"FailedEntity: {responseAssertOptions.FailedEntityIndex}",
+                                string.Empty,
+                                "Service request succeeded. Response content and headers are not included to avoid logging sensitive data.",
+                                string.Empty
+                            ),
+                            errorDetails
+                        );
+                    else
+                        Assert.Equal(
+                            string.Join(
+                                '\n',
+                                $"Status: {responseAssertOptions.StatusCode:D} ({spelledOutStatusCode})",
+                                $"ErrorCode: {responseAssertOptions.ErrorCode}",
+                                string.Empty,
+                                "Service request succeeded. Response content and headers are not included to avoid logging sensitive data.",
+                                string.Empty
+                            ),
+                            errorDetails
+                        );
+                }
             );
         }
 
@@ -535,13 +731,13 @@ namespace CloudStub.AzureDataTables.Tests
                     $@"{responseAssertOptions.ErrorDescription}
 RequestId:{rawResponse.Headers.RequestId}
 Time:{jsonContentOdataErrorMessageTime.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}",
-                    jsonContentOdataErrorMessageValue
-                ),
-                () => Assert.True(rawResponse.Headers.Date <= jsonContentOdataErrorMessageTime),
-                () => Assert.InRange(jsonContentOdataErrorMessageTime, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
+                        jsonContentOdataErrorMessageValue
+                    ),
+                    () => Assert.True(rawResponse.Headers.Date <= jsonContentOdataErrorMessageTime),
+                    () => Assert.InRange(jsonContentOdataErrorMessageTime, utcNow.AddSeconds(-3), utcNow.AddMinutes(1)),
 
-                () => Assert.Equal(
-                    responseAssertOptions.ErrorDescription + $@"
+                    () => Assert.Equal(
+                        responseAssertOptions.ErrorDescription + $@"
 RequestId:{rawResponse.Headers.RequestId}
 Time:{jsonContentOdataErrorMessageTime.ToString(DateTimeFormat, CultureInfo.InvariantCulture)}
 Status: {responseAssertOptions.StatusCode:D} ({spelledOutStatusCode})
@@ -551,11 +747,10 @@ Content:
 {content}
 
 Headers:
-{string.Join("\n",
-    from header in rawResponse.Headers
-    let headerValue = (_nonRedactedHeaderNames.Contains(header.Name) ? header.Value : "REDACTED")
-    select $"{header.Name}: {headerValue}"
-)}
+{string.Join("\n", from header in rawResponse.Headers
+                   let headerValue = (_nonRedactedHeaderNames.Contains(header.Name) ? header.Value : "REDACTED")
+                   select $"{header.Name}: {headerValue}"
+    )}
 ".Replace("\r", string.Empty),
                     exception.Message
                 )
@@ -648,6 +843,8 @@ select $"{header.Name}: {headerValue}"
         public class ResponseAssertOptions
         {
             public bool WithoutRequestId { get; set; }
+            public bool WithoutClientRequestId { get; set; }
+            public bool WithoutDate { get; set; }
             public HttpStatusCode StatusCode { get; set; }
             public IDictionary<string, string> Headers { get; set; }
         }
@@ -677,6 +874,7 @@ select $"{header.Name}: {headerValue}"
             public string ErrorDescription { get; set; }
 
             public string ErrorPhrase { get; set; }
+            public int? FailedEntityIndex { get; set; }
         }
 
         public class DefaultHeaders : Dictionary<string, string>
@@ -693,6 +891,20 @@ select $"{header.Name}: {headerValue}"
 
                 Add("Transfer-Encoding", "chunked");
                 Add("Content-Type", "application/json;odata=minimalmetadata;streaming=true;charset=utf-8");
+            }
+        }
+
+        public class TableTransactionHeaders : Dictionary<string, string>
+        {
+            public TableTransactionHeaders(Response response, string tableName, string partitionKey, string rowKey)
+            {
+                Add("X-Content-Type-Options", "nosniff");
+                Add("Cache-Control", "no-cache");
+                Add("Preference-Applied", "return-no-content");
+                Add("DataServiceVersion", "3.0;");
+                Add("Location", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
+                Add("DataServiceId", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
+                Add("ETag", response.Headers.ETag.ToString());
             }
         }
 
