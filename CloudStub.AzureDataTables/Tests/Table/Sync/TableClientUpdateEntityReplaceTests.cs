@@ -634,5 +634,30 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     };
                 });
         }
+
+        [Fact]
+        public void UpdateEntityReplace_WhenDateTimePropertyIsNotUniversal_ThrowsException()
+        {
+            var now = DateTime.Now;
+            var exception = Assert.Throws<NotSupportedException>(() => CloudTable.UpdateEntity(
+                new TestEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    DateTimeProp = now
+                },
+                ETag.All,
+                TableUpdateMode.Replace
+            ));
+
+            Assert.Multiple(
+                () => Assert.Equal($"DateTime {now} has a Kind of {now.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.", exception.Message),
+                () => Assert.Equal("Azure.Data.Tables", exception.Source),
+                () => Assert.Empty(exception.Data),
+                () => Assert.Null(exception.InnerException),
+                () => Assert.Null(exception.HelpLink),
+                () => Assert.Equal(-2146233067, exception.HResult)
+            );
+        }
     }
 }

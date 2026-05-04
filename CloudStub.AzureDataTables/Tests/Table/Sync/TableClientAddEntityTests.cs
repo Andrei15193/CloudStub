@@ -413,15 +413,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
-            CloudTable.Create();
-
             var now = DateTime.Now;
             var exception = Assert.Throws<NotSupportedException>(() => CloudTable.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
-                DateTimeProp = now,
-                DateTimeOffsetProp = DateTimeOffset.Now
+                DateTimeProp = now
             }));
 
             Assert.Multiple(

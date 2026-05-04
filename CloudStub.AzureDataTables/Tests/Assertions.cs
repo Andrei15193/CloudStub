@@ -376,10 +376,10 @@ namespace CloudStub.AzureDataTables.Tests
                 Assert.Multiple(
                     () =>
                     {
-                        var boundaryTag = response.Headers.ContentType.Substring("multipart/mixed; boundary=".Length);
-                        Assert.Equal($"--{boundaryTag}", contentLines.First());
+                        var batchBoundaryTag = response.Headers.ContentType.Substring("multipart/mixed; boundary=".Length);
+                        Assert.Equal($"--{batchBoundaryTag}", contentLines.First());
 
-                        Assert.Equal($"--{boundaryTag}--", contentLines.ElementAt(contentLines.Length - 2));
+                        Assert.Equal($"--{batchBoundaryTag}--", contentLines.ElementAt(contentLines.Length - 2));
                         Assert.Empty(contentLines.Last());
                     },
                     () =>

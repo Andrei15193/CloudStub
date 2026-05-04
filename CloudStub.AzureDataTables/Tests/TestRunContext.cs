@@ -13,10 +13,10 @@ namespace CloudStub.AzureDataTables.Tests
             .AddEnvironmentVariables()
 
             // For local testing, you can uncomment the following lines and provide values directly.
-            // .AddInMemoryCollection(new Dictionary<string, string?>
+            // .AddInMemoryCollection(new Dictionary<string, string>
             // {
-            //     { InMemoryKey, bool.FalseString },
-            //     { AzureStorageConnectionStringKey, "get this from somewhere :)" }
+            //     [InMemoryKey] = bool.FalseString,
+            //     [AzureStorageConnectionStringKey] = "get this from somewhere :)"
             // })
 
             .Build();

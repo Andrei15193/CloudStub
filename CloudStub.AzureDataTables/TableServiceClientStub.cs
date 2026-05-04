@@ -99,7 +99,7 @@ namespace CloudStub.AzureDataTables
                     );
 
                 using (Tables.WriteLock())
-                    Tables.Add(tableName, new TableItemStub());
+                    Tables.Add(tableName, new TableItemStub(tableName));
 
                 return new ResponseStub<TableItem>(TableStubResponseFactory.TableCreatedResponse(Uri, tableName), TableModelFactory.TableItem(tableName));
             }
@@ -165,7 +165,7 @@ namespace CloudStub.AzureDataTables
                     );
 
                 using (Tables.WriteLock())
-                    Tables.Add(tableName, new TableItemStub());
+                    Tables.Add(tableName, new TableItemStub(tableName));
 
                 return new ResponseStub<TableItem>(
                     TableStubResponseFactory.NoContentResponse(

@@ -33,10 +33,13 @@ namespace CloudStub.AzureDataTables
     {
         private readonly ReaderWriterLockSlim _tableLock = new ReaderWriterLockSlim();
 
-        public TableItemStub()
+        public TableItemStub(string tableName)
             : base(StringComparer.Ordinal)
         {
+            TableName = tableName;
         }
+
+        public string TableName { get; }
 
         public IReadOnlyList<TableSignedIdentifier> SignedIdentifiers { get; set; } = Array.Empty<TableSignedIdentifier>();
 
@@ -58,7 +61,7 @@ namespace CloudStub.AzureDataTables
         }
     }
 
-    internal class TableRowStub : Dictionary<string, object>
+    internal class TableRowStub : Dictionary<string, object>, ITableEntity
     {
         private static readonly IReadOnlyCollection<char> _reservedKeyCharacters = new HashSet<char> { '#', '?', '\t', '\n', '\r', '/', '\\' };
 
@@ -81,16 +84,28 @@ namespace CloudStub.AzureDataTables
             this["Timestamp"] = timestamp;
         }
 
-        public string ETag
+        public string PartitionKey
         {
-            get => (string)this["odata.etag"];
-            set => this["odata.etag"] = value;
+            get => TryGetValue(nameof(PartitionKey), out var partitionKey) ? (string)partitionKey : null;
+            set => this[nameof(PartitionKey)] = value;
         }
 
-        public DateTimeOffset Timestamp
+        public string RowKey
         {
-            get => (DateTimeOffset)this["Timestamp"];
-            set => this["Timestamp"] = value;
+            get => TryGetValue(nameof(RowKey), out var rowKey) ? (string)rowKey : null;
+            set => this[nameof(RowKey)] = value;
+        }
+
+        public DateTimeOffset? Timestamp
+        {
+            get => TryGetValue(nameof(RowKey), out var rowKey) ? (DateTimeOffset)rowKey : (DateTimeOffset?)null;
+            set => this[nameof(Timestamp)] = value;
+        }
+
+        public ETag ETag
+        {
+            get => TryGetValue("odata.etag", out var etag) ? new ETag((string)etag) : default;
+            set => this["odata.etag"] = value.ToString();
         }
 
         public T MapToEntity<T>(IEnumerable<string> selectedProperties)
@@ -551,16 +566,17 @@ namespace CloudStub.AzureDataTables
         }
     }
 
-    internal class ValidatedTableRowStub<T> : TableRowStub
+    internal class ValidatedTableRowStub : TableRowStub
     {
         private const int MaximumKeyLength = 1 << 10 + 1;
         private const int MaximumStringLength = 1 << 15 + 1;
         private const int MaximumBinaryLength = 1 << 16 + 1;
         private static DateTimeOffset MinimumDateTimeOffset = new DateTimeOffset(1601, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-        public ValidatedTableRowStub(T entity)
+        public ValidatedTableRowStub(ITableEntity entity)
         {
-            if (typeof(T) == typeof(TableEntity))
+            var entityType = entity.GetType();
+            if (entityType == typeof(TableEntity))
             {
                 var tableEntity = (TableEntity)(entity as object);
                 foreach (var row in tableEntity)
@@ -568,10 +584,10 @@ namespace CloudStub.AzureDataTables
             }
             else
             {
-                foreach (var field in typeof(T).GetFields())
+                foreach (var field in entityType.GetFields())
                     _TrySetValue(field.Name, field.GetValue(entity));
 
-                foreach (var property in typeof(T).GetProperties())
+                foreach (var property in entityType.GetProperties())
                     if (property.GetIndexParameters().Length == 0)
                         _TrySetValue(property.Name, property.GetValue(entity));
             }

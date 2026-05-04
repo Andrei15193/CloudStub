@@ -79,7 +79,7 @@ namespace CloudStub.AzureDataTables
                     Source = "Azure.Data.Tables"
                 };
 
-            var mappedEntity = new ValidatedTableRowStub<T>(entity);
+            var mappedEntity = new ValidatedTableRowStub(entity);
             if (mappedEntity.NotSupportedDateTimeValue != null)
                 throw new NotSupportedException($"DateTime {mappedEntity.NotSupportedDateTimeValue} has a Kind of {mappedEntity.NotSupportedDateTimeValue?.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.")
                 {
@@ -162,7 +162,7 @@ namespace CloudStub.AzureDataTables
             return TableStubResponseFactory.NoContentResponse(
                 new NoContentResponseHeaders()
                 {
-                    { "ETag", mappedEntity.ETag },
+                    { "ETag", mappedEntity.ETag.ToString() },
                     { "Location", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" },
                     { "Preference-Applied", "return-no-content" },
                     { "DataServiceId", $"{Uri}(PartitionKey='{Uri.EscapeDataString(entity.PartitionKey)}',RowKey='{Uri.EscapeDataString(entity.RowKey)}')" }
@@ -238,7 +238,7 @@ namespace CloudStub.AzureDataTables
                     "One of the request inputs is out of range."
                 );
 
-            var mappedEntity = new ValidatedTableRowStub<T>(entity);
+            var mappedEntity = new ValidatedTableRowStub(entity);
             if (mappedEntity.NotSupportedDateTimeValue != null)
                 throw new NotSupportedException($"DateTime {mappedEntity.NotSupportedDateTimeValue} has a Kind of {mappedEntity.NotSupportedDateTimeValue?.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.")
                 {
@@ -304,7 +304,7 @@ namespace CloudStub.AzureDataTables
             return TableStubResponseFactory.NoContentResponse(
                 new NoContentResponseHeaders()
                 {
-                    { "ETag", mappedEntity.ETag }
+                    { "ETag", mappedEntity.ETag.ToString() }
                 }
             );
         }
@@ -382,7 +382,7 @@ namespace CloudStub.AzureDataTables
                     "One of the request inputs is out of range."
                 );
 
-            var mappedEntity = new ValidatedTableRowStub<T>(entity);
+            var mappedEntity = new ValidatedTableRowStub(entity);
             if (mappedEntity.NotSupportedDateTimeValue != null)
                 throw new NotSupportedException($"DateTime {mappedEntity.NotSupportedDateTimeValue} has a Kind of {mappedEntity.NotSupportedDateTimeValue?.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.")
                 {
@@ -424,7 +424,7 @@ namespace CloudStub.AzureDataTables
                             new DefaultResponseHeaders()
                         );
 
-                    if (ifMatch != default && ifMatch != ETag.All && ifMatch != new ETag(tableEntity.ETag))
+                    if (ifMatch != default && ifMatch != ETag.All && ifMatch != tableEntity.ETag)
                         throw TableStubResponseFactory.JsonRequestFailedException(
                             HttpStatusCode.PreconditionFailed,
                             "UpdateConditionNotSatisfied",
@@ -455,7 +455,7 @@ namespace CloudStub.AzureDataTables
             return TableStubResponseFactory.NoContentResponse(
                 new NoContentResponseHeaders()
                 {
-                    { "ETag", mappedEntity.ETag }
+                    { "ETag", mappedEntity.ETag.ToString() }
                 }
             );
         }
@@ -536,7 +536,7 @@ namespace CloudStub.AzureDataTables
                             "The specified resource does not exist."
                         );
 
-                    if (ifMatch != default && ifMatch != ETag.All && ifMatch != new ETag(tableEntity.ETag))
+                    if (ifMatch != default && ifMatch != ETag.All && ifMatch != tableEntity.ETag)
                         throw TableStubResponseFactory.JsonRequestFailedException(
                             HttpStatusCode.PreconditionFailed,
                             "UpdateConditionNotSatisfied",
@@ -651,10 +651,10 @@ namespace CloudStub.AzureDataTables
                         TableStubResponseFactory.EntityResponse(
                             new DefaultResponseHeaders()
                             {
-                                { "ETag", tableEntity.ETag }
+                                { "ETag", tableEntity.ETag.ToString() }
                             },
                             $"https://cloudstubdev.table.core.windows.net/$metadata#{_tableName}/@Element{(select?.Any() ?? false ? "&$select=" + string.Join(",", select) : string.Empty)}",
-                            tableEntity.ETag,
+                            tableEntity.ETag.ToString(),
                             tableEntity,
                             select
                         ),
@@ -753,10 +753,10 @@ namespace CloudStub.AzureDataTables
                         TableStubResponseFactory.EntityResponse(
                             new DefaultResponseHeaders()
                             {
-                                { "ETag", tableEntity.ETag }
+                                { "ETag", tableEntity.ETag.ToString() }
                             },
                             $"https://cloudstubdev.table.core.windows.net/$metadata#{_tableName}/@Element{(select?.Any() ?? false ? "&$select=" + string.Join(",", select) : string.Empty)}",
-                            tableEntity.ETag,
+                            tableEntity.ETag.ToString(),
                             tableEntity,
                             select
                         ),
@@ -774,14 +774,141 @@ namespace CloudStub.AzureDataTables
 
         public override Response<IReadOnlyList<Response>> SubmitTransaction(IEnumerable<TableTransactionAction> transactionActions, CancellationToken cancellationToken = default)
         {
+            if (transactionActions == null)
+                throw new ArgumentNullException("transactionalBatch") { Source = "Azure.Data.Tables" };
+
+            var mappedTransactionActions = new List<TableTransactionAction>(101);
+            mappedTransactionActions.AddRange(transactionActions.Select((tableTransactionAction, tableTransactionActionIndex) =>
+            {
+                if (tableTransactionActionIndex > 99)
+                    throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                        HttpStatusCode.BadRequest,
+                        "InvalidInput",
+                        "The batch request operation exceeds the maximum 100 changes per change set.",
+                        99
+                    );
+
+                if (!Enum.IsDefined(typeof(TableTransactionActionType), tableTransactionAction.ActionType))
+                    throw new InvalidOperationException("Unknown request type.") { Source = "Azure.Data.Tables" };
+
+                if (tableTransactionAction.Entity == null)
+                    throw new NullReferenceException { Source = "Azure.Data.Tables" };
+
+                var validatedEntity = new ValidatedTableRowStub(tableTransactionAction.Entity);
+                if (validatedEntity.NotSupportedDateTimeValue != null)
+                    throw new NotSupportedException($"DateTime {validatedEntity.NotSupportedDateTimeValue} has a Kind of {validatedEntity.NotSupportedDateTimeValue?.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.") { Source = "Azure.Data.Tables" };
+
+                return new TableTransactionAction(
+                    tableTransactionAction.ActionType,
+                    validatedEntity,
+                    tableTransactionAction.ETag
+                );
+            }));
+
+            if (mappedTransactionActions.Count == 0)
+                throw new InvalidOperationException("The batch contains no entity operations.") { Source = "Azure.Data.Tables" };
+            if (mappedTransactionActions.Any(mappedTransactionAction => mappedTransactionAction.Entity.RowKey == null))
+                throw new ArgumentNullException("key") { Source = "Azure.Data.Tables" };
+
             cancellationToken.ThrowIfCancellationRequested();
-            throw new NotImplementedException();
+
+            using (_tableServiceClientStub.Tables.ReadLock())
+            {
+                if (!_tableServiceClientStub.Tables.TryGetValue(_tableName, out var tableItem))
+                    throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                        HttpStatusCode.NotFound,
+                        "TableNotFound",
+                        "The table specified does not exist.",
+                        errorIndex: 0
+                    );
+
+                using (tableItem.UpgradableReadLock())
+                {
+                    var partitionKey = mappedTransactionActions[0].Entity.PartitionKey;
+                    var rowKeys = new HashSet<string>(((ValidatedTableRowStub)mappedTransactionActions[0].Entity).Comparer);
+                    for (var transactionActionIndex = 0; transactionActionIndex < mappedTransactionActions.Count; transactionActionIndex++)
+                    {
+                        var transactionAction = mappedTransactionActions[transactionActionIndex];
+                        var transactionActionEntity = (ValidatedTableRowStub)transactionAction.Entity;
+
+                        if (transactionActionEntity.PartitionKey == null)
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "PropertiesNeedValue",
+                                "The values are not specified for all properties in the entity.",
+                                transactionActionIndex
+                            );
+
+                        if (transactionActionEntity.IsPartitionKeyInvalid)
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "OutOfRangeInput",
+                                $"The 'PartitionKey' parameter of value '{transactionActionEntity.PartitionKey}' is out of range.",
+                                transactionActionIndex
+                            );
+
+                        if (transactionActionEntity.IsRowKeyInvalid)
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "OutOfRangeInput",
+                                $"The 'RowKey' parameter of value '{transactionActionEntity.RowKey}' is out of range.",
+                                transactionActionIndex
+                            );
+
+                        if (transactionActionEntity.IsPartitionKeyExceedingMaxLength || transactionActionEntity.IsRowKeyExceedingMaxLength || transactionActionEntity.IsStringPropertyExceedingMaxLength || transactionActionEntity.IsBinaryPropertyExceedingMaxLength)
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "PropertyValueTooLarge",
+                                "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                                mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
+                            );
+
+                        if (transactionActionEntity.InvalidDateTimeProperty != null)
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "OutOfRangeInput",
+                                $"The '{transactionActionEntity.InvalidDateTimeProperty.Value.Key}' parameter of value '{transactionActionEntity.InvalidDateTimeProperty.Value.Value:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                                transactionActionIndex
+                            );
+
+                        if (transactionActionEntity.PartitionKey != partitionKey)
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "CommandsInBatchActOnDifferentPartitions",
+                                "All commands in a batch must operate on same entity group.",
+                                transactionActionIndex
+                            );
+                        if (!rowKeys.Add(transactionActionEntity.RowKey))
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.BadRequest,
+                                "InvalidDuplicateRow",
+                                "The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.",
+                                transactionActionIndex
+                            );
+
+                        if (
+                            transactionAction.ActionType == TableTransactionActionType.Add
+                            && tableItem.TryGetValue(transactionActionEntity.PartitionKey, out var tablePartition)
+                            && tablePartition.ContainsKey(transactionActionEntity.RowKey)
+                        )
+                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                HttpStatusCode.Conflict,
+                                "EntityAlreadyExists",
+                                "The specified entity already exists.",
+                                mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
+                            );
+                    }
+
+                    using (tableItem.WriteLock())
+                        return _ApplyTransaction(tableItem, mappedTransactionActions);
+                }
+            }
         }
 
         public override async Task<Response<IReadOnlyList<Response>>> SubmitTransactionAsync(IEnumerable<TableTransactionAction> transactionActions, CancellationToken cancellationToken = default)
         {
             await Task.Yield();
-            return base.SubmitTransaction(transactionActions, cancellationToken);
+            return SubmitTransaction(transactionActions, cancellationToken);
         }
 
         public override Pageable<T> Query<T>(string filter = null, int? maxPerPage = null, IEnumerable<string> select = null, CancellationToken cancellationToken = default)
@@ -866,6 +993,38 @@ namespace CloudStub.AzureDataTables
         {
             await Task.Yield();
             return SetAccessPolicy(tableAcl, cancellationToken);
+        }
+
+        private Response<IReadOnlyList<Response>> _ApplyTransaction(TableItemStub tableItem, IReadOnlyList<TableTransactionAction> transactionActions)
+        {
+            var partitionKey = transactionActions[0].Entity.PartitionKey;
+            if (!tableItem.TryGetValue(partitionKey, out var tablePartition))
+            {
+                tablePartition = new TablePartitionStub();
+                tableItem.Add(partitionKey, tablePartition);
+            }
+
+            var responses = new List<Response>(transactionActions.Count);
+            foreach (var transactionAction in transactionActions)
+            {
+                ResponseStub response;
+                var transactionActionEntity = (ValidatedTableRowStub)transactionAction.Entity;
+                switch (transactionAction.ActionType)
+                {
+                    case TableTransactionActionType.Add:
+                        tablePartition.Add(transactionActionEntity.RowKey, transactionActionEntity);
+                        response = TableStubResponseFactory.NoContentResponse(new TransactionActionResponseHeaders(tableItem.TableName, transactionActionEntity.PartitionKey, transactionActionEntity.RowKey, transactionActionEntity.ETag.ToString()));
+                        break;
+
+                    default:
+                        throw new NotImplementedException();
+                }
+
+                response.ClientRequestId = null;
+                responses.Add(response);
+            }
+
+            return TableStubResponseFactory.TransactionResponse(responses);
         }
 
         private PageFactory<T> _GetEntityPageFactory<T>(Filter filter, IEnumerable<string> selectedProperties, CancellationToken cancellationToken)

@@ -18,19 +18,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.NotFound,
-                        ErrorCode = "TableNotFound",
-                        ErrorDescription = "0:The table specified does not exist.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.NotFound,
+                    ErrorCode = "TableNotFound",
+                    ErrorDescription = "0:The table specified does not exist.",
+                    FailedEntityIndex = 0
                 }
             );
         }
@@ -38,8 +31,6 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenEntityIsNull_ThrowsException()
         {
-            CloudTable.Create();
-
             var exception = Assert.Throws<NullReferenceException>(() => CloudTable.SubmitTransaction(
                 new[]
                 {
@@ -121,18 +112,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         )
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.Conflict,
-                        ErrorCode = "EntityAlreadyExists",
-                        ErrorDescription = "The specified entity already exists.",
-                        Headers = headers
-                    };
+                    StatusCode = HttpStatusCode.Conflict,
+                    ErrorCode = "EntityAlreadyExists",
+                    ErrorDescription = "The specified entity already exists."
                 }
             );
         }
@@ -173,19 +157,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         )
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.Conflict,
-                        ErrorCode = "EntityAlreadyExists",
-                        ErrorDescription = "1:The specified entity already exists.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.Conflict,
+                    ErrorCode = "EntityAlreadyExists",
+                    ErrorDescription = "1:The specified entity already exists.",
+                    FailedEntityIndex = 1
                 }
             );
         }
@@ -249,19 +226,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(null, "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertiesNeedValue",
-                        ErrorDescription = "0:The values are not specified for all properties in the entity.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertiesNeedValue",
+                    ErrorDescription = "0:The values are not specified for all properties in the entity.",
+                    FailedEntityIndex = 0
                 }
             );
         }
@@ -278,19 +248,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(partitionKey, "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "OutOfRangeInput",
-                        ErrorDescription = $"0:The 'PartitionKey' parameter of value '{partitionKey}' is out of range.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "OutOfRangeInput",
+                    ErrorDescription = $"0:The 'PartitionKey' parameter of value '{partitionKey}' is out of range.",
+                    FailedEntityIndex = 0
                 }
             );
         }
@@ -307,18 +270,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(new string('t', 1 << 10 + 1), "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
                 }
             );
         }
@@ -336,19 +292,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(new string('t', 1 << 10 + 1), "row-key-2"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "0:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "0:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    FailedEntityIndex = 0
                 }
             );
         }
@@ -385,19 +334,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", rowKey))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "OutOfRangeInput",
-                        ErrorDescription = $"0:The 'RowKey' parameter of value '{rowKey}' is out of range.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "OutOfRangeInput",
+                    ErrorDescription = $"0:The 'RowKey' parameter of value '{rowKey}' is out of range.",
+                    FailedEntityIndex = 0
                 }
             );
         }
@@ -414,18 +356,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", new string('t', 1 << 10 + 1)))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
                 }
             );
         }
@@ -443,19 +378,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", new string('t', 1 << 10 + 1)))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "1:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "1:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    FailedEntityIndex = 1
                 }
             );
         }
@@ -477,18 +405,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         })
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
                 }
             );
         }
@@ -511,19 +432,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         })
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "1:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "1:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    FailedEntityIndex = 1
                 }
             );
         }
@@ -545,18 +459,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         })
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less."
                 }
             );
         }
@@ -579,19 +486,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         })
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PropertyValueTooLarge",
-                        ErrorDescription = "1:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "PropertyValueTooLarge",
+                    ErrorDescription = "1:The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                    FailedEntityIndex = 1
                 }
             );
         }
@@ -613,20 +513,42 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         })
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "OutOfRangeInput",
-                        ErrorDescription = $"0:The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "OutOfRangeInput",
+                    ErrorDescription = $"0:The 'DateTimeProp' parameter of value '{dateTimePropValue:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                    FailedEntityIndex = 0
                 }
+            );
+        }
+
+        [Fact]
+        public void SubmitTransaction_WhenDateTimePropertyIsNotUniversal_ThrowsException()
+        {
+            var now = DateTime.Now;
+            var exception = Assert.Throws<NotSupportedException>(() => CloudTable.SubmitTransaction(
+                new[]
+                {
+                    new TableTransactionAction(
+                        TableTransactionActionType.Add,
+                        new TestEntity
+                        {
+                            PartitionKey = "partition-key",
+                            RowKey = "row-key",
+                            DateTimeProp = now
+                        }
+                    )
+                }
+            ));
+
+            Assert.Multiple(
+                () => Assert.Equal($"DateTime {now} has a Kind of {now.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.", exception.Message),
+                () => Assert.Equal("Azure.Data.Tables", exception.Source),
+                () => Assert.Empty(exception.Data),
+                () => Assert.Null(exception.InnerException),
+                () => Assert.Null(exception.HelpLink),
+                () => Assert.Equal(-2146233067, exception.HResult)
             );
         }
     }

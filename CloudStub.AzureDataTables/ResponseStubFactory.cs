@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 using Azure;
 using Azure.Core;
+using Azure.Data.Tables;
 using CloudStub.AzureDataTables.Serializers;
 
 namespace CloudStub.AzureDataTables
@@ -25,6 +28,52 @@ namespace CloudStub.AzureDataTables
                 JsonSeriaizer.SerializeEntities(metadata, entities, selectedProperties),
                 headers
             );
+
+        public static ResponseStub<IReadOnlyList<Response>> TransactionResponse(IReadOnlyList<Response> operationResponses)
+        {
+            var batchBoundaryTag = $"batchresponse_{Guid.NewGuid():D}";
+            var operationBoundaryTag = $"changesetresponse_{Guid.NewGuid():D}";
+
+            var responseContentBuilder = new StringBuilder()
+                .AppendFormat("--{0}\r\n", batchBoundaryTag)
+                .AppendFormat("Content-Type: multipart/mixed; boundary={0}\r\n", operationBoundaryTag)
+                .Append("\r\n");
+
+            foreach (var operationResponse in operationResponses)
+            {
+                responseContentBuilder
+                    .AppendFormat("--{0}\r\n", operationBoundaryTag)
+                    .Append("Content-Type: application/http\r\n")
+                    .Append("Content-Transfer-Encoding: binary\r\n")
+                    .Append("\r\n")
+                    .AppendFormat("HTTP/1.1 {0} {1}\r\n", operationResponse.Status, Regex.Replace(((HttpStatusCode)operationResponse.Status).ToString(), "(?<=[a-z])[A-Z]", " $0"));
+
+                foreach (var header in operationResponse.Headers)
+                    responseContentBuilder
+                        .AppendFormat("{0}: {1}\r\n", header.Name, header.Value);
+
+                responseContentBuilder
+                    .Append("\r\n")
+                    .Append("\r\n");
+            }
+
+            responseContentBuilder
+                .AppendFormat("--{0}--\r\n", operationBoundaryTag)
+                .AppendFormat("--{0}--\r\n", batchBoundaryTag);
+
+            return new ResponseStub<IReadOnlyList<Response>>(
+                new ResponseStub(
+                    HttpStatusCode.Accepted,
+                    "Accepted",
+                    responseContentBuilder.ToString(),
+                    new DefaultResponseHeaders
+                    {
+                        ["Content-Type"] = $"multipart/mixed; boundary={batchBoundaryTag}"
+                    }
+                ),
+                operationResponses
+            );
+        }
 
         public static ResponseStub NoContentResponse()
             => NoContentResponse(new NoContentResponseHeaders());
@@ -97,6 +146,61 @@ namespace CloudStub.AzureDataTables
             {
                 Source = "Azure.Data.Tables"
             };
+        }
+
+        public static TableTransactionFailedException TransactionJsonRequestFailedException(HttpStatusCode statusCode, string errorCode, string errorDescription, int? errorIndex)
+        {
+            var errorMessageBuilder = new StringBuilder();
+
+            if (errorIndex.HasValue)
+                errorMessageBuilder
+                    .AppendFormat("{0}:", errorIndex);
+
+            errorMessageBuilder
+                .AppendFormat("{0}\n", errorDescription)
+                .AppendFormat("RequestId:{0:D}\n", Guid.NewGuid())
+                .AppendFormat("Time:{0:yyyy-MM-ddTHH:mm:ss.fffffffZ}\n", DateTime.UtcNow);
+
+            if (errorIndex.HasValue)
+                errorMessageBuilder
+                    .Append(" The index of the entity that caused the error can be found in FailedTransactionActionIndex.\n");
+
+            errorMessageBuilder
+                .AppendFormat("Status: {0:D} ({1})\n", statusCode, Regex.Replace(statusCode.ToString(), "(?<=[a-z])[A-Z]", " $0"))
+                .AppendFormat("ErrorCode: {0}\n\n", errorCode);
+
+            if (errorIndex.HasValue)
+                errorMessageBuilder
+                    .Append("Additional Information:\n")
+                    .AppendFormat("FailedEntity: {0}\n\n", errorIndex);
+
+            errorMessageBuilder
+                .Append("Service request succeeded. Response content and headers are not included to avoid logging sensitive data.\n");
+
+            var exception = new TableTransactionFailedException(
+                new RequestFailedException(
+                    status: (int)statusCode,
+                    errorCode: errorCode,
+                    message: errorMessageBuilder.ToString(),
+                    innerException: null
+                )
+                {
+                    Source = "Azure.Data.Tables"
+                }
+            )
+            {
+                Source = "Azure.Data.Tables"
+            };
+
+            if (errorIndex.HasValue)
+            {
+                exception.Data["FailedEntity"] = errorIndex.ToString();
+                typeof(TableTransactionFailedException)
+                    .GetProperty(nameof(TableTransactionFailedException.FailedTransactionActionIndex), BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty)
+                    .SetValue(exception, errorIndex);
+            }
+
+            return exception;
         }
 
         public static RequestFailedException XmlRequestFailedException(HttpStatusCode statusCode, string errorCode, string errorDescription)

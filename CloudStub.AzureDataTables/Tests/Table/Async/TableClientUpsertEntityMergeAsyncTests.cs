@@ -614,5 +614,29 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 }
             );
         }
+
+        [Fact]
+        public async Task UpsertEntityMergeAsync_WhenDateTimePropertyIsNotUniversal_ThrowsException()
+        {
+            var now = DateTime.Now;
+            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => CloudTable.UpsertEntityAsync(
+                new TestEntity
+                {
+                    PartitionKey = "partition-key",
+                    RowKey = "row-key",
+                    DateTimeProp = now
+                },
+                TableUpdateMode.Merge
+            ));
+
+            Assert.Multiple(
+                () => Assert.Equal($"DateTime {now} has a Kind of {now.Kind}. Azure SDK requires it to be UTC. You can call DateTime.SpecifyKind to change Kind property value to DateTimeKind.Utc.", exception.Message),
+                () => Assert.Equal("Azure.Data.Tables", exception.Source),
+                () => Assert.Empty(exception.Data),
+                () => Assert.Null(exception.InnerException),
+                () => Assert.Null(exception.HelpLink),
+                () => Assert.Equal(-2146233067, exception.HResult)
+            );
+        }
     }
 }

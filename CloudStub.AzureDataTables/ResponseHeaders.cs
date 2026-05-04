@@ -12,6 +12,7 @@ namespace CloudStub.AzureDataTables
         }
 
         public Guid RequestId { get; } = Guid.NewGuid();
+
         public Guid ClientRequestId { get; } = Guid.NewGuid();
     }
 
@@ -31,6 +32,20 @@ namespace CloudStub.AzureDataTables
             Add("Content-Type", "application/json;odata=minimalmetadata;streaming=true;charset=utf-8");
 
             otherConfig?.Invoke(this);
+        }
+    }
+
+    internal class TransactionActionResponseHeaders : ResponseHeaders
+    {
+        public TransactionActionResponseHeaders(string tableName, string partitionKey, string rowKey, string etag)
+        {
+            Add("X-Content-Type-Options", "nosniff");
+            Add("Cache-Control", "no-cache");
+            Add("Preference-Applied", "return-no-content");
+            Add("DataServiceVersion", "3.0;");
+            Add("Location", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
+            Add("DataServiceId", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
+            Add("ETag", etag);
         }
     }
 

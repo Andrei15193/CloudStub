@@ -534,7 +534,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             Assert.Empty(entities);
         }
 
-        [Fact(Skip = "Incomplete implementation")]
+        [Fact]
         public void Query_TakeCountEqualTo1000_ReturnsSpecifiedNumberOfEntitiesInOnePage()
         {
             CloudTable.Create();

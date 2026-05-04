@@ -536,7 +536,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
             Assert.Empty(entities);
         }
 
-        [Fact(Skip = "Incomplete implementation")]
+        [Fact]
         public async Task QueryAsync_TakeCountEqualTo1000_ReturnsSpecifiedNumberOfEntitiesInOnePage()
         {
             await CloudTable.CreateIfNotExistsAsync();

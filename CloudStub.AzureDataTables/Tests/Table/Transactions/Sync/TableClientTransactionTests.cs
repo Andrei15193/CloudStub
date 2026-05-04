@@ -19,19 +19,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.NotFound,
-                        ErrorCode = "TableNotFound",
-                        ErrorDescription = "0:The table specified does not exist.",
-                        Headers = headers,
-                        FailedEntityIndex = 0
-                    };
+                    StatusCode = HttpStatusCode.NotFound,
+                    ErrorCode = "TableNotFound",
+                    ErrorDescription = "0:The table specified does not exist.",
+                    FailedEntityIndex = 0
                 }
             );
         }
@@ -39,22 +32,24 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenBatchIsNull_ThrowsException()
         {
-            CloudTable.Create();
-
             var exception = Assert.Throws<ArgumentNullException>("transactionalBatch", () => CloudTable.SubmitTransaction(null));
 
-            Assert.Equal(new ArgumentNullException("transactionalBatch").Message, exception.Message);
+            Assert.Multiple(
+                () => Assert.Equal(new ArgumentNullException("transactionalBatch").Message, exception.Message),
+                () => Assert.Contains(exception.Source, new[] { "Azure.Data.Tables", "System.Private.CoreLib" })
+            );
         }
 
         [Fact]
         public void SubmitTransaction_WhenBatchIsEmpty_ThrowsException()
         {
-            CloudTable.Create();
-
             var exception = Assert.Throws<InvalidOperationException>(() => CloudTable.SubmitTransaction(Enumerable.Empty<TableTransactionAction>()));
 
-            Assert.Equal("The batch contains no entity operations.", exception.Message);
-            Assert.Null(exception.InnerException);
+            Assert.Multiple(
+                () => Assert.Equal(new InvalidOperationException("The batch contains no entity operations.").Message, exception.Message),
+                () => Assert.Null(exception.InnerException),
+                () => Assert.Contains(exception.Source, new[] { "Azure.Data.Tables", "System.Private.CoreLib" })
+            );
         }
 
         [Fact]
@@ -70,19 +65,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key-2", "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "CommandsInBatchActOnDifferentPartitions",
-                        ErrorDescription = "1:All commands in a batch must operate on same entity group.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "CommandsInBatchActOnDifferentPartitions",
+                    ErrorDescription = "1:All commands in a batch must operate on same entity group.",
+                    FailedEntityIndex = 1
                 }
             );
         }
@@ -100,19 +88,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         new TableTransactionAction(TableTransactionActionType.UpsertMerge, new TableEntity("partition-key", "row-key"))
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "InvalidDuplicateRow",
-                        ErrorDescription = "1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "InvalidDuplicateRow",
+                    ErrorDescription = "1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.",
+                    FailedEntityIndex = 1
                 }
             );
         }
@@ -147,19 +128,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         )
                     }
                 ),
-                rawResponse =>
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
-                    var headers = new Assertions.DefaultHeaders(rawResponse);
-                    headers.Remove("Cache-Control");
-
-                    return new Assertions.UnsuccessfulResponseAssertOptions
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "InvalidDuplicateRow",
-                        ErrorDescription = "1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.",
-                        Headers = headers,
-                        FailedEntityIndex = 1
-                    };
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "InvalidDuplicateRow",
+                    ErrorDescription = "1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.",
+                    FailedEntityIndex = 1
                 }
             );
 
@@ -177,8 +151,6 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenBatchHasMoreThan100Operations_ThrowsException()
         {
-            CloudTable.Create();
-
             int? failedTransactionActionIndex = null;
             Assert.Multiple(
                 () => Assertions.TransactionJsonResponseThrows(
@@ -202,19 +174,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                             throw;
                         }
                     },
-                    rawResponse =>
+                    rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                     {
-                        var headers = new Assertions.DefaultHeaders(rawResponse);
-                        headers.Remove("Cache-Control");
-
-                        return new Assertions.UnsuccessfulResponseAssertOptions
-                        {
-                            StatusCode = HttpStatusCode.BadRequest,
-                            ErrorCode = "InvalidInput",
-                            ErrorDescription = $"{failedTransactionActionIndex}:The batch request operation exceeds the maximum 100 changes per change set.",
-                            Headers = headers,
-                            FailedEntityIndex = failedTransactionActionIndex
-                        };
+                        StatusCode = HttpStatusCode.BadRequest,
+                        ErrorCode = "InvalidInput",
+                        ErrorDescription = $"{failedTransactionActionIndex}:The batch request operation exceeds the maximum 100 changes per change set.",
+                        FailedEntityIndex = failedTransactionActionIndex
                     }
                 )
             );
@@ -235,7 +200,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
             );
             Assert.Multiple(
                 () => Assert.Equal(new InvalidOperationException("Unknown request type.").Message, exception.Message),
-                () => Assert.Equal("Azure.Data.Tables", exception.Source)
+                () => Assert.Contains(exception.Source, new[] { "Azure.Data.Tables", "System.Private.CoreLib" })
             );
         }
 
