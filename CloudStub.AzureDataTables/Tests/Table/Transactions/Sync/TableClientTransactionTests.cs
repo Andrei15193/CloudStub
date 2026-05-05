@@ -241,7 +241,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionAddHeaders(operationResponse, CloudTable.Name, "partition-key", $"row-key-{operationNumber}"),
+                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, CloudTable.Name, "partition-key", $"row-key-{operationNumber}"),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true

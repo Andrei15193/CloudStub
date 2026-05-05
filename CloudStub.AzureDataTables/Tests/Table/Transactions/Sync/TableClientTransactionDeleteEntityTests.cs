@@ -99,7 +99,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -163,7 +163,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -227,7 +227,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -575,7 +575,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -635,7 +635,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -695,7 +695,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -755,7 +755,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TableTransactionDeleteHeaders(),
+                        Headers = new Assertions.TransactionDeleteActionHeaders(),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true

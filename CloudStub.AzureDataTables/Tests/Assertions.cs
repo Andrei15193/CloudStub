@@ -894,9 +894,9 @@ select $"{header.Name}: {headerValue}"
             }
         }
 
-        public class TableTransactionAddHeaders : Dictionary<string, string>
+        public class TransactionAddActionHeaders : Dictionary<string, string>
         {
-            public TableTransactionAddHeaders(Response response, string tableName, string partitionKey, string rowKey)
+            public TransactionAddActionHeaders(Response response, string tableName, string partitionKey, string rowKey)
             {
                 Add("X-Content-Type-Options", "nosniff");
                 Add("Cache-Control", "no-cache");
@@ -908,9 +908,9 @@ select $"{header.Name}: {headerValue}"
             }
         }
 
-        public class TableTransactionDeleteHeaders : Dictionary<string, string>
+        public class TransactionDeleteActionHeaders : Dictionary<string, string>
         {
-            public TableTransactionDeleteHeaders()
+            public TransactionDeleteActionHeaders()
             {
                 Add("X-Content-Type-Options", "nosniff");
                 Add("Cache-Control", "no-cache");

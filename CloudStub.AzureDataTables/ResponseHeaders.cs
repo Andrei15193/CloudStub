@@ -35,9 +35,9 @@ namespace CloudStub.AzureDataTables
         }
     }
 
-    internal class TransactionActionResponseHeaders : ResponseHeaders
+    internal class TransactionAddActionResponseHeaders : ResponseHeaders
     {
-        public TransactionActionResponseHeaders(string tableName, string partitionKey, string rowKey, string etag)
+        public TransactionAddActionResponseHeaders(string tableName, string partitionKey, string rowKey, string etag)
         {
             Add("X-Content-Type-Options", "nosniff");
             Add("Cache-Control", "no-cache");
@@ -46,6 +46,16 @@ namespace CloudStub.AzureDataTables
             Add("Location", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
             Add("DataServiceId", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
             Add("ETag", etag);
+        }
+    }
+
+    internal class TransactionDeleteActionResponseHeaders : ResponseHeaders
+    {
+        public TransactionDeleteActionResponseHeaders()
+        {
+            Add("X-Content-Type-Options", "nosniff");
+            Add("Cache-Control", "no-cache");
+            Add("DataServiceVersion", "1.0;");
         }
     }
 
