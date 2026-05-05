@@ -48,6 +48,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_InsertOperation_InsertsEntity()
         {
             CloudTable.Create();
+
             var result = CloudTable.SubmitTransaction(
                 new[]
                 {
@@ -64,31 +65,36 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
+            var entities = CloudTable.Query<TableEntity>();
+            var entity = Assert.Single(entities);
 
-            Assertions.TableTransactionResponse(
-                rawResponse,
-                new Assertions.SuccessfulResponseAssertOptions
-                {
-                    StatusCode = HttpStatusCode.Accepted,
-                    Headers = new Assertions.DefaultHeaders(rawResponse)
+            Assert.Multiple(
+                () => Assert.Equal("partition-key", entity.PartitionKey),
+                () => Assert.Equal("row-key", entity.RowKey),
+                () => Assertions.TableTransactionResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
                     {
-                        ["Content-Type"] = rawResponse.Headers.ContentType
+                        StatusCode = HttpStatusCode.Accepted,
+                        Headers = new Assertions.DefaultHeaders(rawResponse)
+                        {
+                            ["Content-Type"] = rawResponse.Headers.ContentType
+                        },
+                        WithoutDate = true
                     },
-                    WithoutDate = true
-                },
-                result.Value
-            );
-
-            Assertions.EmptyResponse(
-                operationResponse,
-                new Assertions.SuccessfulResponseAssertOptions
-                {
-                    StatusCode = HttpStatusCode.NoContent,
-                    Headers = new Assertions.TableTransactionHeaders(operationResponse, CloudTable.Name, "partition-key", "row-key"),
-                    WithoutRequestId = true,
-                    WithoutClientRequestId = true,
-                    WithoutDate = true
-                }
+                    result.Value
+                ),
+                () => Assertions.EmptyResponse(
+                    operationResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.NoContent,
+                        Headers = new Assertions.TableTransactionAddHeaders(operationResponse, CloudTable.Name, "partition-key", "row-key"),
+                        WithoutRequestId = true,
+                        WithoutClientRequestId = true,
+                        WithoutDate = true
+                    }
+                )
             );
         }
 

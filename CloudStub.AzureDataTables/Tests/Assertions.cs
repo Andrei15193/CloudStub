@@ -894,17 +894,27 @@ select $"{header.Name}: {headerValue}"
             }
         }
 
-        public class TableTransactionHeaders : Dictionary<string, string>
+        public class TableTransactionAddHeaders : Dictionary<string, string>
         {
-            public TableTransactionHeaders(Response response, string tableName, string partitionKey, string rowKey)
+            public TableTransactionAddHeaders(Response response, string tableName, string partitionKey, string rowKey)
             {
                 Add("X-Content-Type-Options", "nosniff");
                 Add("Cache-Control", "no-cache");
                 Add("Preference-Applied", "return-no-content");
-                Add("DataServiceVersion", "3.0;");
                 Add("Location", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
                 Add("DataServiceId", $"https://cloudstubdev.table.core.windows.net/{tableName}(PartitionKey='{partitionKey}',RowKey='{rowKey}')");
                 Add("ETag", response.Headers.ETag.ToString());
+                Add("DataServiceVersion", "3.0;");
+            }
+        }
+
+        public class TableTransactionDeleteHeaders : Dictionary<string, string>
+        {
+            public TableTransactionDeleteHeaders()
+            {
+                Add("X-Content-Type-Options", "nosniff");
+                Add("Cache-Control", "no-cache");
+                Add("DataServiceVersion", "1.0;");
             }
         }
 
