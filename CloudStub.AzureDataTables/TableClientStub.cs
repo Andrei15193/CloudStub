@@ -815,8 +815,12 @@ namespace CloudStub.AzureDataTables
                             throw new ArgumentNullException("key") { Source = "Azure.Data.Tables" };
                         break;
 
+                    case TableTransactionActionType.UpsertMerge:
+                    case TableTransactionActionType.UpsertReplace:
+
                     case TableTransactionActionType.UpdateMerge:
                     case TableTransactionActionType.UpdateReplace:
+
                     case TableTransactionActionType.Delete:
                         if (mappedTransactionAction.Entity.PartitionKey == null || mappedTransactionAction.Entity.RowKey == null)
                             throw new NullReferenceException() { Source = "Azure.Data.Tables" };
@@ -914,6 +918,43 @@ namespace CloudStub.AzureDataTables
                                             "The specified entity already exists.",
                                             mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
                                         );
+                                    break;
+                                }
+
+                            case TableTransactionActionType.UpsertMerge:
+                            case TableTransactionActionType.UpsertReplace:
+                                {
+                                    var keysContainSlashes = (
+                                        transactionActionEntity.PartitionKey.Contains("/")
+                                        || transactionActionEntity.PartitionKey.Contains("\\")
+                                        || transactionActionEntity.RowKey.Contains("/")
+                                        || transactionActionEntity.RowKey.Contains("\\")
+                                    );
+
+                                    if (transactionActionEntity.IsPartitionKeyInvalid || transactionActionEntity.IsRowKeyInvalid)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.BadRequest,
+                                            keysContainSlashes ? "InvalidInput" : "OutOfRangeInput",
+                                            keysContainSlashes ? "Bad Request - Error in query syntax." : "One of the request inputs is out of range.",
+                                            transactionActionIndex
+                                        );
+
+                                    if (transactionActionEntity.IsPartitionKeyExceedingMaxLength || transactionActionEntity.IsRowKeyExceedingMaxLength || transactionActionEntity.IsStringPropertyExceedingMaxLength || transactionActionEntity.IsBinaryPropertyExceedingMaxLength)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.BadRequest,
+                                            "PropertyValueTooLarge",
+                                            "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                                            mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
+                                        );
+
+                                    if (transactionActionEntity.InvalidDateTimeProperty != null)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.BadRequest,
+                                            "OutOfRangeInput",
+                                            $"The '{transactionActionEntity.InvalidDateTimeProperty.Value.Key}' parameter of value '{transactionActionEntity.InvalidDateTimeProperty.Value.Value:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                                            transactionActionIndex
+                                        );
+
                                     break;
                                 }
 
@@ -1133,6 +1174,7 @@ namespace CloudStub.AzureDataTables
                         response = TableStubResponseFactory.NoContentResponse(new TransactionAddActionResponseHeaders(tableItem.TableName, transactionActionEntity.PartitionKey, transactionActionEntity.RowKey, transactionActionEntity.ETag.ToString()));
                         break;
 
+                    case TableTransactionActionType.UpsertMerge:
                     case TableTransactionActionType.UpdateMerge:
                         if (tablePartition.TryGetValue(transactionActionEntity.RowKey, out var existingEntity))
                             foreach (var existingProperty in existingEntity)
@@ -1143,6 +1185,7 @@ namespace CloudStub.AzureDataTables
                         response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
                         break;
 
+                    case TableTransactionActionType.UpsertReplace:
                     case TableTransactionActionType.UpdateReplace:
                         tablePartition[transactionActionEntity.RowKey] = transactionActionEntity;
                         response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
