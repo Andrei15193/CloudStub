@@ -31,12 +31,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<NullReferenceException>(() => CloudTable.SubmitTransaction(
-                new[]
-                {
-                    new TableTransactionAction(TableTransactionActionType.Add, null)
-                }
-            ));
+            var exception = Assert.Throws<NullReferenceException>(
+                () => CloudTable.SubmitTransaction(
+                    new[]
+                    {
+                        new TableTransactionAction(TableTransactionActionType.Add, null)
+                    }
+                )
+            );
 
             Assert.Multiple(
                 () => Assert.Equal(new NullReferenceException().Message, exception.Message),
@@ -179,7 +181,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
             var guid = Guid.NewGuid();
             CloudTable.Create();
 
-            CloudTable.SubmitTransaction(
+            var result = CloudTable.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(
@@ -203,21 +205,56 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 }
             );
 
-            var entity = Assert.Single(CloudTable.Query<TableEntity>());
-            Assert.Contains(nameof(TestEntity.PartitionKey), entity);
-            Assert.Contains(nameof(TestEntity.RowKey), entity);
-            Assert.Contains(nameof(TestEntity.Timestamp), entity);
-            Assert.Contains("odata.etag", entity);
-            Assert.Equal(new byte[1 << 16], entity[nameof(TestEntity.BinaryProp)]);
-            Assert.Equal(true, entity[nameof(TestEntity.BooleanProp)]);
-            Assert.Equal(new string('t', 1 << 15), entity[nameof(TestEntity.StringProp)]);
-            Assert.Equal(4, entity[nameof(TestEntity.Int32Prop)]);
-            Assert.Equal(5L, entity[nameof(TestEntity.Int64Prop)]);
-            Assert.Equal(6D, entity[nameof(TestEntity.DoubleProp)]);
-            Assert.Equal((DateTimeOffset)DateTime.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeProp)]);
-            Assert.Equal(DateTimeOffset.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeOffsetProp)]);
-            Assert.Equal(guid, entity[nameof(TestEntity.GuidProp)]);
-            Assert.Equal(7, entity[nameof(TestEntity.DecimalProp)]);
+            var rawResponse = result.GetRawResponse();
+            var operationResponse = Assert.Single(result.Value);
+            var entities = CloudTable.Query<TableEntity>();
+            var entity = Assert.Single(entities);
+
+            Assert.Multiple(
+                () => Assert.Equal("partition-key", entity.PartitionKey),
+                () => Assert.Equal("row-key", entity.RowKey),
+                () => Assertions.TableTransactionResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.Accepted,
+                        Headers = new Assertions.DefaultHeaders(rawResponse)
+                        {
+                            ["Content-Type"] = rawResponse.Headers.ContentType
+                        },
+                        WithoutDate = true
+                    },
+                    result.Value
+                ),
+                () => Assertions.EmptyResponse(
+                    operationResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.NoContent,
+                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, CloudTable.Name, "partition-key", "row-key"),
+                        WithoutRequestId = true,
+                        WithoutClientRequestId = true,
+                        WithoutDate = true
+                    }
+                ),
+                () =>
+                {
+                    Assert.Contains(nameof(TestEntity.PartitionKey), entity);
+                    Assert.Contains(nameof(TestEntity.RowKey), entity);
+                    Assert.Contains(nameof(TestEntity.Timestamp), entity);
+                    Assert.Contains("odata.etag", entity);
+                    Assert.Equal(new byte[1 << 16], entity[nameof(TestEntity.BinaryProp)]);
+                    Assert.Equal(true, entity[nameof(TestEntity.BooleanProp)]);
+                    Assert.Equal(new string('t', 1 << 15), entity[nameof(TestEntity.StringProp)]);
+                    Assert.Equal(4, entity[nameof(TestEntity.Int32Prop)]);
+                    Assert.Equal(5L, entity[nameof(TestEntity.Int64Prop)]);
+                    Assert.Equal(6D, entity[nameof(TestEntity.DoubleProp)]);
+                    Assert.Equal((DateTimeOffset)DateTime.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeProp)]);
+                    Assert.Equal(DateTimeOffset.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeOffsetProp)]);
+                    Assert.Equal(guid, entity[nameof(TestEntity.GuidProp)]);
+                    Assert.Equal(7, entity[nameof(TestEntity.DecimalProp)]);
+                }
+            );
         }
 
         [Fact]

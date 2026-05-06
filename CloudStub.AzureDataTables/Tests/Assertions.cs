@@ -918,6 +918,17 @@ select $"{header.Name}: {headerValue}"
             }
         }
 
+        public class TransactionUpdateActionHeaders : Dictionary<string, string>
+        {
+            public TransactionUpdateActionHeaders(Response response)
+            {
+                Add("X-Content-Type-Options", "nosniff");
+                Add("Cache-Control", "no-cache");
+                Add("ETag", response.Headers.ETag.ToString());
+                Add("DataServiceVersion", "1.0;");
+            }
+        }
+
         public class XmlContentHeaders : DefaultHeaders
         {
             public XmlContentHeaders(Response response) : base(response)
