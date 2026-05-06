@@ -801,7 +801,7 @@ namespace CloudStub.AzureDataTables
                 return new TableTransactionAction(
                     tableTransactionAction.ActionType,
                     validatedEntity,
-                    tableTransactionAction.ETag == default ? ETag.All : tableTransactionAction.ETag
+                    tableTransactionAction.ETag
                 );
             }));
 
@@ -815,6 +815,7 @@ namespace CloudStub.AzureDataTables
                             throw new ArgumentNullException("key") { Source = "Azure.Data.Tables" };
                         break;
 
+                    case TableTransactionActionType.UpdateMerge:
                     case TableTransactionActionType.Delete:
                         if (mappedTransactionAction.Entity.PartitionKey == null || mappedTransactionAction.Entity.RowKey == null)
                             throw new NullReferenceException() { Source = "Azure.Data.Tables" };
@@ -915,6 +916,63 @@ namespace CloudStub.AzureDataTables
                                     break;
                                 }
 
+                            case TableTransactionActionType.UpdateMerge:
+                                {
+                                    var keysContainSlashes = (
+                                        transactionActionEntity.PartitionKey.Contains("/")
+                                        || transactionActionEntity.PartitionKey.Contains("\\")
+                                        || transactionActionEntity.RowKey.Contains("/")
+                                        || transactionActionEntity.RowKey.Contains("\\")
+                                    );
+
+                                    if (transactionActionEntity.IsPartitionKeyInvalid || transactionActionEntity.IsRowKeyInvalid)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.BadRequest,
+                                            keysContainSlashes ? "InvalidInput" : "OutOfRangeInput",
+                                            keysContainSlashes ? "Bad Request - Error in query syntax." : "One of the request inputs is out of range.",
+                                            transactionActionIndex
+                                        );
+
+                                    if (transactionActionEntity.IsPartitionKeyExceedingMaxLength || transactionActionEntity.IsRowKeyExceedingMaxLength || transactionActionEntity.IsStringPropertyExceedingMaxLength || transactionActionEntity.IsBinaryPropertyExceedingMaxLength)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.BadRequest,
+                                            "PropertyValueTooLarge",
+                                            "The property value exceeds the maximum allowed size (64KB). If the property value is a string, it is UTF-16 encoded and the maximum number of characters should be 32K or less.",
+                                            mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
+                                        );
+
+                                    if (transactionActionEntity.InvalidDateTimeProperty != null)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.BadRequest,
+                                            "OutOfRangeInput",
+                                            $"The '{transactionActionEntity.InvalidDateTimeProperty.Value.Key}' parameter of value '{transactionActionEntity.InvalidDateTimeProperty.Value.Value:MM/dd/yyyy HH:mm:ss}' is out of range.",
+                                            transactionActionIndex
+                                        );
+
+                                    if (
+                                        tableItem.TryGetValue(transactionActionEntity.PartitionKey, out var tablePartition)
+                                        && tablePartition.TryGetValue(transactionActionEntity.RowKey, out var tableRow)
+                                    )
+                                    {
+                                        if (transactionAction.ETag != default && transactionAction.ETag != ETag.All && transactionAction.ETag != tableRow.ETag)
+                                            throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                                HttpStatusCode.PreconditionFailed,
+                                                "UpdateConditionNotSatisfied",
+                                                "The update condition specified in the request was not satisfied.",
+                                                mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
+                                            );
+                                    }
+                                    else if (transactionAction.ETag != default)
+                                        throw TableStubResponseFactory.TransactionJsonRequestFailedException(
+                                            HttpStatusCode.NotFound,
+                                            "ResourceNotFound",
+                                            "The specified resource does not exist.",
+                                            mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
+                                        );
+
+                                    break;
+                                }
+
                             case TableTransactionActionType.Delete:
                                 {
                                     var keysContainSlashes = (
@@ -923,6 +981,7 @@ namespace CloudStub.AzureDataTables
                                         || transactionActionEntity.RowKey.Contains("/")
                                         || transactionActionEntity.RowKey.Contains("\\")
                                     );
+
                                     if (transactionActionEntity.IsPartitionKeyInvalid || transactionActionEntity.IsRowKeyInvalid)
                                         throw TableStubResponseFactory.TransactionJsonRequestFailedException(
                                             HttpStatusCode.BadRequest,
@@ -942,13 +1001,14 @@ namespace CloudStub.AzureDataTables
                                             mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
                                         );
 
-                                    if (transactionAction.ETag != ETag.All && transactionAction.ETag != tableRow.ETag)
+                                    if (transactionAction.ETag != default && transactionAction.ETag != ETag.All && transactionAction.ETag != tableRow.ETag)
                                         throw TableStubResponseFactory.TransactionJsonRequestFailedException(
                                             HttpStatusCode.PreconditionFailed,
                                             "UpdateConditionNotSatisfied",
                                             "The update condition specified in the request was not satisfied.",
                                             mappedTransactionActions.Count > 1 ? transactionActionIndex : (int?)null
                                         );
+
                                     break;
                                 }
                         }
@@ -1069,6 +1129,16 @@ namespace CloudStub.AzureDataTables
                     case TableTransactionActionType.Add:
                         tablePartition.Add(transactionActionEntity.RowKey, transactionActionEntity);
                         response = TableStubResponseFactory.NoContentResponse(new TransactionAddActionResponseHeaders(tableItem.TableName, transactionActionEntity.PartitionKey, transactionActionEntity.RowKey, transactionActionEntity.ETag.ToString()));
+                        break;
+
+                    case TableTransactionActionType.UpdateMerge:
+                        if (tablePartition.TryGetValue(transactionActionEntity.RowKey, out var existingEntity))
+                            foreach (var existingProperty in existingEntity)
+                                if (!transactionActionEntity.ContainsKey(existingProperty.Key))
+                                    transactionActionEntity.Add(existingProperty.Key, existingProperty.Value);
+
+                        tablePartition[transactionActionEntity.RowKey] = transactionActionEntity;
+                        response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
                         break;
 
                     case TableTransactionActionType.Delete:

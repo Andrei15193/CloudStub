@@ -265,6 +265,43 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         }
 
         [Fact]
+        public void SubmitTransaction_WhenMultipleEntitiesDoNotExist_ThrowsException()
+        {
+            CloudTable.Create();
+
+            Assertions.TransactionJsonResponseThrows(
+                () => CloudTable.SubmitTransaction(
+                    new[]
+                    {
+                        new TableTransactionAction(
+                            TableTransactionActionType.Delete,
+                            new TableEntity
+                            {
+                                PartitionKey =  new string('t', 1 << 10 + 1),
+                                RowKey = new string('t', 1 << 10 + 1)
+                            }
+                        ),
+                        new TableTransactionAction(
+                            TableTransactionActionType.Delete,
+                            new TableEntity
+                            {
+                                PartitionKey =  new string('t', 1 << 10 + 1),
+                                RowKey = "row-key-1"
+                            }
+                        )
+                    }
+                ),
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "0:The specified resource does not exist.",
+                    FailedEntityIndex = 0
+                }
+            );
+        }
+
+        [Fact]
         public void SubmitTransaction_WithMultipleEntitiesWhenOneDoesNotExist_ThrowsException()
         {
             CloudTable.Create();

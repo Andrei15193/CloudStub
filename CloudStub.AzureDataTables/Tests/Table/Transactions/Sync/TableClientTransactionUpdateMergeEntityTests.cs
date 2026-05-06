@@ -315,45 +315,153 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         }
 
         [Fact]
-        public void SubmitTransaction_WhenEntityDoesNotExist_ThrowsException()
+        public void SubmitTransaction_WhenEntityDoesNotExistWithDefaultEtag_InsertsEntity()
         {
             CloudTable.Create();
 
-            CloudTable.SubmitTransaction(
+            var guid = Guid.NewGuid();
+            var result = CloudTable.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(
                         TableTransactionActionType.UpdateMerge,
-                        new TableEntity
+                        new TestEntity
                         {
                             PartitionKey = "partition-key",
-                            RowKey = "row-key"
+                            RowKey = "row-key",
+                            BinaryProp = new byte[1 << 16],
+                            BooleanProp = true,
+                            StringProp = new string('t', 1 << 15),
+                            Int32Prop = 4,
+                            Int64Prop = 5,
+                            DoubleProp = 6,
+                            DateTimeProp = DateTime.MaxValue.ToUniversalTime(),
+                            DateTimeOffsetProp = DateTimeOffset.MaxValue.ToUniversalTime(),
+                            GuidProp = guid,
+                            DecimalProp = 7
                         }
                     )
                 }
             );
 
-            // Assertions.TransactionJsonResponseThrows(
-            //     () => CloudTable.SubmitTransaction(
-            //         new[]
-            //         {
-            //             new TableTransactionAction(
-            //                 TableTransactionActionType.UpdateMerge,
-            //                 new TableEntity
-            //                 {
-            //                     PartitionKey = "partition-key",
-            //                     RowKey = "row-key"
-            //                 }
-            //             )
-            //         }
-            //     ),
-            //     rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
-            //     {
-            //         StatusCode = HttpStatusCode.NotFound,
-            //         ErrorCode = "ResourceNotFound",
-            //         ErrorDescription = "The specified resource does not exist."
-            //     }
-            // );
+            var rawResponse = result.GetRawResponse();
+            var operationResponse = Assert.Single(result.Value);
+            var entities = CloudTable.Query<TableEntity>();
+            var entity = Assert.Single(entities);
+
+            Assert.Multiple(
+                () => Assert.Equal("partition-key", entity.PartitionKey),
+                () => Assert.Equal("row-key", entity.RowKey),
+                () => Assertions.TableTransactionResponse(
+                    rawResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.Accepted,
+                        Headers = new Assertions.DefaultHeaders(rawResponse)
+                        {
+                            ["Content-Type"] = rawResponse.Headers.ContentType
+                        },
+                        WithoutDate = true
+                    },
+                    result.Value
+                ),
+                () => Assertions.EmptyResponse(
+                    operationResponse,
+                    new Assertions.SuccessfulResponseAssertOptions
+                    {
+                        StatusCode = HttpStatusCode.NoContent,
+                        Headers = new Assertions.TransactionUpdateActionHeaders(operationResponse),
+                        WithoutRequestId = true,
+                        WithoutClientRequestId = true,
+                        WithoutDate = true
+                    }
+                ),
+                () =>
+                {
+                    Assert.Contains(nameof(TestEntity.PartitionKey), entity);
+                    Assert.Contains(nameof(TestEntity.RowKey), entity);
+                    Assert.Contains(nameof(TestEntity.Timestamp), entity);
+                    Assert.Contains("odata.etag", entity);
+                    Assert.Equal(new byte[1 << 16], entity[nameof(TestEntity.BinaryProp)]);
+                    Assert.Equal(true, entity[nameof(TestEntity.BooleanProp)]);
+                    Assert.Equal(new string('t', 1 << 15), entity[nameof(TestEntity.StringProp)]);
+                    Assert.Equal(4, entity[nameof(TestEntity.Int32Prop)]);
+                    Assert.Equal(5L, entity[nameof(TestEntity.Int64Prop)]);
+                    Assert.Equal(6D, entity[nameof(TestEntity.DoubleProp)]);
+                    Assert.Equal((DateTimeOffset)DateTime.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeProp)]);
+                    Assert.Equal(DateTimeOffset.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeOffsetProp)]);
+                    Assert.Equal(guid, entity[nameof(TestEntity.GuidProp)]);
+                    Assert.Equal(7, entity[nameof(TestEntity.DecimalProp)]);
+                }
+            );
+        }
+
+        [Fact]
+        public void SubmitTransaction_WhenEntityDoesNotExistAndEtagIsWildcard_InsertsEntity()
+        {
+            CloudTable.Create();
+
+            Assertions.TransactionJsonResponseThrows(
+                () => CloudTable.SubmitTransaction(
+                    new[]
+                    {
+                        new TableTransactionAction(
+                            TableTransactionActionType.UpdateMerge,
+                            new TableEntity
+                            {
+                                PartitionKey = "partition-key",
+                                RowKey = "row-key",
+                            },
+                            ETag.All
+                        )
+                    }
+                ),
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "The specified resource does not exist."
+                }
+            );
+        }
+
+        [Fact]
+        public void SubmitTransaction_WhenMultipleEntitiesDoNotExistAndEtagIsWildcard_InsertsEntity()
+        {
+            CloudTable.Create();
+
+            Assertions.TransactionJsonResponseThrows(
+                () => CloudTable.SubmitTransaction(
+                    new[]
+                    {
+                        new TableTransactionAction(
+                            TableTransactionActionType.UpdateMerge,
+                            new TableEntity
+                            {
+                                PartitionKey = "partition-key",
+                                RowKey = "row-key-1",
+                            },
+                            ETag.All
+                        ),
+                        new TableTransactionAction(
+                            TableTransactionActionType.UpdateMerge,
+                            new TableEntity
+                            {
+                                PartitionKey = "partition-key",
+                                RowKey = "row-key-2",
+                            },
+                            ETag.All
+                        )
+                    }
+                ),
+                rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    ErrorCode = "ResourceNotFound",
+                    ErrorDescription = "0:The specified resource does not exist.",
+                    FailedEntityIndex = 0
+                }
+            );
         }
 
         [Fact]

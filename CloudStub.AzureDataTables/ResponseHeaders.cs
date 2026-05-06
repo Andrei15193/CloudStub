@@ -49,6 +49,17 @@ namespace CloudStub.AzureDataTables
         }
     }
 
+    internal class TransactionMergeActionResponseHeaders : ResponseHeaders
+    {
+        public TransactionMergeActionResponseHeaders(string etag)
+        {
+            Add("X-Content-Type-Options", "nosniff");
+            Add("Cache-Control", "no-cache");
+            Add("DataServiceVersion", "1.0;");
+            Add("ETag", etag);
+        }
+    }
+
     internal class TransactionDeleteActionResponseHeaders : ResponseHeaders
     {
         public TransactionDeleteActionResponseHeaders()
