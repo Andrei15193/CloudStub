@@ -816,6 +816,7 @@ namespace CloudStub.AzureDataTables
                         break;
 
                     case TableTransactionActionType.UpdateMerge:
+                    case TableTransactionActionType.UpdateReplace:
                     case TableTransactionActionType.Delete:
                         if (mappedTransactionAction.Entity.PartitionKey == null || mappedTransactionAction.Entity.RowKey == null)
                             throw new NullReferenceException() { Source = "Azure.Data.Tables" };
@@ -917,6 +918,7 @@ namespace CloudStub.AzureDataTables
                                 }
 
                             case TableTransactionActionType.UpdateMerge:
+                            case TableTransactionActionType.UpdateReplace:
                                 {
                                     var keysContainSlashes = (
                                         transactionActionEntity.PartitionKey.Contains("/")
@@ -1137,6 +1139,11 @@ namespace CloudStub.AzureDataTables
                                 if (!transactionActionEntity.ContainsKey(existingProperty.Key))
                                     transactionActionEntity.Add(existingProperty.Key, existingProperty.Value);
 
+                        tablePartition[transactionActionEntity.RowKey] = transactionActionEntity;
+                        response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
+                        break;
+
+                    case TableTransactionActionType.UpdateReplace:
                         tablePartition[transactionActionEntity.RowKey] = transactionActionEntity;
                         response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
                         break;

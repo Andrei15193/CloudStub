@@ -7,7 +7,7 @@ using Xunit;
 
 namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 {
-    public class TableClientTransactionUpdateMergeEntityTests : BaseTableCloudStubTests
+    public class TableClientTransactionUpdateReplaceEntityTests : BaseTableCloudStubTests
     {
         [Fact]
         public void SubmitTransaction_WhenTableDoesNotExist_ThrowsException()
@@ -16,7 +16,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
-                        new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity("partition-key", "row-key"))
+                        new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", "row-key"))
                     }
                 ),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
@@ -35,7 +35,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
             var exception = Assert.Throws<NullReferenceException>(() => CloudTable.SubmitTransaction(
                 new[]
                 {
-                    new TableTransactionAction(TableTransactionActionType.UpdateMerge, null)
+                    new TableTransactionAction(TableTransactionActionType.UpdateReplace, null)
                 }
             ));
 
@@ -46,7 +46,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         }
 
         [Fact]
-        public void SubmitTransaction_WhenETagIsMissing_MergesEntities()
+        public void SubmitTransaction_WhenETagIsMissing_ReplacesEntity()
         {
             var guid = Guid.NewGuid();
             CloudTable.Create();
@@ -62,7 +62,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 new[]
                 {
                     new TableTransactionAction(
-                        TableTransactionActionType.UpdateMerge,
+                        TableTransactionActionType.UpdateReplace,
                         new TestEntity
                         {
                             PartitionKey = "partition-key",
@@ -121,8 +121,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     Assert.Equal(new byte[1 << 16], entity[nameof(TestEntity.BinaryProp)]);
                     Assert.Equal(true, entity[nameof(TestEntity.BooleanProp)]);
                     Assert.Equal(new string('t', 1 << 15), entity[nameof(TestEntity.StringProp)]);
-                    Assert.Equal(14, entity[nameof(TestEntity.Int32Prop)]);
-                    Assert.Equal(15L, entity[nameof(TestEntity.Int64Prop)]);
+                    Assert.DoesNotContain(nameof(TestEntity.Int32Prop), entity);
+                    Assert.DoesNotContain(nameof(TestEntity.Int64Prop), entity);
                     Assert.Equal(6D, entity[nameof(TestEntity.DoubleProp)]);
                     Assert.Equal((DateTimeOffset)DateTime.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeProp)]);
                     Assert.Equal(DateTimeOffset.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeOffsetProp)]);
@@ -133,7 +133,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         }
 
         [Fact]
-        public void SubmitTransaction_WhenETagsIsWildcard_MergesEntities()
+        public void SubmitTransaction_WhenETagsIsWildcard_ReplacesEntity()
         {
             var guid = Guid.NewGuid();
             CloudTable.Create();
@@ -149,7 +149,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 new[]
                 {
                     new TableTransactionAction(
-                        TableTransactionActionType.UpdateMerge,
+                        TableTransactionActionType.UpdateReplace,
                         new TestEntity
                         {
                             PartitionKey = "partition-key",
@@ -209,8 +209,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     Assert.Equal(new byte[1 << 16], entity[nameof(TestEntity.BinaryProp)]);
                     Assert.Equal(true, entity[nameof(TestEntity.BooleanProp)]);
                     Assert.Equal(new string('t', 1 << 15), entity[nameof(TestEntity.StringProp)]);
-                    Assert.Equal(14, entity[nameof(TestEntity.Int32Prop)]);
-                    Assert.Equal(15L, entity[nameof(TestEntity.Int64Prop)]);
+                    Assert.DoesNotContain(nameof(TestEntity.Int32Prop), entity);
+                    Assert.DoesNotContain(nameof(TestEntity.Int64Prop), entity);
                     Assert.Equal(6D, entity[nameof(TestEntity.DoubleProp)]);
                     Assert.Equal((DateTimeOffset)DateTime.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeProp)]);
                     Assert.Equal(DateTimeOffset.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeOffsetProp)]);
@@ -221,7 +221,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         }
 
         [Fact]
-        public void SubmitTransaction_WhenETagsMatch_MergesEntities()
+        public void SubmitTransaction_WhenETagsMatch_ReplacesEntity()
         {
             var guid = Guid.NewGuid();
             CloudTable.Create();
@@ -237,7 +237,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 new[]
                 {
                     new TableTransactionAction(
-                        TableTransactionActionType.UpdateMerge,
+                        TableTransactionActionType.UpdateReplace,
                         new TestEntity
                         {
                             PartitionKey = "partition-key",
@@ -297,8 +297,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     Assert.Equal(new byte[1 << 16], entity[nameof(TestEntity.BinaryProp)]);
                     Assert.Equal(true, entity[nameof(TestEntity.BooleanProp)]);
                     Assert.Equal(new string('t', 1 << 15), entity[nameof(TestEntity.StringProp)]);
-                    Assert.Equal(14, entity[nameof(TestEntity.Int32Prop)]);
-                    Assert.Equal(15L, entity[nameof(TestEntity.Int64Prop)]);
+                    Assert.DoesNotContain(nameof(TestEntity.Int32Prop), entity);
+                    Assert.DoesNotContain(nameof(TestEntity.Int64Prop), entity);
                     Assert.Equal(6D, entity[nameof(TestEntity.DoubleProp)]);
                     Assert.Equal((DateTimeOffset)DateTime.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeProp)]);
                     Assert.Equal(DateTimeOffset.MaxValue.ToUniversalTime(), entity[nameof(TestEntity.DateTimeOffsetProp)]);
@@ -318,7 +318,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 new[]
                 {
                     new TableTransactionAction(
-                        TableTransactionActionType.UpdateMerge,
+                        TableTransactionActionType.UpdateReplace,
                         new TestEntity
                         {
                             PartitionKey = "partition-key",
@@ -400,7 +400,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new[]
                     {
                         new TableTransactionAction(
-                            TableTransactionActionType.UpdateMerge,
+                            TableTransactionActionType.UpdateReplace,
                             new TableEntity
                             {
                                 PartitionKey = "partition-key",
@@ -429,7 +429,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new[]
                     {
                         new TableTransactionAction(
-                            TableTransactionActionType.UpdateMerge,
+                            TableTransactionActionType.UpdateReplace,
                             new TableEntity
                             {
                                 PartitionKey = "partition-key",
@@ -438,7 +438,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                             ETag.All
                         ),
                         new TableTransactionAction(
-                            TableTransactionActionType.UpdateMerge,
+                            TableTransactionActionType.UpdateReplace,
                             new TableEntity
                             {
                                 PartitionKey = "partition-key",
@@ -470,14 +470,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 Int32Prop = 14,
                 Int64Prop = 15
             });
-            CloudTable.UpdateEntity(new TableEntity { PartitionKey = "partition-key", RowKey = "row-key" }, addResult.Headers.ETag.Value, TableUpdateMode.Merge);
+            CloudTable.UpdateEntity(new TableEntity { PartitionKey = "partition-key", RowKey = "row-key" }, addResult.Headers.ETag.Value, TableUpdateMode.Replace);
 
             Assertions.TransactionJsonResponseThrows(
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(
-                            TableTransactionActionType.UpdateMerge,
+                            TableTransactionActionType.UpdateReplace,
                             new TableEntity
                             {
                                 PartitionKey = "partition-key",
@@ -503,7 +503,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
-                        new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity(null, "row-key"))
+                        new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity(null, "row-key"))
                     }
                 )
             );
@@ -526,7 +526,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         () => CloudTable.SubmitTransaction(
                             new[]
                             {
-                                new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity(partitionKey, "row-key"))
+                                new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity(partitionKey, "row-key"))
                             }
                         ),
                         rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
@@ -544,7 +544,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         () => CloudTable.SubmitTransaction(
                             new[]
                             {
-                                new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity(partitionKey, "row-key"))
+                                new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity(partitionKey, "row-key"))
                             }
                         ),
                         rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
@@ -566,7 +566,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
-                        new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity("partition-key", null))
+                        new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", null))
                     }
                 )
             );
@@ -589,7 +589,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         () => CloudTable.SubmitTransaction(
                             new[]
                             {
-                                new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity("partition-key", rowKey))
+                                new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", rowKey))
                             }
                         ),
                         rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
@@ -607,7 +607,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                         () => CloudTable.SubmitTransaction(
                             new[]
                             {
-                                new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TableEntity("partition-key", rowKey))
+                                new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", rowKey))
                             }
                         ),
                         rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
@@ -632,7 +632,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
-                        new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TestEntity
+                        new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TestEntity
                         {
                             PartitionKey = "partition-key",
                             RowKey = "row-key",
@@ -659,7 +659,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
-                        new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TestEntity
+                        new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TestEntity
                         {
                             PartitionKey = "partition-key",
                             RowKey = "row-key",
@@ -686,7 +686,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 () => CloudTable.SubmitTransaction(
                     new[]
                     {
-                        new TableTransactionAction(TableTransactionActionType.UpdateMerge, new TestEntity
+                        new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TestEntity
                         {
                             PartitionKey = "partition-key",
                             RowKey = "row-key",
@@ -712,7 +712,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 new[]
                 {
                     new TableTransactionAction(
-                        TableTransactionActionType.UpdateMerge,
+                        TableTransactionActionType.UpdateReplace,
                         new TestEntity
                         {
                             PartitionKey = "partition-key",
