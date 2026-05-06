@@ -6,7 +6,6 @@ using Xunit;
 
 namespace CloudStub.Azure.Cosmos.Table.Tests.TableBatchOperationTests.Async
 {
-    // Not covered for GH-20
     public class StubCloudTableEntityInsertOrMergeTableBatchOperationTests : BaseStubCloudTableTests
     {
         [Fact]
