@@ -49,12 +49,17 @@ jobs:
         $baseVersion = $versionInfo[0]
         $revision = if ($versionInfo.Length -eq 1) { 0 } else { [int]([DateTime]::UtcNow - [DateTime]::UtcNow.Date).TotalMinutes }
 
+        $releaseNotes = '${{ github.event.release.body }}' -split '## Release Notes' `
+        | Select-Object -Last 1 `
+        | ForEach-Object { $_.Trim() }
+
         dotnet pack CloudStub.AzureDataTables/CloudStub.AzureDataTables.csproj `
           --configuration Release `
           --output Publish `
           -property:Version="$($baseVersion).$($revision)" `
           -property:PackageVersion='${{ github.event.release.tag_name }}' `
           -property:RepositoryCommit=${{ github.event.head_commit.id }} `
+          -property:PackageReleaseNotes=$releaseNotes `
           -property:SignAssembly=True `
           -property:AssemblyOriginatorKeyFile=../CloudStub.snk
 
