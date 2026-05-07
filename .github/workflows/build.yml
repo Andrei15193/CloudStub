@@ -27,7 +27,7 @@ jobs:
     - name: Checkout sources
       uses: actions/checkout@v6
 
-    - name: Check if Tests are Included in NuGet Package
+    - name: Check if Tests are Excluded in NuGet Package
       env:
         DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       run: dotnet run --project ./.github/workflows/CheckTestAreNotIncluded --configuration Release
