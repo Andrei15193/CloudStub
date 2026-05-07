@@ -16,7 +16,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task UpdateEntityReplaceAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.UpdateEntityAsync(
+                () => TableClient.UpdateEntityAsync(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -44,7 +44,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task UpdateEntityReplaceAsync_WhenEntityIsNull_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => CloudTable.UpdateEntityAsync<TableEntity>(null, ETag.All, TableUpdateMode.Replace));
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>("entity", () => TableClient.UpdateEntityAsync<TableEntity>(null, ETag.All, TableUpdateMode.Replace));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
             Assert.Equal("Azure.Data.Tables", exception.Source);
         }
@@ -54,7 +54,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         {
             var exception = await Assert.ThrowsAsync<ArgumentException>(
                 "ifMatch",
-                () => CloudTable.UpdateEntityAsync(
+                () => TableClient.UpdateEntityAsync(
                     new TableEntity
                     {
                         PartitionKey = "partition-key",
@@ -71,7 +71,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task UpdateEntityReplaceAsync_WhenUpdateModeIsNotSupported_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentException>(() => CloudTable.UpdateEntityAsync(new TableEntity("partition-key", "row-key"), ETag.All, (TableUpdateMode)(-1)));
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => TableClient.UpdateEntityAsync(new TableEntity("partition-key", "row-key"), ETag.All, (TableUpdateMode)(-1)));
              Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
@@ -90,12 +90,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 RowKey = "row-key",
                 Int32Prop = 8
             };
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(testEntity);
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(testEntity);
 
-            var response = await CloudTable.UpdateEntityAsync(updatedTestEntity, ETag.All, TableUpdateMode.Replace);
+            var response = await TableClient.UpdateEntityAsync(updatedTestEntity, ETag.All, TableUpdateMode.Replace);
 
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
+            var entities = await TableClient.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
@@ -129,8 +129,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 RowKey = "row-key",
                 StringProp = "string-prop"
             };
-            await CloudTable.CreateAsync();
-            var response = await CloudTable.AddEntityAsync(testEntity);
+            await TableClient.CreateAsync();
+            var response = await TableClient.AddEntityAsync(testEntity);
             var updatedTestEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
@@ -138,9 +138,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 Int32Prop = 8
             };
 
-            response = await CloudTable.UpdateEntityAsync(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace);
+            response = await TableClient.UpdateEntityAsync(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace);
 
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
+            var entities = await TableClient.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
@@ -168,8 +168,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task UpdateEntityReplaceAsync_WhenDynamicEntityHasNullProperties_TheyAreRemoved()
         {
-            await CloudTable.CreateAsync();
-            var tableResult = await CloudTable.AddEntityAsync(
+            await TableClient.CreateAsync();
+            var tableResult = await TableClient.AddEntityAsync(
                 new TableEntity(
                     new Dictionary<string, object>
                     {
@@ -182,7 +182,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 }
             );
 
-            var response = await CloudTable.UpdateEntityAsync(
+            var response = await TableClient.UpdateEntityAsync(
                 new TableEntity(
                     new Dictionary<string, object>
                     {
@@ -197,7 +197,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 TableUpdateMode.Replace
             );
 
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
+            var entities = await TableClient.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
@@ -228,10 +228,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = new string('t', 1 << 10 + 1),
                 RowKey = new string('t', 1 << 10 + 1)
             };
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                 response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.NotFound,
@@ -250,17 +250,17 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            await CloudTable.CreateAsync();
-            var response = await CloudTable.AddEntityAsync(testEntity);
+            await TableClient.CreateAsync();
+            var response = await TableClient.AddEntityAsync(testEntity);
             var updatedTestEntity = new TableEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            await CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace);
+            await TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace);
 
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.UpdateEntityAsync(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace),
+                () => TableClient.UpdateEntityAsync(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace),
                 updateResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.PreconditionFailed,
@@ -279,11 +279,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = null,
                 RowKey = "row-key"
             };
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "PartitionKey",
-                () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace)
+                () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace)
             );
 
             Assert.Equal(new ArgumentNullException("PartitionKey").Message, exception.Message);
@@ -298,14 +298,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = partitionKey,
                 RowKey = "row-key"
             };
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             switch (partitionKey)
             {
                 case "/":
                 case "\\":
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -318,7 +318,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 case "\u0000":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -371,7 +371,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 case "\u0090":
                 case "\u009D":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -387,7 +387,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 default:
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -408,11 +408,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = "partition-key",
                 RowKey = null
             };
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "RowKey",
-                () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace)
+                () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace)
             );
 
             Assert.Equal(new ArgumentNullException("RowKey").Message, exception.Message);
@@ -427,14 +427,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = "partition-key",
                 RowKey = rowKey
             };
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             switch (rowKey)
             {
                 case "/":
                 case "\\":
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -447,7 +447,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 case "\u0000":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -500,7 +500,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 case "\u0090":
                 case "\u009D":
                     await Assertions.InvalidUrlThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -516,7 +516,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
 
                 default:
                     await Assertions.JsonResponseThrowsAsync(
-                        () => CloudTable.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntityAsync(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -544,11 +544,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 StringProp = stringPropValue,
                 ETag = testEntity.ETag
             };
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(testEntity);
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(testEntity);
 
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.UpdateEntityAsync(
+                () => TableClient.UpdateEntityAsync(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -576,11 +576,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
             };
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(testEntity);
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(testEntity);
 
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.UpdateEntityAsync(
+                () => TableClient.UpdateEntityAsync(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -608,11 +608,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(testEntity);
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(testEntity);
 
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.UpdateEntityAsync(
+                () => TableClient.UpdateEntityAsync(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -641,7 +641,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task UpdateEntityReplaceAsync_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             var now = DateTime.Now;
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => CloudTable.UpdateEntityAsync(
+            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => TableClient.UpdateEntityAsync(
                 new TestEntity
                 {
                     PartitionKey = "partition-key",

@@ -18,7 +18,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = "row-key"
             };
 
-            var response = CloudTable.DeleteEntity(testEntity);
+            var response = TableClient.DeleteEntity(testEntity);
 
             Assertions.UnsuccessfulJsonResponse(
                 response,
@@ -35,7 +35,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void DeleteEntity_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.DeleteEntity(null));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableClient.DeleteEntity(null));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
@@ -47,9 +47,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = new string('t', 1 << 10 + 1),
                 RowKey = new string('t', 1 << 10 + 1)
             };
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.DeleteEntity(testEntity);
+            var response = TableClient.DeleteEntity(testEntity);
 
             Assertions.UnsuccessfulJsonResponse(
                 response,
@@ -80,10 +80,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 Int32Prop = 8,
                 Int64Prop = 8
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var response = CloudTable.DeleteEntity(testEntityToRemove);
+            var response = TableClient.DeleteEntity(testEntityToRemove);
 
             Assertions.EmptyResponse(
                 response,
@@ -105,8 +105,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 StringProp = "string-prop",
                 Int32Prop = 4
             };
-            CloudTable.Create();
-            var response = CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            var response = TableClient.AddEntity(testEntity);
             Assert.NotEqual(ETag.All, response.Headers.ETag.Value);
 
             var testEntityToRemove = new TestEntity
@@ -117,7 +117,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 Int64Prop = 8
             };
 
-            response = CloudTable.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value);
+            response = TableClient.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value);
 
             Assertions.EmptyResponse(
                 response,
@@ -137,8 +137,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            CloudTable.Create();
-            var response = CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            var response = TableClient.AddEntity(testEntity);
             Assert.NotEqual(ETag.All, response.Headers.ETag.Value);
 
             var testEntityToRemove = new TestEntity
@@ -148,7 +148,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 Int32Prop = 8,
                 Int64Prop = 8
             };
-            CloudTable.UpdateEntity(
+            TableClient.UpdateEntity(
                 new TestEntity
                 {
                     PartitionKey = testEntity.PartitionKey,
@@ -161,7 +161,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
             );
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value),
+                () => TableClient.DeleteEntity(testEntityToRemove, response.Headers.ETag.Value),
                 deleteEntityResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.PreconditionFailed,
@@ -170,7 +170,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     ErrorDescription = "The update condition specified in the request was not satisfied."
                 }
             );
-            Assert.Single(CloudTable.Query<TableEntity>());
+            Assert.Single(TableClient.Query<TableEntity>());
         }
 
         [Fact]
@@ -181,11 +181,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = null,
                 RowKey = "row-key"
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
                 "partitionKey",
-                () => CloudTable.DeleteEntity(testEntity)
+                () => TableClient.DeleteEntity(testEntity)
             );
 
             Assert.Equal(new ArgumentNullException("partitionKey").Message, exception.Message);
@@ -199,14 +199,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = partitionKey,
                 RowKey = "row-key"
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (partitionKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -219,7 +219,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -272,7 +272,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -288,7 +288,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -309,11 +309,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = null
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
                 "rowKey",
-                () => CloudTable.DeleteEntity(testEntity)
+                () => TableClient.DeleteEntity(testEntity)
             );
 
             Assert.Equal(new ArgumentNullException("rowKey").Message, exception.Message);
@@ -327,14 +327,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = rowKey
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (rowKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -347,7 +347,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -400,7 +400,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -416,7 +416,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.DeleteEntity(testEntity),
+                        () => TableClient.DeleteEntity(testEntity),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -443,12 +443,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = testEntity.RowKey,
                 StringProp = stringPropValue
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            CloudTable.DeleteEntity(testEntityToRemove);
+            TableClient.DeleteEntity(testEntityToRemove);
 
-            Assert.Empty(CloudTable.Query<TableEntity>());
+            Assert.Empty(TableClient.Query<TableEntity>());
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
@@ -465,12 +465,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = testEntity.RowKey,
                 BinaryProp = binaryPropValue
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            CloudTable.DeleteEntity(testEntityToRemove);
+            TableClient.DeleteEntity(testEntityToRemove);
 
-            Assert.Empty(CloudTable.Query<TableEntity>());
+            Assert.Empty(TableClient.Query<TableEntity>());
         }
 
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
@@ -487,12 +487,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = testEntity.RowKey,
                 DateTimeProp = dateTimePropValue
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            CloudTable.DeleteEntity(testEntityToRemove);
+            TableClient.DeleteEntity(testEntityToRemove);
 
-            Assert.Empty(CloudTable.Query<TableEntity>());
+            Assert.Empty(TableClient.Query<TableEntity>());
         }
     }
 }

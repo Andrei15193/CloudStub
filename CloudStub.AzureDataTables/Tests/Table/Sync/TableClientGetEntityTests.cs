@@ -14,7 +14,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void GetEntity_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.JsonResponseThrows(
-                () => CloudTable.GetEntity<TestEntity>("partition-key", "row-key"),
+                () => TableClient.GetEntity<TestEntity>("partition-key", "row-key"),
                 rawResponse =>
                 {
                     var headers = new Assertions.DefaultHeaders(rawResponse);
@@ -50,10 +50,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 GuidProp = guidValue,
                 DecimalProp = 7
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var result = CloudTable.GetEntity<TableEntity>(testEntity.PartitionKey, testEntity.RowKey);
+            var result = TableClient.GetEntity<TableEntity>(testEntity.PartitionKey, testEntity.RowKey);
             var entity = result.Value;
             var response = result.GetRawResponse();
 
@@ -69,7 +69,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         },
                         Content =
                         {
-                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{CloudTable.Name}/@Element" },
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{TableClient.Name}/@Element" },
                             { "odata.etag", response.Headers.ETag.ToString() },
                             { "PartitionKey", "partition-key" },
                             { "RowKey", "row-key" },
@@ -119,10 +119,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 StringProp = new string('t', 1 << 15),
                 Int32Prop = 4
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var result = CloudTable.GetEntity<TableEntity>(testEntity.PartitionKey, testEntity.RowKey, new List<string> { nameof(TestEntity.StringProp) });
+            var result = TableClient.GetEntity<TableEntity>(testEntity.PartitionKey, testEntity.RowKey, new List<string> { nameof(TestEntity.StringProp) });
             var entity = result.Value;
             var response = result.GetRawResponse();
 
@@ -138,7 +138,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         },
                         Content =
                         {
-                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{CloudTable.Name}/@Element&$select=StringProp" },
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{TableClient.Name}/@Element&$select=StringProp" },
                             { "odata.etag", response.Headers.ETag.ToString() },
                             { "StringProp", new string('t', 1 << 15) }
                         }
@@ -172,10 +172,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 GuidProp = guidValue,
                 DecimalProp = 7
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var result = CloudTable.GetEntity<TestEntity>(testEntity.PartitionKey, testEntity.RowKey);
+            var result = TableClient.GetEntity<TestEntity>(testEntity.PartitionKey, testEntity.RowKey);
             var entity = result.Value;
             var response = result.GetRawResponse();
 
@@ -191,7 +191,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         },
                         Content =
                         {
-                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{CloudTable.Name}/@Element" },
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{TableClient.Name}/@Element" },
                             { "odata.etag", response.Headers.ETag.ToString() },
                             { "PartitionKey", "partition-key" },
                             { "RowKey", "row-key" },
@@ -248,10 +248,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 GuidProp = Guid.NewGuid(),
                 DecimalProp = 7
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var result = CloudTable.GetEntity<TestEntity>(testEntity.PartitionKey, testEntity.RowKey, new List<string> { nameof(TestEntity.StringProp), nameof(TestEntity.DecimalProp) });
+            var result = TableClient.GetEntity<TestEntity>(testEntity.PartitionKey, testEntity.RowKey, new List<string> { nameof(TestEntity.StringProp), nameof(TestEntity.DecimalProp) });
             var entity = result.Value;
             var response = result.GetRawResponse();
 
@@ -267,7 +267,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         },
                         Content =
                         {
-                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{CloudTable.Name}/@Element&$select=StringProp,DecimalProp" },
+                            { "odata.metadata", $"https://cloudstubdev.table.core.windows.net/$metadata#{TableClient.Name}/@Element&$select=StringProp,DecimalProp" },
                             { "odata.etag", response.Headers.ETag.ToString() },
                             { "StringProp", new string('t', 1 << 15) },
                             { "DecimalProp", 7 }
@@ -294,10 +294,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetEntity_WhenEntityDoesNotExist_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.GetEntity<TableEntity>(new string('t', 1 << 10 + 1), new string('t', 1 << 10 + 1)),
+                () => TableClient.GetEntity<TableEntity>(new string('t', 1 << 10 + 1), new string('t', 1 << 10 + 1)),
                 response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.NotFound,
@@ -311,9 +311,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetEntity_WhenPartitionKeyIsNull_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var exception = Assert.Throws<NullReferenceException>(() => CloudTable.GetEntity<TableEntity>(null, "row-key"));
+            var exception = Assert.Throws<NullReferenceException>(() => TableClient.GetEntity<TableEntity>(null, "row-key"));
             Assert.Equal(new NullReferenceException().Message, exception.Message);
             Assert.Equal("Azure.Data.Tables", exception.Source);
         }
@@ -321,14 +321,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public void GetEntity_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (partitionKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.GetEntity<TableEntity>(partitionKey, "row-key"),
+                        () => TableClient.GetEntity<TableEntity>(partitionKey, "row-key"),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -341,7 +341,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.GetEntity<TableEntity>(partitionKey, "row-key"),
+                        () => TableClient.GetEntity<TableEntity>(partitionKey, "row-key"),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -394,7 +394,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.GetEntity<TableEntity>(partitionKey, "row-key"),
+                        () => TableClient.GetEntity<TableEntity>(partitionKey, "row-key"),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -410,7 +410,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.GetEntity<TableEntity>(partitionKey, "row-key"),
+                        () => TableClient.GetEntity<TableEntity>(partitionKey, "row-key"),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.NotFound,
@@ -426,9 +426,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetEntity_WhenRowKeyIsNull_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var exception = Assert.Throws<NullReferenceException>(() => CloudTable.GetEntity<TableEntity>("partition-key", null));
+            var exception = Assert.Throws<NullReferenceException>(() => TableClient.GetEntity<TableEntity>("partition-key", null));
             Assert.Equal(new NullReferenceException().Message, exception.Message);
             Assert.Equal("Azure.Data.Tables", exception.Source);
         }
@@ -436,14 +436,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public void GetEntity_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (rowKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.GetEntity<TableEntity>("partition-key", rowKey),
+                        () => TableClient.GetEntity<TableEntity>("partition-key", rowKey),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -456,7 +456,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.GetEntity<TableEntity>("partition-key", rowKey),
+                        () => TableClient.GetEntity<TableEntity>("partition-key", rowKey),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -509,7 +509,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.GetEntity<TableEntity>("partition-key", rowKey),
+                        () => TableClient.GetEntity<TableEntity>("partition-key", rowKey),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -525,7 +525,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.GetEntity<TableEntity>("partition-key", rowKey),
+                        () => TableClient.GetEntity<TableEntity>("partition-key", rowKey),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.NotFound,
@@ -543,9 +543,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         {
             var guid = Guid.NewGuid();
             var now = DateTime.UtcNow;
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.AddEntity(new TableEntity
+            TableClient.AddEntity(new TableEntity
             {
                 { "PartitionKey", "partition-key" },
                 { "RowKey", "row-key" },
@@ -560,7 +560,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntity.DateTimeOffsetProp), (DateTimeOffset)now }
             });
 
-            var entity = CloudTable.GetEntity<TestQueryEntity>("partition-key", "row-key").Value;
+            var entity = TableClient.GetEntity<TestQueryEntity>("partition-key", "row-key").Value;
 
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -580,9 +580,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetEntity_WhenUsingDifferentCasePropertyNames_DoesNotSetValues()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.AddEntity(new TableEntity
+            TableClient.AddEntity(new TableEntity
             {
                 { "PartitionKey", "partition-key" },
                 { "RowKey", "row-key" },
@@ -597,7 +597,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntity.DateTimeOffsetProp).ToUpperInvariant(), DateTimeOffset.UtcNow }
             });
 
-            var entity = CloudTable.GetEntity<TestQueryEntity>("partition-key", "row-key").Value;
+            var entity = TableClient.GetEntity<TestQueryEntity>("partition-key", "row-key").Value;
 
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -619,9 +619,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         {
             var guid = Guid.NewGuid();
             var now = DateTime.UtcNow;
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.AddEntity(new TableEntity
+            TableClient.AddEntity(new TableEntity
             {
                 { "PartitionKey", "partition-key" },
                 { "RowKey", "row-key" },
@@ -636,7 +636,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntityFields.DateTimeOffsetField), (DateTimeOffset)now }
             });
 
-            var entity = CloudTable.GetEntity<TestQueryEntityFields>("partition-key", "row-key").Value;
+            var entity = TableClient.GetEntity<TestQueryEntityFields>("partition-key", "row-key").Value;
 
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -656,9 +656,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetEntity_WhenUsingDifferentCaseFieldNames_DoesNotSetValues()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.AddEntity(new TableEntity
+            TableClient.AddEntity(new TableEntity
             {
                 { "PartitionKey", "partition-key" },
                 { "RowKey", "row-key" },
@@ -673,7 +673,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { nameof(TestQueryEntityFields.DateTimeOffsetField).ToUpperInvariant(), DateTimeOffset.UtcNow }
             });
 
-            var entity = CloudTable.GetEntity<TestQueryEntityFields>("partition-key", "row-key").Value;
+            var entity = TableClient.GetEntity<TestQueryEntityFields>("partition-key", "row-key").Value;
 
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -693,9 +693,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetEntity_WhenUsingPropertiesAndFieldsWithDifferentAccessModifiers_OnlySetsPublicMembers()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.AddEntity(new TableEntity
+            TableClient.AddEntity(new TableEntity
             {
                 { "PartitionKey", "partition-key" },
                 { "RowKey", "row-key" },
@@ -715,7 +715,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 { "PrivateProtectedField", "private protected" }
             });
 
-            var entity = CloudTable.GetEntity<TestQueryEntityAccessModifier>("partition-key", "row-key").Value;
+            var entity = TableClient.GetEntity<TestQueryEntityAccessModifier>("partition-key", "row-key").Value;
 
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -741,8 +741,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [ClassData(typeof(TableDeserializationTestData))]
         public void GetEntity_WhenDeserializingProperty_MayParseOrThrowException(string propertyName, object value, object expectedResult)
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TableEntity
+            TableClient.Create();
+            TableClient.AddEntity(new TableEntity
             {
                 { "PartitionKey", "partition-key" },
                 { "RowKey", "row-key" },
@@ -751,13 +751,13 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
             if (expectedResult is Exception expectedException)
             {
-                var exception = Assert.Throws(expectedResult.GetType(), () => CloudTable.GetEntity<TestQueryEntity>("partition-key", "row-key"));
+                var exception = Assert.Throws(expectedResult.GetType(), () => TableClient.GetEntity<TestQueryEntity>("partition-key", "row-key"));
                 Assert.Equal(expectedException.Message, exception.Message);
                 Assert.Contains(exception.Source, new[] { "System.Private.CoreLib", "Azure.Data.Tables" });
             }
             else
             {
-                var entity = CloudTable.GetEntity<TestQueryEntity>("partition-key", "row-key").Value;
+                var entity = TableClient.GetEntity<TestQueryEntity>("partition-key", "row-key").Value;
                 var actualResult = typeof(TestQueryEntity)
                     .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty)
                     .GetValue(entity);

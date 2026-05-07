@@ -15,27 +15,27 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void Name_GetsTheSameNameWhichWasProvided()
         {
-            Assert.Equal(TestTableName, CloudTable.Name);
+            Assert.Equal(TableName, TableClient.Name);
         }
 
         [Fact]
         public void AccountName_GetsTheSameNameWhichWasProvided()
         {
-            Assert.Equal(TableAccountName, CloudTable.AccountName);
+            Assert.Equal(TableAccountName, TableClient.AccountName);
         }
 
         [Fact]
         public void Create_WhenTablePreviouslyContainedEntities_IsEmpty()
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TableEntity("partition-key", "row-key"));
-            CloudTable.Delete();
+            TableClient.Create();
+            TableClient.AddEntity(new TableEntity("partition-key", "row-key"));
+            TableClient.Delete();
 
             if (!TestRunContext.InMemory)
                 Thread.Sleep(TimeSpan.FromMinutes(1));
-            CloudTable.Create();
+            TableClient.Create();
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
 
             Assert.Empty(entities);
         }
@@ -43,7 +43,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void Create_WhenTableDoesNotExist_ReturnsTableItem()
         {
-            var response = CloudTable.Create();
+            var response = TableClient.Create();
 
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
@@ -57,19 +57,19 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         StatusCode = HttpStatusCode.Created,
                         Headers = new Assertions.DefaultHeaders(rawResponse)
                         {
-                            { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" }
+                            { "Location", $"{TableServiceClient.Uri}Tables('{TableName}')" }
                         },
                         Content =
                         {
                             { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
-                            { "TableName", TestTableName }
+                            { "TableName", TableName }
                         }
                     }
                 ),
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -77,10 +77,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void Create_WhenTableExists_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.Create(),
+                () => TableClient.Create(),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.Conflict,
@@ -145,7 +145,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void CreateIfNotExists_WhenTableDoesNotExist_ReturnsTableItemWithNoContentResponse()
         {
-            var response = CloudTable.CreateIfNotExists();
+            var response = TableClient.CreateIfNotExists();
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
 
@@ -158,16 +158,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                         StatusCode = HttpStatusCode.NoContent,
                         Headers = new Assertions.NoContentHeaders(rawResponse)
                         {
-                            { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" },
+                            { "Location", $"{TableServiceClient.Uri}Tables('{TableName}')" },
                             { "Preference-Applied", "return-no-content" },
-                            { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TestTableName}')"}
+                            { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TableName}')"}
                         }
                     }
                 ),
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -175,9 +175,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void CreateIfNotExists_WhenTableExists_ReturnsTableItemWithConflictResponse()
         {
-            CloudTable.CreateIfNotExists();
+            TableClient.CreateIfNotExists();
 
-            var response = CloudTable.CreateIfNotExists();
+            var response = TableClient.CreateIfNotExists();
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
 
@@ -199,7 +199,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -267,7 +267,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void Delete_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
         {
-            var rawResponse = CloudTable.Delete();
+            var rawResponse = TableClient.Delete();
 
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
@@ -287,9 +287,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void Delete_WhenTableExists_ReturnsSuccessfulResponse()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var rawResponse = CloudTable.Delete();
+            var rawResponse = TableClient.Delete();
 
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
@@ -378,7 +378,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [InlineData(TableSasPermissions.All)]
         public void GenerateSasUri_WhenCalled_GeneratesValidSasUri(TableSasPermissions permissions)
         {
-            var sasUri = CloudTable.GenerateSasUri(permissions, DateTimeOffset.UtcNow.AddHours(1));
+            var sasUri = TableClient.GenerateSasUri(permissions, DateTimeOffset.UtcNow.AddHours(1));
 
             Assert.NotNull(sasUri);
         }
@@ -386,9 +386,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void GetAccessPolicies_WhenCalled_GetsTableAccessPolicies()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
 
             var rawResponse = response.GetRawResponse();
@@ -415,7 +415,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void GetAccessPolicies_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.XmlResponseThrows(
-                () => CloudTable.GetAccessPolicies(),
+                () => TableClient.GetAccessPolicies(),
                 rawResponse =>
                 {
                     var headers = new Assertions.XmlContentHeaders(rawResponse)
@@ -441,9 +441,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void SetAccessPolicy_WhenCalled_SetsTableAccessPolicies()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.SetAccessPolicy(Enumerable.Empty<TableSignedIdentifier>());
+            var response = TableClient.SetAccessPolicy(Enumerable.Empty<TableSignedIdentifier>());
 
             Assert.Multiple(
                 () => Assert.False(response.IsError),
@@ -469,7 +469,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.XmlResponseThrows(
-                () => CloudTable.SetAccessPolicy(Enumerable.Empty<TableSignedIdentifier>()),
+                () => TableClient.SetAccessPolicy(Enumerable.Empty<TableSignedIdentifier>()),
                 rawResponse =>
                 {
                     var headers = new Assertions.XmlContentHeaders(rawResponse)
@@ -496,10 +496,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void GetAccessPolicies_WhenPoliciesHaveBeenSet_ReturnsThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            TableClient.Create();
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
 
             var rawResponse = response.GetRawResponse();
@@ -544,11 +544,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void GetAccessPolicies_WhenPoliciesHaveExpired_ReturnsThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddSeconds(1), "raud")) });
+            TableClient.Create();
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddSeconds(1), "raud")) });
             Thread.Sleep(TimeSpan.FromSeconds(2));
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
 
             var rawResponse = response.GetRawResponse();
@@ -593,12 +593,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenPoliciesHaveAlreadyBeenSet_OverwritesPreviousListCompletely()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id-1", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            TableClient.Create();
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id-1", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id-2", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id-2", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -641,11 +641,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenPolicyHasNullAccessPolicy_DoesNotSetIt()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", null) });
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", null) });
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -681,12 +681,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenPoliciesAreNull_ClearsThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            TableClient.Create();
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            CloudTable.SetAccessPolicy(null);
+            TableClient.SetAccessPolicy(null);
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -711,11 +711,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenPolicyHasNullStartsOn_DoesNotSetIt()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(null, utcNow.AddHours(1), "raud")) });
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(null, utcNow.AddHours(1), "raud")) });
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -757,11 +757,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenPolicyHasNullExpiresOn_DoesNotSetIt()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, null, "raud")) });
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, null, "raud")) });
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -803,11 +803,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void SetAccessPolicy_WhenPolicyHasNullPermissions_DoesNotSetThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), null)) });
+            TableClient.SetAccessPolicy(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), null)) });
 
-            var response = CloudTable.GetAccessPolicies();
+            var response = TableClient.GetAccessPolicies();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(

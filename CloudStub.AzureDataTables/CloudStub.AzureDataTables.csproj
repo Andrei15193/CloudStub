@@ -5,7 +5,7 @@
     <LangVersion>7.3</LangVersion>
 
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-    <Description>An in-memory implementation for Azure Table Storage useful for testing and local development.</Description>
+    <Description>A high-fidelity in-memory implementation for Azure Table Storage useful for testing and local development.</Description>
     <Authors>Andrei Fangli</Authors>
     <Copyright>Andrei Fangli</Copyright>
     <PackageTags>stub;azure;storage;memory;in-memory;test</PackageTags>
@@ -20,8 +20,12 @@
     </PackageReleaseNotes>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PackageReference Include="Azure.Data.Tables" Version="[12.9.0,12.11.0]" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">

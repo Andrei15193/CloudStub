@@ -16,7 +16,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void AddEntity_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TestEntity
+                () => TableClient.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
                     RowKey = "row-key"
@@ -40,7 +40,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.AddEntity<ITableEntity>(null));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableClient.AddEntity<ITableEntity>(null));
 
             Assert.Multiple(
                 () => Assert.Equal(new ArgumentNullException("entity").Message, exception.Message),
@@ -51,9 +51,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenEntityDoesNotExist_InsertsEntity()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.AddEntity(new TableEntity
+            var response = TableClient.AddEntity(new TableEntity
             {
                 PartitionKey = "partition-key:1",
                 RowKey = "row-key:1"
@@ -68,9 +68,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     Headers = new Assertions.NoContentHeaders(response)
                     {
                         { "ETag", response.Headers.ETag.ToString() },
-                        { "Location", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
+                        { "Location", $"{TableClient.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
                         { "Preference-Applied", "return-no-content" },
-                        { "DataServiceId", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
+                        { "DataServiceId", $"{TableClient.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
                     }
                 })
             );
@@ -79,11 +79,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenEntityAlreadyExists_ThrowsException()
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TableEntity("partition-key:1", "row-key:1"));
+            TableClient.Create();
+            TableClient.AddEntity(new TableEntity("partition-key:1", "row-key:1"));
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TableEntity("partition-key:1", "row-key:1")),
+                () => TableClient.AddEntity(new TableEntity("partition-key:1", "row-key:1")),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.Conflict,
@@ -114,11 +114,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 GuidProp = Guid.NewGuid(),
                 DecimalProp = 4
             };
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.AddEntity(testEntity);
+            var response = TableClient.AddEntity(testEntity);
 
-            var entities = CloudTable.Query<TableEntity>().ToList();
+            var entities = TableClient.Query<TableEntity>().ToList();
             var entity = Assert.Single(entities);
 
             var expectedProps = new Dictionary<string, object>
@@ -161,16 +161,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenSomePropertiesAreNull_TheyAreIgnored()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.AddEntity(new TableEntity
+            var response = TableClient.AddEntity(new TableEntity
             {
                 { nameof(TestEntity.PartitionKey), "partition-key:1" },
                 { nameof(TestEntity.RowKey), "row-key:1" },
                 { nameof(TestEntity.Int32Prop), (int?)null }
             });
 
-            var entities = CloudTable.Query<TableEntity>().ToList();
+            var entities = TableClient.Query<TableEntity>().ToList();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.NotEqual(default, response.Headers.ETag),
@@ -191,9 +191,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenPartitionKeyIsNull_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var exception = Assert.Throws<ArgumentNullException>("PartitionKey", () => CloudTable.AddEntity(new TableEntity
+            var exception = Assert.Throws<ArgumentNullException>("PartitionKey", () => TableClient.AddEntity(new TableEntity
             {
                 PartitionKey = null,
                 RowKey = "row-key"
@@ -213,10 +213,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public void AddEntity_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TableEntity
+                () => TableClient.AddEntity(new TableEntity
                 {
                     PartitionKey = partitionKey,
                     RowKey = "row-key"
@@ -240,10 +240,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenPartitionKeyExceedsLimit_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TableEntity
+                () => TableClient.AddEntity(new TableEntity
                 {
                     PartitionKey = new string('t', 1 << 10 + 1),
                     RowKey = "row-key"
@@ -264,7 +264,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenRowKeyIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("RowKey", () => CloudTable.AddEntity(new TableEntity
+            var exception = Assert.Throws<ArgumentNullException>("RowKey", () => TableClient.AddEntity(new TableEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = null
@@ -284,10 +284,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public void AddEntity_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TestEntity
+                () => TableClient.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
                     RowKey = rowKey
@@ -311,10 +311,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenRowKeyExceedsLimit_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TestEntity
+                () => TableClient.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
                     RowKey = new string('t', 1 << 10 + 1)
@@ -335,10 +335,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
         public void AddEntity_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TestEntity
+                () => TableClient.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
                     RowKey = "row-key",
@@ -360,10 +360,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
         public void AddEntity_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TestEntity
+                () => TableClient.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
                     RowKey = "row-key",
@@ -385,10 +385,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
         public void AddEntity_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.AddEntity(new TestEntity
+                () => TableClient.AddEntity(new TestEntity
                 {
                     PartitionKey = "partition-key",
                     RowKey = "row-key",
@@ -414,7 +414,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void AddEntity_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             var now = DateTime.Now;
-            var exception = Assert.Throws<NotSupportedException>(() => CloudTable.AddEntity(new TestEntity
+            var exception = Assert.Throws<NotSupportedException>(() => TableClient.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
@@ -434,17 +434,17 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void AddEntity_WhenDateTimeOffsetPropertyIsLocal_InsertsEntity()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             var now = DateTimeOffset.Now;
-            var response = CloudTable.AddEntity(new TestEntity
+            var response = TableClient.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key:1",
                 RowKey = "row-key:1",
                 DateTimeOffsetProp = now
             });
 
-            var entities = CloudTable.Query<TableEntity>().ToList();
+            var entities = TableClient.Query<TableEntity>().ToList();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -459,9 +459,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                     Headers = new Assertions.NoContentHeaders(response)
                     {
                         { "ETag", response.Headers.ETag.ToString() },
-                        { "Location", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
+                        { "Location", $"{TableClient.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" },
                         { "Preference-Applied", "return-no-content" },
-                        { "DataServiceId", $"{CloudTable.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
+                        { "DataServiceId", $"{TableClient.Uri}(PartitionKey='{Uri.EscapeDataString("partition-key:1")}',RowKey='{Uri.EscapeDataString("row-key:1")}')" }
                     }
                 })
             );

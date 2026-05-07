@@ -13,7 +13,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", "row-key"))
@@ -32,7 +32,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<NullReferenceException>(() => CloudTable.SubmitTransaction(
+            var exception = Assert.Throws<NullReferenceException>(() => TableClient.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(TableTransactionActionType.UpdateReplace, null)
@@ -49,8 +49,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenETagIsMissing_ReplacesEntity()
         {
             var guid = Guid.NewGuid();
-            CloudTable.Create();
-            CloudTable.AddEntity(new TestEntity
+            TableClient.Create();
+            TableClient.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
@@ -58,7 +58,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 Int64Prop = 15
             });
 
-            var result = CloudTable.SubmitTransaction(
+            var result = TableClient.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(
@@ -82,7 +82,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -136,8 +136,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenETagsIsWildcard_ReplacesEntity()
         {
             var guid = Guid.NewGuid();
-            CloudTable.Create();
-            CloudTable.AddEntity(new TestEntity
+            TableClient.Create();
+            TableClient.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
@@ -145,7 +145,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 Int64Prop = 15
             });
 
-            var result = CloudTable.SubmitTransaction(
+            var result = TableClient.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(
@@ -170,7 +170,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -224,8 +224,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenETagsMatch_ReplacesEntity()
         {
             var guid = Guid.NewGuid();
-            CloudTable.Create();
-            var addResult = CloudTable.AddEntity(new TestEntity
+            TableClient.Create();
+            var addResult = TableClient.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
@@ -233,7 +233,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 Int64Prop = 15
             });
 
-            var result = CloudTable.SubmitTransaction(
+            var result = TableClient.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(
@@ -258,7 +258,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -311,10 +311,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenEntityDoesNotExistWithDefaultEtag_InsertsEntity()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             var guid = Guid.NewGuid();
-            var result = CloudTable.SubmitTransaction(
+            var result = TableClient.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(
@@ -340,7 +340,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -393,10 +393,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenEntityDoesNotExistAndEtagIsWildcard_InsertsEntity()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(
@@ -422,10 +422,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenMultipleEntitiesDoNotExistAndEtagIsWildcard_InsertsEntity()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(
@@ -462,18 +462,18 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenETagsMismatch_ThrowsException()
         {
             var guid = Guid.NewGuid();
-            CloudTable.Create();
-            var addResult = CloudTable.AddEntity(new TestEntity
+            TableClient.Create();
+            var addResult = TableClient.AddEntity(new TestEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
                 Int32Prop = 14,
                 Int64Prop = 15
             });
-            CloudTable.UpdateEntity(new TableEntity { PartitionKey = "partition-key", RowKey = "row-key" }, addResult.Headers.ETag.Value, TableUpdateMode.Replace);
+            TableClient.UpdateEntity(new TableEntity { PartitionKey = "partition-key", RowKey = "row-key" }, addResult.Headers.ETag.Value, TableUpdateMode.Replace);
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(
@@ -500,7 +500,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenPartitionKeyIsNull_ThrowsException()
         {
             var exception = Assert.Throws<NullReferenceException>(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity(null, "row-key"))
@@ -516,14 +516,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public void SubmitTransaction_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (partitionKey)
             {
                 case "/":
                 case "\\":
                     Assertions.TransactionJsonResponseThrows(
-                        () => CloudTable.SubmitTransaction(
+                        () => TableClient.SubmitTransaction(
                             new[]
                             {
                                 new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity(partitionKey, "row-key"))
@@ -541,7 +541,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
                 default:
                     Assertions.TransactionJsonResponseThrows(
-                        () => CloudTable.SubmitTransaction(
+                        () => TableClient.SubmitTransaction(
                             new[]
                             {
                                 new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity(partitionKey, "row-key"))
@@ -563,7 +563,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenRowKeyIsNull_ThrowsException()
         {
             var exception = Assert.Throws<NullReferenceException>(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", null))
@@ -579,14 +579,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public void SubmitTransaction_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (rowKey)
             {
                 case "/":
                 case "\\":
                     Assertions.TransactionJsonResponseThrows(
-                        () => CloudTable.SubmitTransaction(
+                        () => TableClient.SubmitTransaction(
                             new[]
                             {
                                 new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", rowKey))
@@ -604,7 +604,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
 
                 default:
                     Assertions.TransactionJsonResponseThrows(
-                        () => CloudTable.SubmitTransaction(
+                        () => TableClient.SubmitTransaction(
                             new[]
                             {
                                 new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TableEntity("partition-key", rowKey))
@@ -625,11 +625,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
         public void SubmitTransaction_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            TableClient.Create();
+            TableClient.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key" });
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TestEntity
@@ -652,11 +652,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
         public void SubmitTransaction_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            TableClient.Create();
+            TableClient.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key" });
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TestEntity
@@ -679,11 +679,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
         public void SubmitTransaction_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key" });
+            TableClient.Create();
+            TableClient.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key" });
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpdateReplace, new TestEntity
@@ -708,7 +708,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             var now = DateTime.Now;
-            var exception = Assert.Throws<NotSupportedException>(() => CloudTable.SubmitTransaction(
+            var exception = Assert.Throws<NotSupportedException>(() => TableClient.SubmitTransaction(
                 new[]
                 {
                     new TableTransactionAction(

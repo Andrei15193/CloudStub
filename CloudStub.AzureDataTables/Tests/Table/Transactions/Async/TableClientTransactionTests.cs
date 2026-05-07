@@ -14,7 +14,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         public async Task SubmitTransactionAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key"))
@@ -33,7 +33,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenBatchIsNull_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>("transactionalBatch", () => CloudTable.SubmitTransactionAsync(null));
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>("transactionalBatch", () => TableClient.SubmitTransactionAsync(null));
 
             Assert.Multiple(
                 () => Assert.Equal(new ArgumentNullException("transactionalBatch").Message, exception.Message),
@@ -44,7 +44,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenBatchIsEmpty_ThrowsException()
         {
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => CloudTable.SubmitTransactionAsync(Enumerable.Empty<TableTransactionAction>()));
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => TableClient.SubmitTransactionAsync(Enumerable.Empty<TableTransactionAction>()));
 
             Assert.Multiple(
                 () => Assert.Equal(new InvalidOperationException("The batch contains no entity operations.").Message, exception.Message),
@@ -56,10 +56,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenBatchHasOperationsInMultiplePartitions_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key-1", "row-key")),
@@ -79,10 +79,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WithMultipleOperationsOnSameEntity_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpsertMerge, new TableEntity("partition-key", "row-key")),
@@ -102,11 +102,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_FailingBatchOperation_DoesNotExecutePartially()
         {
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key", StringProp = "string prop" });
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key", StringProp = "string prop" });
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(
@@ -138,7 +138,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
                 }
             );
 
-            var result = await CloudTable.GetEntityAsync<TestEntity>("partition-key", "row-key");
+            var result = await TableClient.GetEntityAsync<TestEntity>("partition-key", "row-key");
             var entity = result.Value;
 
             Assert.Multiple(
@@ -160,7 +160,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
                 {
                     try
                     {
-                        await CloudTable.SubmitTransactionAsync(
+                        await TableClient.SubmitTransactionAsync(
                             from rowNumber in Enumerable.Range(1, 101)
                             select new TableTransactionAction(
                                 TableTransactionActionType.Add,
@@ -189,10 +189,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenOperationIsNotSupported_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction((TableTransactionActionType)(-1), new TableEntity("partition-key", "row-key"))
@@ -208,9 +208,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenBatchHas100Operations_ExecutesSuccessfully()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var result = await CloudTable.SubmitTransactionAsync(
+            var result = await TableClient.SubmitTransactionAsync(
                 from rowNumber in Enumerable.Range(1, 100)
                 select new TableTransactionAction(
                     TableTransactionActionType.Add,
@@ -242,7 +242,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, CloudTable.Name, "partition-key", $"row-key-{operationNumber}"),
+                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, TableClient.Name, "partition-key", $"row-key-{operationNumber}"),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true

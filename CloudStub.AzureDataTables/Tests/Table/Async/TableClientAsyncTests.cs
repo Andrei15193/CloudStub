@@ -15,15 +15,15 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task CreateAsync_WhenTablePreviouslyContainedEntities_IsEmpty()
         {
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(new TableEntity("partition-key", "row-key"));
-            await CloudTable.DeleteAsync();
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(new TableEntity("partition-key", "row-key"));
+            await TableClient.DeleteAsync();
 
             if (!TestRunContext.InMemory)
                 await Task.Delay(TimeSpan.FromMinutes(1));
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
+            var entities = await TableClient.QueryAsync<TableEntity>().ToListAsync();
 
             Assert.Empty(entities);
         }
@@ -31,7 +31,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task CreateAsync_WhenTableDoesNotExist_ReturnsTableItem()
         {
-            var response = await CloudTable.CreateAsync();
+            var response = await TableClient.CreateAsync();
 
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
@@ -45,19 +45,19 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         StatusCode = HttpStatusCode.Created,
                         Headers = new Assertions.DefaultHeaders(rawResponse)
                         {
-                            { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" }
+                            { "Location", $"{TableServiceClient.Uri}Tables('{TableName}')" }
                         },
                         Content =
                         {
                             { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
-                            { "TableName", TestTableName }
+                            { "TableName", TableName }
                         }
                     }
                 ),
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -65,10 +65,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task CreateAsync_WhenTableExists_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.JsonResponseThrowsAsync(
-                () => CloudTable.CreateAsync(),
+                () => TableClient.CreateAsync(),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.Conflict,
@@ -133,7 +133,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task CreateIfNotExistsAsync_WhenTableDoesNotExist_ReturnsTableItemWithNoContentResponse()
         {
-            var response = await CloudTable.CreateIfNotExistsAsync();
+            var response = await TableClient.CreateIfNotExistsAsync();
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
 
@@ -146,16 +146,16 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                         StatusCode = HttpStatusCode.NoContent,
                         Headers = new Assertions.NoContentHeaders(rawResponse)
                         {
-                            { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" },
+                            { "Location", $"{TableServiceClient.Uri}Tables('{TableName}')" },
                             { "Preference-Applied", "return-no-content" },
-                            { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TestTableName}')"}
+                            { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TableName}')"}
                         }
                     }
                 ),
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -163,9 +163,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task CreateIfNotExistsAsync_WhenTableExists_ReturnsTableItemWithConflictResponse()
         {
-            await CloudTable.CreateIfNotExistsAsync();
+            await TableClient.CreateIfNotExistsAsync();
 
-            var response = await CloudTable.CreateIfNotExistsAsync();
+            var response = await TableClient.CreateIfNotExistsAsync();
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
 
@@ -187,7 +187,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -255,7 +255,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task DeleteAsync_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
         {
-            var rawResponse = await CloudTable.DeleteAsync();
+            var rawResponse = await TableClient.DeleteAsync();
 
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
@@ -275,9 +275,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task DeleteAsync_WhenTableExists_ReturnsSuccessfulResponse()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var rawResponse = await CloudTable.DeleteAsync();
+            var rawResponse = await TableClient.DeleteAsync();
 
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
@@ -361,9 +361,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task GetAccessPoliciesAsync_WhenCalled_GetsTableAccessPolicies()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
 
             var rawResponse = response.GetRawResponse();
@@ -390,7 +390,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task GetAccessPoliciesAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.XmlResponseThrowsAsync(
-                () => CloudTable.GetAccessPoliciesAsync(),
+                () => TableClient.GetAccessPoliciesAsync(),
                 rawResponse =>
                 {
                     var headers = new Assertions.XmlContentHeaders(rawResponse)
@@ -416,9 +416,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         [Fact]
         public async Task SetAccessPolicyAsync_WhenCalled_SetsTableAccessPolicies()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var response = await CloudTable.SetAccessPolicyAsync(Enumerable.Empty<TableSignedIdentifier>());
+            var response = await TableClient.SetAccessPolicyAsync(Enumerable.Empty<TableSignedIdentifier>());
 
             Assert.Multiple(
                 () => Assert.False(response.IsError),
@@ -444,7 +444,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.XmlResponseThrowsAsync(
-                () => CloudTable.SetAccessPolicyAsync(Enumerable.Empty<TableSignedIdentifier>()),
+                () => TableClient.SetAccessPolicyAsync(Enumerable.Empty<TableSignedIdentifier>()),
                 rawResponse =>
                 {
                     var headers = new Assertions.XmlContentHeaders(rawResponse)
@@ -471,10 +471,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task GetAccessPoliciesAsync_WhenPoliciesHaveBeenSet_ReturnsThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            await TableClient.CreateAsync();
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
 
             var rawResponse = response.GetRawResponse();
@@ -519,11 +519,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task GetAccessPoliciesAsync_WhenPoliciesHaveExpired_ReturnsThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddSeconds(1), "raud")) });
+            await TableClient.CreateAsync();
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddSeconds(1), "raud")) });
             Thread.Sleep(TimeSpan.FromSeconds(2));
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
 
             var rawResponse = response.GetRawResponse();
@@ -568,12 +568,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenPoliciesHaveAlreadyBeenSet_OverwritesPreviousListCompletely()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id-1", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            await TableClient.CreateAsync();
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id-1", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id-2", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id-2", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -616,11 +616,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenPolicyHasNullAccessPolicy_DoesNotSetIt()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", null) });
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", null) });
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -656,12 +656,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenPoliciesAreNull_ClearsThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
+            await TableClient.CreateAsync();
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), "raud")) });
 
-            await CloudTable.SetAccessPolicyAsync(null);
+            await TableClient.SetAccessPolicyAsync(null);
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -686,11 +686,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenPolicyHasNullStartsOn_DoesNotSetIt()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(null, utcNow.AddHours(1), "raud")) });
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(null, utcNow.AddHours(1), "raud")) });
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -732,11 +732,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenPolicyHasNullExpiresOn_DoesNotSetIt()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, null, "raud")) });
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, null, "raud")) });
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(
@@ -778,11 +778,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Async
         public async Task SetAccessPolicyAsync_WhenPolicyHasNullPermissions_DoesNotSetThem()
         {
             var utcNow = DateTimeOffset.UtcNow;
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            await CloudTable.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), null)) });
+            await TableClient.SetAccessPolicyAsync(new[] { new TableSignedIdentifier("access-policy-id", new TableAccessPolicy(utcNow, utcNow.AddHours(1), null)) });
 
-            var response = await CloudTable.GetAccessPoliciesAsync();
+            var response = await TableClient.GetAccessPoliciesAsync();
             var accessPolicies = response.Value;
             var rawResponse = response.GetRawResponse();
             Assert.Multiple(

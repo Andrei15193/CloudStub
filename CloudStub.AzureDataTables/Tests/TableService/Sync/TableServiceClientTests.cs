@@ -20,7 +20,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void CreateTable_WhenTableDoesNotExist_ReturnsTableItem()
         {
-            var response = TableServiceClient.CreateTable(TestTableName);
+            var response = TableServiceClient.CreateTable(TableName);
 
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
@@ -34,19 +34,19 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                         StatusCode = HttpStatusCode.Created,
                         Headers = new Assertions.DefaultHeaders(rawResponse)
                         {
-                            { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" }
+                            { "Location", $"{TableServiceClient.Uri}Tables('{TableName}')" }
                         },
                         Content =
                         {
                             { "odata.metadata", $"{TableServiceClient.Uri}$metadata#Tables/@Element" },
-                            { "TableName", TestTableName }
+                            { "TableName", TableName }
                         }
                     }
                 ),
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -54,10 +54,10 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void CreateTable_WhenTableExists_ThrowsException()
         {
-            TableServiceClient.CreateTable(TestTableName);
+            TableServiceClient.CreateTable(TableName);
 
             Assertions.JsonResponseThrows(
-                () => TableServiceClient.CreateTable(TestTableName.ToLowerInvariant()),
+                () => TableServiceClient.CreateTable(TableName.ToLowerInvariant()),
                 rawResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.Conflict,
@@ -122,7 +122,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void CreateTableIfNotExists_WhenTableDoesNotExist_ReturnsTableItemWithNoContentResponse()
         {
-            var response = TableServiceClient.CreateTableIfNotExists(TestTableName);
+            var response = TableServiceClient.CreateTableIfNotExists(TableName);
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
 
@@ -135,16 +135,16 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                         StatusCode = HttpStatusCode.NoContent,
                         Headers = new Assertions.NoContentHeaders(rawResponse)
                         {
-                            { "Location", $"{TableServiceClient.Uri}Tables('{TestTableName}')" },
+                            { "Location", $"{TableServiceClient.Uri}Tables('{TableName}')" },
                             { "Preference-Applied", "return-no-content" },
-                            { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TestTableName}')"}
+                            { "DataServiceId", $"{TableServiceClient.Uri}Tables('{TableName}')"}
                         }
                     }
                 ),
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName, tableItem.Name);
+                    Assert.Equal(TableName, tableItem.Name);
                 }
             );
         }
@@ -152,9 +152,9 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void CreateTableIfNotExists_WhenTableExists_ReturnsTableItemWithConflictResponse()
         {
-            TableServiceClient.CreateTable(TestTableName);
+            TableServiceClient.CreateTable(TableName);
 
-            var response = TableServiceClient.CreateTableIfNotExists(TestTableName.ToLowerInvariant());
+            var response = TableServiceClient.CreateTableIfNotExists(TableName.ToLowerInvariant());
             var tableItem = response.Value;
             var rawResponse = response.GetRawResponse();
 
@@ -176,7 +176,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                 () =>
                 {
                     Assert.NotNull(tableItem);
-                    Assert.Equal(TestTableName.ToLowerInvariant(), tableItem.Name);
+                    Assert.Equal(TableName.ToLowerInvariant(), tableItem.Name);
                 }
             );
         }
@@ -244,7 +244,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void DeleteTable_WhenTableDoesNotExist_ReturnsSuccessfulResponse()
         {
-            var rawResponse = TableServiceClient.DeleteTable(TestTableName);
+            var rawResponse = TableServiceClient.DeleteTable(TableName);
 
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
@@ -264,9 +264,9 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void DeleteTable_WhenTableExists_ReturnsSuccessfulResponse()
         {
-            TableServiceClient.CreateTable(TestTableName);
+            TableServiceClient.CreateTable(TableName);
 
-            var rawResponse = TableServiceClient.DeleteTable(TestTableName.ToLowerInvariant());
+            var rawResponse = TableServiceClient.DeleteTable(TableName.ToLowerInvariant());
 
             Assert.Multiple(
                 () => Assert.False(rawResponse.IsError),
@@ -350,7 +350,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void Query_WhenThereIsNoMatchingTestTable_ReturnsEmptyResult()
         {
-            var result = TableServiceClient.Query($"TableName eq '{TestTableName}'");
+            var result = TableServiceClient.Query($"TableName eq '{TableName}'");
 
             var page = Assert.Single(result.AsPages());
             Assert.Multiple(
@@ -376,8 +376,8 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void Query_WhenThereIsMatchingTestTable_ReturnsTestTable()
         {
-            TableServiceClient.CreateTable(TestTableName);
-            var result = TableServiceClient.Query($"TableName eq '{TestTableName}'");
+            TableServiceClient.CreateTable(TableName);
+            var result = TableServiceClient.Query($"TableName eq '{TableName}'");
 
             var page = Assert.Single(result.AsPages());
             Assert.Multiple(
@@ -397,7 +397,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                                 {
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", TestTableName }
+                                        { "TableName", TableName }
                                     }
                                 }
                             }
@@ -427,7 +427,7 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void Query_WhenUsingZeroPageNumber_ThrowsException()
         {
-            TableServiceClient.CreateTable(TestTableName);
+            TableServiceClient.CreateTable(TableName);
             var result = TableServiceClient.Query($"filter eq not valid", maxPerPage: 0);
 
             Assertions.JsonResponseThrows(
@@ -479,16 +479,16 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void Query_WhenUsingTakeCount_ReturnsOnlyFirstPage()
         {
-            TableServiceClient.CreateTable($"z1zz{TestTableName}");
-            TableServiceClient.CreateTable($"z1zzz{TestTableName}");
-            TableServiceClient.CreateTable($"z1zzzz{TestTableName}");
-            TableServiceClient.CreateTable($"z1zzzzz{TestTableName}");
+            TableServiceClient.CreateTable($"z1zz{TableName}");
+            TableServiceClient.CreateTable($"z1zzz{TableName}");
+            TableServiceClient.CreateTable($"z1zzzz{TableName}");
+            TableServiceClient.CreateTable($"z1zzzzz{TableName}");
 
-            var page = TableServiceClient.Query($"TableName eq 'z1zz{TestTableName}' or TableName eq 'z1zzz{TestTableName}' or TableName eq 'z1zzzz{TestTableName}' or TableName eq 'z1zzzzz{TestTableName}'", maxPerPage: 2).AsPages().First();
+            var page = TableServiceClient.Query($"TableName eq 'z1zz{TableName}' or TableName eq 'z1zzz{TableName}' or TableName eq 'z1zzzz{TableName}' or TableName eq 'z1zzzzz{TableName}'", maxPerPage: 2).AsPages().First();
 
             Assert.Multiple(
                 () => Assert.Equal(2, page.Values.Count),
-                () => Assert.Equal($"z1zzzz{TestTableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(page.ContinuationToken)),
+                () => Assert.Equal($"z1zzzz{TableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(page.ContinuationToken)),
                 () =>
                 {
                     var response = page.GetRawResponse();
@@ -506,11 +506,11 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                                 {
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", $"z1zz{TestTableName}" }
+                                        { "TableName", $"z1zz{TableName}" }
                                     },
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", $"z1zzz{TestTableName}" }
+                                        { "TableName", $"z1zzz{TableName}" }
                                     }
                                 }
                             }
@@ -523,18 +523,18 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void Query_WhenUsingTakeCount_ReturnsContinuationTokenContainingPartitionAndRowKeysForNextPage()
         {
-            TableServiceClient.CreateTable($"z2zz{TestTableName}");
-            TableServiceClient.CreateTable($"z2zzz{TestTableName}");
-            TableServiceClient.CreateTable($"z2zzzz{TestTableName}");
-            TableServiceClient.CreateTable($"z2zzzzz{TestTableName}");
+            TableServiceClient.CreateTable($"z2zz{TableName}");
+            TableServiceClient.CreateTable($"z2zzz{TableName}");
+            TableServiceClient.CreateTable($"z2zzzz{TableName}");
+            TableServiceClient.CreateTable($"z2zzzzz{TableName}");
 
-            var pages = TableServiceClient.Query($"TableName eq 'z2zz{TestTableName}' or TableName eq 'z2zzz{TestTableName}' or TableName eq 'z2zzzz{TestTableName}' or TableName eq 'z2zzzzz{TestTableName}'", maxPerPage: 2).AsPages().ToList();
+            var pages = TableServiceClient.Query($"TableName eq 'z2zz{TableName}' or TableName eq 'z2zzz{TableName}' or TableName eq 'z2zzzz{TableName}' or TableName eq 'z2zzzzz{TableName}'", maxPerPage: 2).AsPages().ToList();
             var firstPage = pages.First();
             var lastPage = pages.Last();
 
             Assert.Multiple(
                 () => Assert.Equal(2, firstPage.Values.Count),
-                () => Assert.Equal($"z2zzzz{TestTableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(firstPage.ContinuationToken)),
+                () => Assert.Equal($"z2zzzz{TableName}".ToLowerInvariant(), ResponseContinuationToken.DecodeTableNameContinuationToken(firstPage.ContinuationToken)),
                 () =>
                 {
                     var response = firstPage.GetRawResponse();
@@ -552,11 +552,11 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                                 {
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", $"z2zz{TestTableName}" }
+                                        { "TableName", $"z2zz{TableName}" }
                                     },
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", $"z2zzz{TestTableName}" }
+                                        { "TableName", $"z2zzz{TableName}" }
                                     }
                                 }
                             }
@@ -580,11 +580,11 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
                                 {
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", $"z2zzzz{TestTableName}" }
+                                        { "TableName", $"z2zzzz{TableName}" }
                                     },
                                     new Dictionary<string, object>
                                     {
-                                        { "TableName", $"z2zzzzz{TestTableName}" }
+                                        { "TableName", $"z2zzzzz{TableName}" }
                                     }
                                 }
                             }
@@ -815,8 +815,8 @@ namespace CloudStub.AzureDataTables.Tests.TableService.Sync
         [Fact]
         public void GetTableClient_WhenCalledTwice_ReturnsDifferentInstances()
         {
-            var first = TableServiceClient.GetTableClient(TestTableName);
-            var second = TableServiceClient.GetTableClient(TestTableName);
+            var first = TableServiceClient.GetTableClient(TableName);
+            var second = TableServiceClient.GetTableClient(TableName);
 
             Assert.NotEqual(first, second);
             Assert.NotSame(first, second);

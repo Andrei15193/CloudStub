@@ -9,6 +9,7 @@ using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using Azure.Data.Tables.Sas;
+using CloudStub.AzureDataTables;
 using CloudStub.AzureDataTables.Filters;
 using CloudStub.AzureDataTables.Filters.Nodes;
 using CloudStub.AzureDataTables.Pageables;
@@ -1182,13 +1183,13 @@ namespace CloudStub.AzureDataTables
                                     transactionActionEntity.Add(existingProperty.Key, existingProperty.Value);
 
                         tablePartition[transactionActionEntity.RowKey] = transactionActionEntity;
-                        response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
+                        response = TableStubResponseFactory.NoContentResponse(new TransactionUpdateActionResponseHeaders(transactionActionEntity.ETag.ToString()));
                         break;
 
                     case TableTransactionActionType.UpsertReplace:
                     case TableTransactionActionType.UpdateReplace:
                         tablePartition[transactionActionEntity.RowKey] = transactionActionEntity;
-                        response = TableStubResponseFactory.NoContentResponse(new TransactionMergeActionResponseHeaders(transactionActionEntity.ETag.ToString()));
+                        response = TableStubResponseFactory.NoContentResponse(new TransactionUpdateActionResponseHeaders(transactionActionEntity.ETag.ToString()));
                         break;
 
                     case TableTransactionActionType.Delete:

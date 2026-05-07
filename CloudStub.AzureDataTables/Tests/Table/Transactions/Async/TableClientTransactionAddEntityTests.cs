@@ -14,7 +14,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         public async Task SubmitTransactionAsync_WhenTableDoesNotExist_ThrowsException()
         {
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key"))
@@ -34,7 +34,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         public async Task SubmitTransactionAsync_WhenEntityIsNull_ThrowsException()
         {
             var exception = await Assert.ThrowsAsync<NullReferenceException>(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, null)
@@ -51,9 +51,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_InsertOperation_InsertsEntity()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var result = await CloudTable.SubmitTransactionAsync(
+            var result = await TableClient.SubmitTransactionAsync(
                 new[]
                 {
                     new TableTransactionAction(
@@ -69,7 +69,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
+            var entities = await TableClient.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -93,7 +93,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, CloudTable.Name, "partition-key", "row-key"),
+                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, TableClient.Name, "partition-key", "row-key"),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -105,11 +105,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_InsertOperationWhenEntityAlreadyExists_ThrowsException()
         {
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(new TableEntity("partition-key", "row-key"));
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(new TableEntity("partition-key", "row-key"));
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(
@@ -134,11 +134,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_MultipleInsertOperationsWhenOneEntityAlreadyExists_ThrowsException()
         {
-            await CloudTable.CreateAsync();
-            await CloudTable.AddEntityAsync(new TableEntity("partition-key", "row-key"));
+            await TableClient.CreateAsync();
+            await TableClient.AddEntityAsync(new TableEntity("partition-key", "row-key"));
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(
@@ -181,9 +181,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         public async Task SubmitTransactionAsync_InserOperationWhenEntityHasOtherProperties_InsertsEntity()
         {
             var guid = Guid.NewGuid();
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
-            var result = await CloudTable.SubmitTransactionAsync(
+            var result = await TableClient.SubmitTransactionAsync(
                 new[]
                 {
                     new TableTransactionAction(
@@ -209,7 +209,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
 
             var rawResponse = result.GetRawResponse();
             var operationResponse = Assert.Single(result.Value);
-            var entities = await CloudTable.QueryAsync<TableEntity>().ToListAsync();
+            var entities = await TableClient.QueryAsync<TableEntity>().ToListAsync();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -233,7 +233,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, CloudTable.Name, "partition-key", "row-key"),
+                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, TableClient.Name, "partition-key", "row-key"),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true
@@ -262,10 +262,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenPartitionKeyIsNull_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(null, "row-key"))
@@ -284,10 +284,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WhenPartitionKeyIsInvalid_ThrowsException(string partitionKey)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(partitionKey, "row-key"))
@@ -306,10 +306,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenPartitionKeyExceedsLimit_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(new string('t', 1 << 10 + 1), "row-key"))
@@ -327,10 +327,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WithMultipleEntitiesWhenPartitionKeysExceedsLimit_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity(new string('t', 1 << 10 + 1), "row-key-1")),
@@ -350,11 +350,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenRowKeyIsNull_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             var exception = await Assert.ThrowsAsync<ArgumentNullException>(
                 "key",
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", null))
@@ -370,10 +370,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidKeyTestData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WhenRowKeyIsInvalid_ThrowsException(string rowKey)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", rowKey))
@@ -392,10 +392,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WhenRowKeyExceedsLimit_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", new string('t', 1 << 10 + 1)))
@@ -413,10 +413,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Fact]
         public async Task SubmitTransactionAsync_WithMultipleEntitiesWhenOneRowKeyExceedsLimit_ThrowsException()
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key")),
@@ -436,10 +436,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TestEntity
@@ -462,10 +462,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WithMultipleEntitiesWhenOneStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key-1")),
@@ -490,10 +490,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TestEntity
@@ -516,10 +516,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WithMultipleEntitiesWhenOneBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key-1")),
@@ -544,10 +544,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
         public async Task SubmitTransactionAsync_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
-            await CloudTable.CreateAsync();
+            await TableClient.CreateAsync();
 
             await Assertions.TransactionJsonResponseThrowsAsync(
-                () => CloudTable.SubmitTransactionAsync(
+                () => TableClient.SubmitTransactionAsync(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TestEntity
@@ -572,7 +572,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Async
         public async Task SubmitTransactionAsync_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             var now = DateTime.Now;
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => CloudTable.SubmitTransactionAsync(
+            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => TableClient.SubmitTransactionAsync(
                 new[]
                 {
                     new TableTransactionAction(

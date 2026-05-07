@@ -18,8 +18,8 @@ namespace CloudStub.AzureDataTables.Tests
                 ? new TableServiceClientStub(TableAccountName)
                 : new TableServiceClient(TestRunContext.AzureStorageConnectionString);
 
-            TestTableName = $"{_TableNamePrefix}{Interlocked.Increment(ref _tableCounter)}";
-            CloudTable = TableServiceClient.GetTableClient(TestTableName);
+            TableName = $"{_TableNamePrefix}{Interlocked.Increment(ref _tableCounter)}";
+            TableClient = TableServiceClient.GetTableClient(TableName);
         }
 
         protected static string TableAccountName { get; }
@@ -32,10 +32,10 @@ namespace CloudStub.AzureDataTables.Tests
                     .DefaultIfEmpty("UnknownAccount")
                     .First();
 
-        protected string TestTableName { get; }
+        protected string TableName { get; }
 
         protected TableServiceClient TableServiceClient { get; }
 
-        protected TableClient CloudTable { get; }
+        protected TableClient TableClient { get; }
     }
 }

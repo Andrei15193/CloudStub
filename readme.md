@@ -1,19 +1,40 @@
-## ToDo
+A high-fidelity in-memory implementation for Azure Table Storage useful for testing and local development.
 
-* Replace this with the goal of the library, provide a stub for Azure Table Storage for all kinds of testing. The aim is to make it as close as possible to the real thing making them almost indistinguishable. If there are any errors returned by the stub they should also be returned by the related SDK and vice-versa containing the same details. This allows the stub to be used reliably in all kinds of test scenarios without having to actually encounter them with an actual service. The tests are mostly exhaustive to everything that is possible.
-* Add a quick getting started tutorial to make it easy for people to set this up. Include basic unit test examples and dotnet integration test examples.
-* The list from below is for developers, might get removed or moved under a "contributing" section.
-* Details the idea behidn the "CloudStub" prefix.
+**Setup**
 
-Required Software
------------------
+The library provides a complete in-memory implementation for both the table service client and table clients. Replacing the table service client is enough to have have all subsequent table clients replaced with stubs as well.
 
-* dotnet 10.0 SDK
-* Visual Studio Code
+```c#
+public class DataTables
+{
+    public DataTables(TableServiceClient tableServiceClient)
+    {
+        Users = tableServiceClient.GetTableClient("Users");
+    }
 
-For local development check `TestRunContext.cs`, provide your own values to use the debugger and integrated test runner otherwise it can be a pain.
+    public TableClient Users { get; }
+}
 
-Remarks
--------
+public class MyTestClass
+{
+    public void MyTestMethod()
+    {
+        var dataTables = new DataTables(new TableServiceClientStub());
 
-The new SDK requires dates to be specified in UTC when adding or updating entities.
+        dataTables.Users.Query<TableEntity>();
+    }
+}
+```
+
+Similar setups can be made for integration tests or local development.
+
+```c#
+public class MyWebApplicationFactory : WebApplicationFactory<Startup>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+        => builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<TableServiceClient>(_ => new TableServiceClientStub());
+        });
+}
+```

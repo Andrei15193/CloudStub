@@ -13,7 +13,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         public void SubmitTransaction_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key", "row-key"))
@@ -32,7 +32,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenBatchIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("transactionalBatch", () => CloudTable.SubmitTransaction(null));
+            var exception = Assert.Throws<ArgumentNullException>("transactionalBatch", () => TableClient.SubmitTransaction(null));
 
             Assert.Multiple(
                 () => Assert.Equal(new ArgumentNullException("transactionalBatch").Message, exception.Message),
@@ -43,7 +43,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenBatchIsEmpty_ThrowsException()
         {
-            var exception = Assert.Throws<InvalidOperationException>(() => CloudTable.SubmitTransaction(Enumerable.Empty<TableTransactionAction>()));
+            var exception = Assert.Throws<InvalidOperationException>(() => TableClient.SubmitTransaction(Enumerable.Empty<TableTransactionAction>()));
 
             Assert.Multiple(
                 () => Assert.Equal(new InvalidOperationException("The batch contains no entity operations.").Message, exception.Message),
@@ -55,10 +55,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenBatchHasOperationsInMultiplePartitions_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("partition-key-1", "row-key")),
@@ -78,10 +78,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WithMultipleOperationsOnSameEntity_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(TableTransactionActionType.UpsertMerge, new TableEntity("partition-key", "row-key")),
@@ -101,11 +101,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_FailingBatchOperation_DoesNotExecutePartially()
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key", StringProp = "string prop" });
+            TableClient.Create();
+            TableClient.AddEntity(new TestEntity { PartitionKey = "partition-key", RowKey = "row-key", StringProp = "string prop" });
 
             Assertions.TransactionJsonResponseThrows(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction(
@@ -137,7 +137,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                 }
             );
 
-            var entity = CloudTable.GetEntity<TestEntity>("partition-key", "row-key").Value;
+            var entity = TableClient.GetEntity<TestEntity>("partition-key", "row-key").Value;
 
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -158,7 +158,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     {
                         try
                         {
-                            CloudTable.SubmitTransaction(
+                            TableClient.SubmitTransaction(
                                 from rowNumber in Enumerable.Range(1, 101)
                                 select new TableTransactionAction(
                                     TableTransactionActionType.Add,
@@ -188,10 +188,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenOperationIsNotSupported_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<InvalidOperationException>(
-                () => CloudTable.SubmitTransaction(
+                () => TableClient.SubmitTransaction(
                     new[]
                     {
                         new TableTransactionAction((TableTransactionActionType)(-1), new TableEntity("partition-key", "row-key"))
@@ -207,9 +207,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
         [Fact]
         public void SubmitTransaction_WhenBatchHas100Operations_ExecutesSuccessfully()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            var result = CloudTable.SubmitTransaction(
+            var result = TableClient.SubmitTransaction(
                 from rowNumber in Enumerable.Range(1, 100)
                 select new TableTransactionAction(
                     TableTransactionActionType.Add,
@@ -241,7 +241,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Transactions.Sync
                     new Assertions.SuccessfulResponseAssertOptions
                     {
                         StatusCode = HttpStatusCode.NoContent,
-                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, CloudTable.Name, "partition-key", $"row-key-{operationNumber}"),
+                        Headers = new Assertions.TransactionAddActionHeaders(operationResponse, TableClient.Name, "partition-key", $"row-key-{operationNumber}"),
                         WithoutRequestId = true,
                         WithoutClientRequestId = true,
                         WithoutDate = true

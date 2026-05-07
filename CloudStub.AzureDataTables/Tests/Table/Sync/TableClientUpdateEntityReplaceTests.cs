@@ -14,7 +14,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void UpdateEntityReplace_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpdateEntity(
+                () => TableClient.UpdateEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -42,7 +42,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpdateEntityReplace_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.UpdateEntity<TableEntity>(null, ETag.All, TableUpdateMode.Replace));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableClient.UpdateEntity<TableEntity>(null, ETag.All, TableUpdateMode.Replace));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
             Assert.Equal("Azure.Data.Tables", exception.Source);
         }
@@ -52,7 +52,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         {
             var exception = Assert.Throws<ArgumentException>(
                 "ifMatch",
-                () => CloudTable.UpdateEntity(
+                () => TableClient.UpdateEntity(
                     new TableEntity
                     {
                         PartitionKey = "partition-key",
@@ -69,7 +69,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpdateEntityReplace_WhenUpdateModeIsNotSupported_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentException>(() => CloudTable.UpdateEntity(new TableEntity("partition-key", "row-key"), ETag.All, (TableUpdateMode)(-1)));
+            var exception = Assert.Throws<ArgumentException>(() => TableClient.UpdateEntity(new TableEntity("partition-key", "row-key"), ETag.All, (TableUpdateMode)(-1)));
             Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
@@ -88,12 +88,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = "row-key",
                 Int32Prop = 8
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var response = CloudTable.UpdateEntity(updatedTestEntity, ETag.All, TableUpdateMode.Replace);
+            var response = TableClient.UpdateEntity(updatedTestEntity, ETag.All, TableUpdateMode.Replace);
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
@@ -127,8 +127,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = "row-key",
                 StringProp = "string-prop"
             };
-            CloudTable.Create();
-            var response = CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            var response = TableClient.AddEntity(testEntity);
             var updatedTestEntity = new TestEntity
             {
                 PartitionKey = "partition-key",
@@ -136,9 +136,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 Int32Prop = 8
             };
 
-            response = CloudTable.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace);
+            response = TableClient.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace);
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
@@ -166,8 +166,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpdateEntityReplace_WhenDynamicEntityHasNullProperties_TheyAreRemoved()
         {
-            CloudTable.Create();
-            var tableResult = CloudTable.AddEntity(
+            TableClient.Create();
+            var tableResult = TableClient.AddEntity(
                 new TableEntity(
                     new Dictionary<string, object>
                     {
@@ -180,7 +180,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 }
             );
 
-            var response = CloudTable.UpdateEntity(
+            var response = TableClient.UpdateEntity(
                 new TableEntity(
                     new Dictionary<string, object>
                     {
@@ -195,7 +195,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 TableUpdateMode.Replace
             );
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Contains(nameof(TestEntity.PartitionKey), entity),
@@ -226,10 +226,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = new string('t', 1 << 10 + 1),
                 RowKey = new string('t', 1 << 10 + 1)
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                 response => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.NotFound,
@@ -248,17 +248,17 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            CloudTable.Create();
-            var response = CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            var response = TableClient.AddEntity(testEntity);
             var updatedTestEntity = new TableEntity
             {
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace);
+            TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace);
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace),
+                () => TableClient.UpdateEntity(updatedTestEntity, response.Headers.ETag.Value, TableUpdateMode.Replace),
                 updateResponse => new Assertions.UnsuccessfulResponseAssertOptions
                 {
                     StatusCode = HttpStatusCode.PreconditionFailed,
@@ -277,11 +277,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = null,
                 RowKey = "row-key"
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
                 "PartitionKey",
-                () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace)
+                () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace)
             );
 
             Assert.Equal(new ArgumentNullException("PartitionKey").Message, exception.Message);
@@ -296,14 +296,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = partitionKey,
                 RowKey = "row-key"
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (partitionKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -316,7 +316,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -369,7 +369,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -385,7 +385,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -406,11 +406,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = null
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
                 "RowKey",
-                () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace)
+                () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace)
             );
 
             Assert.Equal(new ArgumentNullException("RowKey").Message, exception.Message);
@@ -425,14 +425,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = rowKey
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (rowKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -445,7 +445,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -498,7 +498,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -514,7 +514,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
+                        () => TableClient.UpdateEntity(testEntity, ETag.All, TableUpdateMode.Replace),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -542,11 +542,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 StringProp = stringPropValue,
                 ETag = testEntity.ETag
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpdateEntity(
+                () => TableClient.UpdateEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -574,11 +574,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = "row-key",
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpdateEntity(
+                () => TableClient.UpdateEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -606,11 +606,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpdateEntity(
+                () => TableClient.UpdateEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -639,7 +639,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void UpdateEntityReplace_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             var now = DateTime.Now;
-            var exception = Assert.Throws<NotSupportedException>(() => CloudTable.UpdateEntity(
+            var exception = Assert.Throws<NotSupportedException>(() => TableClient.UpdateEntity(
                 new TestEntity
                 {
                     PartitionKey = "partition-key",

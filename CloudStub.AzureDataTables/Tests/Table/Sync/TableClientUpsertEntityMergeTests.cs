@@ -13,7 +13,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void UpsertEntityMerge_WhenTableDoesNotExist_ThrowsException()
         {
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -40,14 +40,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenEntityIsNull_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentNullException>("entity", () => CloudTable.UpsertEntity<TableEntity>(null, TableUpdateMode.Merge));
+            var exception = Assert.Throws<ArgumentNullException>("entity", () => TableClient.UpsertEntity<TableEntity>(null, TableUpdateMode.Merge));
             Assert.Equal(new ArgumentNullException("entity").Message, exception.Message);
         }
 
         [Fact]
         public void UpsertEntityMerge_WhenUpdateModeIsNotSupported_ThrowsException()
         {
-            var exception = Assert.Throws<ArgumentException>(() => CloudTable.UpsertEntity(new TableEntity("partition-key", "row-key"), (TableUpdateMode)(-1)));
+            var exception = Assert.Throws<ArgumentException>(() => TableClient.UpsertEntity(new TableEntity("partition-key", "row-key"), (TableUpdateMode)(-1)));
             Assert.Equal(new ArgumentException("Unexpected value for mode: -1").Message, exception.Message);
         }
 
@@ -59,11 +59,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = "row-key"
             };
-            CloudTable.Create();
+            TableClient.Create();
 
-            var response = CloudTable.UpsertEntity(tableEntity, TableUpdateMode.Merge);
+            var response = TableClient.UpsertEntity(tableEntity, TableUpdateMode.Merge);
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -98,11 +98,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 GuidProp = Guid.NewGuid(),
                 DecimalProp = 4
             };
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge);
+            TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge);
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -138,12 +138,12 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 Int32Prop = 8,
                 Int64Prop = 8
             };
-            CloudTable.Create();
-            CloudTable.AddEntity(testEntity);
+            TableClient.Create();
+            TableClient.AddEntity(testEntity);
 
-            var response = CloudTable.UpsertEntity(updatedTestEntity, TableUpdateMode.Merge);
+            var response = TableClient.UpsertEntity(updatedTestEntity, TableUpdateMode.Merge);
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
 
             Assert.Multiple(
@@ -168,9 +168,9 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenDynamicEntityHasNullProperties_TheyAreIgnored()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
-            CloudTable.UpsertEntity(
+            TableClient.UpsertEntity(
                 new TableEntity(
                     new Dictionary<string, object>
                     {
@@ -184,7 +184,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 TableUpdateMode.Merge
             );
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -198,8 +198,8 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenDynamicEntityHasNullProperties_TheyAreIgnoredWhenEntityAlreadyExists()
         {
-            CloudTable.Create();
-            CloudTable.AddEntity(new TableEntity(
+            TableClient.Create();
+            TableClient.AddEntity(new TableEntity(
                 new Dictionary<string, object>
                 {
                     { nameof(TestEntity.Int32Prop), 1 }
@@ -210,7 +210,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 RowKey = "row-key"
             });
 
-            CloudTable.UpsertEntity(
+            TableClient.UpsertEntity(
                 new TableEntity(
                     new Dictionary<string, object>
                     {
@@ -224,7 +224,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 TableUpdateMode.Merge
             );
 
-            var entities = CloudTable.Query<TableEntity>();
+            var entities = TableClient.Query<TableEntity>();
             var entity = Assert.Single(entities);
             Assert.Multiple(
                 () => Assert.Equal("partition-key", entity.PartitionKey),
@@ -238,11 +238,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenPartitionKeyIsNull_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
                 "PartitionKey",
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TableEntity(null, "row-key"),
                     TableUpdateMode.Merge
                 )
@@ -259,14 +259,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = partitionKey,
                 RowKey = "row-key"
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (partitionKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -279,7 +279,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -332,7 +332,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -348,7 +348,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -364,10 +364,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenPartitionKeyExceedsLimit_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TableEntity
                     {
                         PartitionKey = new string('t', 1 << 10 + 1),
@@ -388,11 +388,11 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenRowKeyIsNull_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             var exception = Assert.Throws<ArgumentNullException>(
                 "RowKey",
-                () => CloudTable.UpsertEntity(new TableEntity("partition-key", null), TableUpdateMode.Merge)
+                () => TableClient.UpsertEntity(new TableEntity("partition-key", null), TableUpdateMode.Merge)
             );
 
             Assert.Equal(new ArgumentNullException("RowKey").Message, exception.Message);
@@ -406,14 +406,14 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 PartitionKey = "partition-key",
                 RowKey = rowKey
             };
-            CloudTable.Create();
+            TableClient.Create();
 
             switch (rowKey)
             {
                 case "/":
                 case "\\":
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -426,7 +426,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 case "\u0000":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -479,7 +479,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
                 case "\u0090":
                 case "\u009D":
                     Assertions.InvalidUrlThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             WithoutRequestId = true,
@@ -495,7 +495,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
 
                 default:
                     Assertions.JsonResponseThrows(
-                        () => CloudTable.UpsertEntity(testEntity, TableUpdateMode.Merge),
+                        () => TableClient.UpsertEntity(testEntity, TableUpdateMode.Merge),
                         response => new Assertions.UnsuccessfulResponseAssertOptions
                         {
                             StatusCode = HttpStatusCode.BadRequest,
@@ -511,10 +511,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Fact]
         public void UpsertEntityMerge_WhenRowKeyExceedsLimit_ThrowsException()
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TableEntity
                     {
                         PartitionKey = "partition-key",
@@ -535,10 +535,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidStringData), MemberType = typeof(TableOperationTestData))]
         public void UpsertEntityMerge_WhenStringPropertyIsInvalid_ThrowsException(string stringPropValue)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -560,10 +560,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidBinaryData), MemberType = typeof(TableOperationTestData))]
         public void UpsertEntityMerge_WhenBinaryPropertyIsInvalid_ThrowsException(byte[] binaryPropValue)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -585,10 +585,10 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         [Theory, MemberData(nameof(TableOperationTestData.InvalidDateTimeData), MemberType = typeof(TableOperationTestData))]
         public void UpsertEntityMerge_WhenDateTimePropertyIsInvalid_ThrowsException(DateTime dateTimePropValue)
         {
-            CloudTable.Create();
+            TableClient.Create();
 
             Assertions.JsonResponseThrows(
-                () => CloudTable.UpsertEntity(
+                () => TableClient.UpsertEntity(
                     new TestEntity
                     {
                         PartitionKey = "partition-key",
@@ -617,7 +617,7 @@ namespace CloudStub.AzureDataTables.Tests.Table.Sync
         public void UpsertEntityMerge_WhenDateTimePropertyIsNotUniversal_ThrowsException()
         {
             var now = DateTime.Now;
-            var exception = Assert.Throws<NotSupportedException>(() => CloudTable.UpsertEntity(
+            var exception = Assert.Throws<NotSupportedException>(() => TableClient.UpsertEntity(
                 new TestEntity
                 {
                     PartitionKey = "partition-key",
